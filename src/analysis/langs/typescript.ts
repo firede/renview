@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import { messages, type Locale } from "../../i18n";
 import { del, delSpan, replaceNode, type SimplifyOp } from "../simplify";
 import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
@@ -8,8 +9,8 @@ import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } f
  * export / declare 包装节点保留为单元范围（export 关键字本身是契约的一部分）。
  */
 
-function nameOf(node: Node): string {
-  return node.childForFieldName("name")?.text ?? "(匿名)";
+function nameOf(node: Node, locale: Locale): string {
+  return node.childForFieldName("name")?.text ?? messages(locale).analysis.anonymousName;
 }
 
 function joinContainer(container: string, name: string): string {
@@ -17,10 +18,15 @@ function joinContainer(container: string, name: string): string {
 }
 
 /** lexical/variable declaration：按 declarator 拆分；箭头函数/函数表达式视为 function */
-function declaratorInfos(node: Node, container: string, wrap: Node | undefined): DeclarationInfo[] {
+function declaratorInfos(
+  node: Node,
+  container: string,
+  wrap: Node | undefined,
+  locale: Locale,
+): DeclarationInfo[] {
   const declarators = node.namedChildren.filter((c) => c.type === "variable_declarator");
   if (declarators.length === 0) {
-    return [{ kind: "variable", name: "(未知)", typeLevel: false, node: wrap ?? node, bodyNode: null, container }];
+    return [{ kind: "variable", name: messages(locale).analysis.unknownName, typeLevel: false, node: wrap ?? node, bodyNode: null, container }];
   }
   // export const a = 1, b = 2 这类多声明合并为一个单元，避免同一范围重复计
   if (wrap && declarators.length > 1) {
@@ -28,7 +34,7 @@ function declaratorInfos(node: Node, container: string, wrap: Node | undefined):
     return [{ kind: "variable", name, typeLevel: false, node: wrap, bodyNode: null, container }];
   }
   return declarators.map((d) => {
-    const name = d.childForFieldName("name")?.text ?? "(未知)";
+    const name = d.childForFieldName("name")?.text ?? messages(locale).analysis.unknownName;
     const value = d.childForFieldName("value");
     const isFn =
       value != null && (value.type === "arrow_function" || value.type === "function_expression");
@@ -48,18 +54,19 @@ function collectNode(
   container: string,
   out: DeclarationInfo[],
   wrap: Node | undefined,
+  locale: Locale,
 ): void {
   switch (node.type) {
     case "export_statement":
     case "ambient_declaration": {
       const inner = node.namedChildren.find((c) => c.type !== "comment");
-      if (inner) collectNode(inner, container, out, wrap ?? node);
+      if (inner) collectNode(inner, container, out, wrap ?? node, locale);
       return;
     }
     case "internal_module": {
       // namespace / module 块：不作为单元，递归收内部声明
       const body = node.childForFieldName("body");
-      if (body) collectInto(body, joinContainer(container, nameOf(node)), out);
+      if (body) collectInto(body, joinContainer(container, nameOf(node, locale)), out, locale);
       return;
     }
     case "function_declaration":
@@ -67,7 +74,7 @@ function collectNode(
     case "method_definition": {
       out.push({
         kind: "function",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node: wrap ?? node,
         bodyNode: node.childForFieldName("body"),
@@ -80,7 +87,7 @@ function collectNode(
       // 无实现的签名型成员：整体即签名，归为类型级
       out.push({
         kind: "function",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: true,
         node: wrap ?? node,
         bodyNode: null,
@@ -90,7 +97,7 @@ function collectNode(
     }
     case "class_declaration":
     case "abstract_class_declaration": {
-      const name = nameOf(node);
+      const name = nameOf(node, locale);
       out.push({
         kind: "class",
         name,
@@ -100,14 +107,14 @@ function collectNode(
         container,
       });
       const body = node.childForFieldName("body");
-      if (body) collectInto(body, joinContainer(container, name), out);
+      if (body) collectInto(body, joinContainer(container, name), out, locale);
       return;
     }
     case "interface_declaration":
     case "type_alias_declaration": {
       out.push({
         kind: "type",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: true,
         node: wrap ?? node,
         bodyNode: null,
@@ -119,7 +126,7 @@ function collectNode(
       // enum 有运行时代码，不算纯类型级；成员变化归为 body 变更
       out.push({
         kind: "type",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node: wrap ?? node,
         bodyNode: node.childForFieldName("body"),
@@ -131,7 +138,7 @@ function collectNode(
     case "public_field_definition": {
       out.push({
         kind: "variable",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node: wrap ?? node,
         bodyNode: null,
@@ -141,7 +148,7 @@ function collectNode(
     }
     case "lexical_declaration":
     case "variable_declaration": {
-      out.push(...declaratorInfos(node, container, wrap));
+      out.push(...declaratorInfos(node, container, wrap, locale));
       return;
     }
     default:
@@ -150,8 +157,13 @@ function collectNode(
   }
 }
 
-function collectInto(node: Node, container: string, out: DeclarationInfo[]): void {
-  for (const child of node.namedChildren) collectNode(child, container, out, undefined);
+function collectInto(
+  node: Node,
+  container: string,
+  out: DeclarationInfo[],
+  locale: Locale,
+): void {
+  for (const child of node.namedChildren) collectNode(child, container, out, undefined, locale);
 }
 
 /** TS/TSX 简化器：删除类型位置的语法（标注/泛型/断言/implements）与空值安全机制（?.），类型别名保留名字桩 */
@@ -228,17 +240,16 @@ function tsFoldKind(node: Node): FoldKind | null {
   return null;
 }
 
-function tsFoldSummary(kind: FoldKind, nodes: Node[]): string {
+function tsFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const mods = nodes.map((n) => {
       const s = unwrapDecl(n).childForFieldName("source");
       return s?.namedChildren[0]?.text ?? s?.text.replace(/^['"]|['"]$/g, "") ?? "?";
     });
-    const shown = mods.slice(0, 4).join("、");
-    return `import × ${nodes.length}（${shown}${mods.length > 4 ? "…" : ""}）`;
+    return messages(locale).analysis.importsFold("import", nodes.length, mods.slice(0, 4), mods.length > 4);
   }
   const n = unwrapDecl(nodes[0]!);
-  const name = nameOf(n);
+  const name = nameOf(n, locale);
   if (n.type === "type_alias_declaration") return `type ${name}`;
   const keyword = n.type === "enum_declaration" ? "enum" : "interface";
   const members = (n.childForFieldName("body")?.namedChildren ?? [])
@@ -247,16 +258,16 @@ function tsFoldSummary(kind: FoldKind, nodes: Node[]): string {
         c.childForFieldName("name")?.text ?? (c.type === "property_identifier" ? c.text : null),
     )
     .filter((x): x is string => x != null);
-  return members.length > 0 ? `${keyword} ${name} { ${nameList(members)} }` : `${keyword} ${name}`;
+  return members.length > 0 ? `${keyword} ${name} { ${nameList(members, locale)} }` : `${keyword} ${name}`;
 }
 
 export const typescriptProfile: LanguageProfile = {
   id: "typescript",
   extensions: ["ts", "mts", "cts"],
   grammarFile: "typescript",
-  collect(root) {
+  collect(root, locale) {
     const out: DeclarationInfo[] = [];
-    collectInto(root, "", out);
+    collectInto(root, "", out, locale);
     return out;
   },
   simplify: tsSimplify,

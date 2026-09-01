@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import { messages, type Locale } from "../../i18n";
 import {
   del,
   delSpan,
@@ -11,18 +12,18 @@ import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } f
 
 /** Rust profile：声明收集（徽章分类用）+ 简化器（对齐 rust-beautifier 的擦除规则） */
 
-function nameOf(node: Node): string {
-  return node.childForFieldName("name")?.text ?? "(匿名)";
+function nameOf(node: Node, locale: Locale): string {
+  return node.childForFieldName("name")?.text ?? messages(locale).analysis.anonymousName;
 }
 
 function joinContainer(container: string, name: string): string {
   return container ? `${container}.${name}` : name;
 }
 
-function implName(node: Node): string {
+function implName(node: Node, locale: Locale): string {
   const trait = node.childForFieldName("trait");
   const type = node.childForFieldName("type");
-  const t = type?.text ?? "(未知)";
+  const t = type?.text ?? messages(locale).analysis.unknownName;
   return trait ? `${trait.text} for ${t}` : t;
 }
 
@@ -30,12 +31,13 @@ function collectNode(
   node: Node,
   container: string,
   out: DeclarationInfo[],
+  locale: Locale,
 ): void {
   switch (node.type) {
     case "function_item": {
       out.push({
         kind: "function",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -46,7 +48,7 @@ function collectNode(
     case "function_signature_item": {
       out.push({
         kind: "function",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: true,
         node,
         bodyNode: null,
@@ -57,7 +59,7 @@ function collectNode(
     case "struct_item": {
       out.push({
         kind: "type",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: true,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -68,7 +70,7 @@ function collectNode(
     case "enum_item": {
       out.push({
         kind: "type",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -77,7 +79,7 @@ function collectNode(
       return;
     }
     case "trait_item": {
-      const name = nameOf(node);
+      const name = nameOf(node, locale);
       out.push({
         kind: "type",
         name,
@@ -87,11 +89,11 @@ function collectNode(
         container,
       });
       const body = node.childForFieldName("body");
-      if (body) collectInto(body, joinContainer(container, name), out);
+      if (body) collectInto(body, joinContainer(container, name), out, locale);
       return;
     }
     case "impl_item": {
-      const name = implName(node);
+      const name = implName(node, locale);
       out.push({
         kind: "class",
         name,
@@ -101,18 +103,18 @@ function collectNode(
         container,
       });
       const body = node.childForFieldName("body");
-      if (body) collectInto(body, joinContainer(container, name), out);
+      if (body) collectInto(body, joinContainer(container, name), out, locale);
       return;
     }
     case "mod_item": {
       const body = node.childForFieldName("body");
-      if (body) collectInto(body, joinContainer(container, nameOf(node)), out);
+      if (body) collectInto(body, joinContainer(container, nameOf(node, locale)), out, locale);
       return;
     }
     case "type_item": {
       out.push({
         kind: "type",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: true,
         node,
         bodyNode: null,
@@ -124,7 +126,7 @@ function collectNode(
     case "static_item": {
       out.push({
         kind: "variable",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: null,
@@ -137,8 +139,13 @@ function collectNode(
   }
 }
 
-function collectInto(node: Node, container: string, out: DeclarationInfo[]): void {
-  for (const child of node.namedChildren) collectNode(child, container, out);
+function collectInto(
+  node: Node,
+  container: string,
+  out: DeclarationInfo[],
+  locale: Locale,
+): void {
+  for (const child of node.namedChildren) collectNode(child, container, out, locale);
 }
 
 /** 零参数机制调用：封解包/内存/转换（按语义安全线擦除，见 .agents/truth/product.md） */
@@ -227,27 +234,26 @@ function memberNames(node: Node): string[] {
     .filter((x): x is string => x != null);
 }
 
-function rustFoldSummary(kind: FoldKind, nodes: Node[]): string {
+function rustFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const paths = nodes.map((n) => n.childForFieldName("argument")?.text ?? "?");
-    const shown = paths.slice(0, 4).join("、");
-    return `use × ${nodes.length}（${shown}${paths.length > 4 ? "…" : ""}）`;
+    return messages(locale).analysis.importsFold("use", nodes.length, paths.slice(0, 4), paths.length > 4);
   }
   const n = nodes[0]!;
-  const name = nameOf(n);
+  const name = nameOf(n, locale);
   if (n.type === "type_item") return `type ${name}`;
   const keyword = n.type === "struct_item" ? "struct" : n.type === "enum_item" ? "enum" : "trait";
   const members = memberNames(n);
-  return members.length > 0 ? `${keyword} ${name} { ${nameList(members)} }` : `${keyword} ${name}`;
+  return members.length > 0 ? `${keyword} ${name} { ${nameList(members, locale)} }` : `${keyword} ${name}`;
 }
 
 export const rustProfile: LanguageProfile = {
   id: "rust",
   extensions: ["rs"],
   grammarFile: "rust",
-  collect(root) {
+  collect(root, locale) {
     const out: DeclarationInfo[] = [];
-    collectInto(root, "", out);
+    collectInto(root, "", out, locale);
     return out;
   },
   simplify: rustSimplify,

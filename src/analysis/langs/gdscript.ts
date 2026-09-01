@@ -1,11 +1,12 @@
 import type { Node } from "web-tree-sitter";
+import { messages, type Locale } from "../../i18n";
 import { delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
 import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
 /** GDScript profile：声明收集 + 类型擦除（标注/返回类型）+ enum 折叠 */
 
-function nameOf(node: Node): string {
-  return node.childForFieldName("name")?.text ?? "(匿名)";
+function nameOf(node: Node, locale: Locale): string {
+  return node.childForFieldName("name")?.text ?? messages(locale).analysis.anonymousName;
 }
 
 function joinContainer(container: string, name: string): string {
@@ -19,13 +20,13 @@ const VAR_STATEMENTS = new Set([
   "onready_variable_statement",
 ]);
 
-function collectNode(node: Node, container: string, out: DeclarationInfo[]): void {
+function collectNode(node: Node, container: string, out: DeclarationInfo[], locale: Locale): void {
   switch (node.type) {
     case "function_definition":
     case "constructor_definition": {
       out.push({
         kind: "function",
-        name: node.type === "constructor_definition" ? "_init" : nameOf(node),
+        name: node.type === "constructor_definition" ? "_init" : nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -34,7 +35,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
       return;
     }
     case "class_definition": {
-      const name = nameOf(node);
+      const name = nameOf(node, locale);
       out.push({
         kind: "class",
         name,
@@ -44,13 +45,13 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
         container,
       });
       const body = node.childForFieldName("body");
-      if (body) for (const c of body.namedChildren) collectNode(c, joinContainer(container, name), out);
+      if (body) for (const c of body.namedChildren) collectNode(c, joinContainer(container, name), out, locale);
       return;
     }
     case "enum_definition": {
       out.push({
         kind: "type",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -61,7 +62,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
     case "signal_statement": {
       out.push({
         kind: "variable",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: null,
@@ -73,7 +74,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
       if (VAR_STATEMENTS.has(node.type)) {
         out.push({
           kind: "variable",
-          name: nameOf(node),
+          name: nameOf(node, locale),
           typeLevel: false,
           node,
           bodyNode: null,
@@ -117,7 +118,7 @@ function gdFoldKind(node: Node): FoldKind | null {
   return node.type === "enum_definition" ? "type-decl" : null;
 }
 
-function gdFoldSummary(_kind: FoldKind, nodes: Node[]): string {
+function gdFoldSummary(_kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   const n = nodes[0]!;
   const name = n.childForFieldName("name")?.text;
   const members = (n.childForFieldName("body")?.namedChildren ?? [])
@@ -125,16 +126,16 @@ function gdFoldSummary(_kind: FoldKind, nodes: Node[]): string {
     .map((e) => e.childForFieldName("left")?.text ?? null)
     .filter((x): x is string => x != null);
   const label = name ? `enum ${name}` : "enum";
-  return members.length > 0 ? `${label} { ${nameList(members)} }` : label;
+  return members.length > 0 ? `${label} { ${nameList(members, locale)} }` : label;
 }
 
 export const gdscriptProfile: LanguageProfile = {
   id: "gdscript",
   extensions: ["gd"],
   grammarFile: "gdscript",
-  collect(root) {
+  collect(root, locale) {
     const out: DeclarationInfo[] = [];
-    for (const c of root.namedChildren) collectNode(c, "", out);
+    for (const c of root.namedChildren) collectNode(c, "", out, locale);
     return out;
   },
   simplify: gdSimplify,

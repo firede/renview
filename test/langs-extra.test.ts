@@ -6,6 +6,7 @@ import type { LanguageProfile } from "../src/analysis/langs/types";
 import { parseSource } from "../src/analysis/parser";
 import { applySimplify, collectSimplifyOps, simplifyTree } from "../src/analysis/simplify";
 import { buildViewRows } from "../src/analysis/view";
+import type { Locale } from "../src/i18n";
 
 async function simplify(profile: LanguageProfile, source: string): Promise<string[]> {
   const tree = await parseSource(profile.grammarFile, source);
@@ -13,10 +14,10 @@ async function simplify(profile: LanguageProfile, source: string): Promise<strin
   return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!));
 }
 
-async function viewRows(profile: LanguageProfile, source: string) {
+async function viewRows(profile: LanguageProfile, source: string, locale: Locale = "zh-CN") {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
-  return buildViewRows(profile, tree, source, simplifyTree(tree, source, profile.simplify!));
+  return buildViewRows(profile, tree, source, simplifyTree(tree, source, profile.simplify!), locale);
 }
 
 describe("go 简化器", () => {
@@ -119,7 +120,7 @@ func NewServer() *Server { return nil }
 func (s *Server) Start() {}
 `;
     const tree = await parseSource("go", src);
-    const decls = goProfile.collect(tree.rootNode);
+    const decls = goProfile.collect(tree.rootNode, "zh-CN");
     const start = decls.find((d) => d.name === "Start");
     expect(start?.container).toBe("Server");
     expect(start?.kind).toBe("function");
@@ -154,6 +155,21 @@ func main() {}
     ]);
     expect(rows[rows.length - 1]).toMatchObject({ kind: "line", text: "func main() {}" });
   });
+
+  test("英文 locale：import 折叠摘要为英文措辞", async () => {
+    const src = `package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {}
+`;
+    const rows = await viewRows(goProfile, src, "en");
+    const fold = rows.find((r) => r.kind === "fold");
+    expect(fold).toMatchObject({ kind: "fold", text: "2 imports (fmt, strings)" });
+  });
 });
 
 describe("gdscript 简化器", () => {
@@ -187,7 +203,7 @@ func move_card(card):
 	pass
 `;
     const tree = await parseSource("gdscript", src);
-    const decls = gdscriptProfile.collect(tree.rootNode);
+    const decls = gdscriptProfile.collect(tree.rootNode, "zh-CN");
     const names = decls.map((d) => `${d.kind}:${d.name}`).sort();
     expect(names).toEqual(["function:move_card", "variable:card_moved", "variable:cells"]);
   });
@@ -265,7 +281,7 @@ class Repo:
         pass
 `;
     const tree = await parseSource("python", src);
-    const decls = pythonProfile.collect(tree.rootNode);
+    const decls = pythonProfile.collect(tree.rootNode, "zh-CN");
     const byName = Object.fromEntries(decls.map((d) => [d.name, d]));
     expect(byName.CONSTANT?.kind).toBe("variable");
     expect(byName.Repo?.kind).toBe("class");
@@ -297,4 +313,3 @@ class Worker:
     expect(rows.some((r) => r.kind === "line" && r.text === "class Worker:")).toBe(true);
   });
 });
-

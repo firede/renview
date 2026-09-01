@@ -1,4 +1,5 @@
 import type { Node, Tree } from "web-tree-sitter";
+import { messages, type Locale } from "../i18n";
 import type { DeclarationInfo, LanguageProfile } from "./langs/types";
 import { countLinesIn, touchedBy } from "./map";
 import { parseSource } from "./parser";
@@ -13,8 +14,10 @@ function normalize(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-function truncate(text: string): string {
-  return text.length > TYPE_TEXT_LIMIT ? `${text.slice(0, TYPE_TEXT_LIMIT)}…（截断）` : text;
+function truncate(text: string, locale: Locale): string {
+  return text.length > TYPE_TEXT_LIMIT
+    ? `${text.slice(0, TYPE_TEXT_LIMIT)}${messages(locale).analysis.truncatedSuffix}`
+    : text;
 }
 
 /** 签名 = 单元起点到 body 起点（无 body 则整体）；含 export 等修饰符 */
@@ -109,6 +112,7 @@ export function analyzeParsed(
   newSide: ParsedSide | null,
   oldLines: Set<number>,
   newLines: Set<number>,
+  locale: Locale,
 ): FileProjection {
   const oldTree = oldSide?.tree ?? null;
   const newTree = newSide?.tree ?? null;
@@ -118,8 +122,8 @@ export function analyzeParsed(
     throw new ParseError("tree-sitter 解析存在错误节点");
   }
 
-  const olds = oldSide ? profile.collect(oldSide.tree.rootNode) : [];
-  const news = newSide ? profile.collect(newSide.tree.rootNode) : [];
+  const olds = oldSide ? profile.collect(oldSide.tree.rootNode, locale) : [];
+  const news = newSide ? profile.collect(newSide.tree.rootNode, locale) : [];
   const pairs = pairUp(olds, news);
 
   const units: ChangeUnit[] = [];
@@ -128,7 +132,7 @@ export function analyzeParsed(
     const touched = (o && touchedBy(o.node, oldLines)) || (n && touchedBy(n.node, newLines));
     if (!touched) continue;
 
-    const unit = classify(o, n, oldSource, newSource, newLines, oldLines);
+    const unit = classify(o, n, oldSource, newSource, newLines, oldLines, locale);
     if (!unit) continue; // 触碰但无实质变化
     units.push(unit);
   }
@@ -165,7 +169,9 @@ export function analyzeParsed(
     deduped.push({
       id: `other:${strayOld?.[0] ?? strayNew?.[0] ?? 0}`,
       kind: "other",
-      name: commentOnly ? "注释变更" : "声明之外的变更",
+      name: commentOnly
+        ? messages(locale).analysis.commentChanges
+        : messages(locale).analysis.outsideDeclarations,
       change: "body",
       oldRange: strayOld ?? undefined,
       newRange: strayNew ?? undefined,
@@ -197,17 +203,22 @@ export async function analyzeFile(
   newSource: string | null,
   oldLines: Set<number>,
   newLines: Set<number>,
+  locale: Locale,
 ): Promise<FileProjection> {
   const [oldSide, newSide] = await Promise.all([
     oldSource != null ? parseSide(profile, oldSource) : null,
     newSource != null ? parseSide(profile, newSource) : null,
   ]);
-  return analyzeParsed(profile, oldSide, newSide, oldLines, newLines);
+  return analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
 }
 
 /** 查看器用：从已解析的 CST 产出文件大纲（与投影/简化同源，复用声明收集） */
-export function outlineOf(profile: LanguageProfile, tree: Tree): OutlineItem[] {
-  return profile.collect(tree.rootNode).map((d) => ({
+export function outlineOf(
+  profile: LanguageProfile,
+  tree: Tree,
+  locale: Locale,
+): OutlineItem[] {
+  return profile.collect(tree.rootNode, locale).map((d) => ({
     kind: d.kind,
     name: d.name,
     container: d.container,
@@ -223,6 +234,7 @@ function classify(
   newSource: string | null,
   newLines: Set<number>,
   oldLines: Set<number>,
+  locale: Locale,
 ): ChangeUnit | null {
   const base = {
     id: `${o ? pairKey(o) : pairKey(n!)}:${n?.node.startPosition.row ?? o?.node.startPosition.row ?? 0}`,
@@ -245,8 +257,8 @@ function classify(
     return {
       ...base,
       change: "type-only",
-      typeText: truncate(n.node.text),
-      oldTypeText: truncate(o.node.text),
+      typeText: truncate(n.node.text, locale),
+      oldTypeText: truncate(o.node.text, locale),
     };
   }
 

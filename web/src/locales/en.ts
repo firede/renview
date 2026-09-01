@@ -1,0 +1,53 @@
+import type { Strings } from "../i18n";
+
+/** 英文（产品的回落语言：配置未到达前即以本目录渲染） */
+export const en: Strings = {
+  loading: "Loading…",
+  loadError: (error) => `Something went wrong: ${error}`,
+  modeChanges: "Changes",
+  modeBrowse: "Browse",
+  fileCount: (n) => `${n} ${n === 1 ? "file" : "files"}`,
+  refresh: "Refresh",
+  refreshing: "Refreshing…",
+  noChanges: "No changes detected",
+  statusLabel: {
+    add: "Added",
+    delete: "Deleted",
+    modify: "Modified",
+    rename: "Renamed",
+  },
+  degradeLabel: {
+    "parse-error": "Parse failed",
+    "too-large": "File too large",
+    "no-source": "Couldn't read file content",
+  },
+  summaryChips: {
+    signature: "Signature",
+    body: "Body",
+    "type-only": "Type",
+    added: "Added",
+    removed: "Removed",
+  },
+  openInViewer: "Open in viewer",
+  fellBack: (reason) => `Fell back to raw diff (${reason})`,
+  foldedLines: (n) => `${n} ${n === 1 ? "line" : "lines"} folded`,
+  shortcutS: "Shortcut: S",
+  simplified: "Simplified",
+  rawDiff: "Raw diff",
+  unified: "Unified",
+  split: "Split",
+  viewerDegradeLabel: {
+    "no-profile": "Source",
+    "parse-error": "Showing source (parse failed)",
+    "too-large": "Showing source (file too large)",
+    binary: "Binary file",
+  },
+  filterFiles: "Filter files…",
+  noMatchingFiles: "No matching files",
+  selectFileToBrowse: "Select a file to browse",
+  notTextViewable: "This file can't be viewed as text.",
+  source: "Source",
+  foldedTypeFormat: (n) =>
+    n === 1 ? "1 type/format-only line collapsed" : `${n} type/format-only lines collapsed`,
+  noVisibleChanges: "No visible changes (everything is folded, or it's rename-only).",
+};

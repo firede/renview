@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseDiff, Diff, Hunk, type FileData, type ViewType } from "react-diff-view";
-import type { ChangeKind, FileEntry } from "../../src/analysis/types";
+import type { ChangeKind, FileEntry, FileStatus } from "../../src/analysis/types";
 import { BrowseView, type JumpTarget } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
+import { useStrings } from "./i18n";
 import { SimplifiedView } from "./SimplifiedView";
 
 interface DiffPayload {
@@ -15,26 +16,13 @@ interface DiffPayload {
   error?: string;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  add: "新增",
-  delete: "删除",
-  modify: "修改",
-  rename: "改名",
-};
-
-const DEGRADE_LABEL: Record<string, string> = {
-  // no-profile 不算降级（该语言本就没有投影），不展示
-  "parse-error": "解析失败",
-  "too-large": "文件过大",
-  "no-source": "无法读取文件内容",
-};
-
-const SUMMARY_CHIPS: Array<[ChangeKind, string, string]> = [
-  ["signature", "签名", "chip-signature"],
-  ["body", "实现", "chip-body"],
-  ["type-only", "类型", "chip-type"],
-  ["added", "新增", "chip-added"],
-  ["removed", "删除", "chip-removed"],
+/** 变更分类徽章的样式类（顺序即展示顺序；文案在 i18n 目录的 summaryChips） */
+const SUMMARY_CHIP_CLASS: Array<[ChangeKind, string]> = [
+  ["signature", "chip-signature"],
+  ["body", "chip-body"],
+  ["type-only", "chip-type"],
+  ["added", "chip-added"],
+  ["removed", "chip-removed"],
 ];
 
 function splitPath(p: string): { dir: string; base: string } {
@@ -62,6 +50,7 @@ function fileStats(f: FileData): { adds: number; dels: number } {
 }
 
 export function App() {
+  const s = useStrings();
   const [payload, setPayload] = useState<DiffPayload | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<number>(0);
@@ -119,9 +108,9 @@ export function App() {
     let adds = 0;
     let dels = 0;
     for (const f of files) {
-      const s = fileStats(f);
-      adds += s.adds;
-      dels += s.dels;
+      const stat = fileStats(f);
+      adds += stat.adds;
+      dels += stat.dels;
     }
     return { adds, dels };
   }, [files]);
@@ -143,8 +132,8 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, hasSimplified, showRaw]);
 
-  if (!payload) return <div className="center-note">加载中…</div>;
-  if (!payload.ok) return <div className="center-note error">出错了：{payload.error}</div>;
+  if (!payload) return <div className="center-note">{s.loading}</div>;
+  if (!payload.ok) return <div className="center-note error">{s.loadError(payload.error ?? "")}</div>;
 
   return (
     <div className="layout">
@@ -152,10 +141,10 @@ export function App() {
         <span className="brand">renview</span>
         <span className="seg">
           <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
-            变更
+            {s.modeChanges}
           </button>
           <button className={mode === "browse" ? "active" : ""} onClick={() => setMode("browse")}>
-            浏览
+            {s.modeBrowse}
           </button>
         </span>
         <span className="repo" title={payload.repoRoot}>
@@ -166,11 +155,11 @@ export function App() {
         {mode === "review" && (
           <>
             <span className="totals">
-              {files.length} 个文件 <em className="add">+{totals.adds}</em>{" "}
+              {s.fileCount(files.length)} <em className="add">+{totals.adds}</em>{" "}
               <em className="del">−{totals.dels}</em>
             </span>
             <button onClick={() => void load()} disabled={refreshing}>
-              {refreshing ? "刷新中…" : "刷新"}
+              {refreshing ? s.refreshing : s.refresh}
             </button>
           </>
         )}
@@ -178,12 +167,12 @@ export function App() {
       {mode === "browse" ? (
         <BrowseView jump={jump} onJumpDone={() => setJump(null)} />
       ) : files.length === 0 ? (
-        <div className="center-note">没有检测到变更</div>
+        <div className="center-note">{s.noChanges}</div>
       ) : (
         <div className="body">
           <aside className="sidebar">
             {files.map((f, i) => {
-              const s = fileStats(f);
+              const stat = fileStats(f);
               const entry = entries[i];
               const sum = entry?.projection?.summary;
               return (
@@ -203,15 +192,15 @@ export function App() {
                   </span>
                   <span className="file-meta">
                     <span className={`status status-${f.type}`}>
-                      {STATUS_LABEL[f.type] ?? f.type}
+                      {s.statusLabel[f.type as FileStatus] ?? f.type}
                     </span>
-                    <em className="add">+{s.adds}</em>
-                    <em className="del">−{s.dels}</em>
+                    <em className="add">+{stat.adds}</em>
+                    <em className="del">−{stat.dels}</em>
                     {sum && (
                       <span className="chips">
-                        {SUMMARY_CHIPS.filter(([k]) => sum[k] > 0).map(([k, label, cls]) => (
+                        {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
                           <span key={k} className={`chip ${cls}`}>
-                            {label}
+                            {s.summaryChips[k]}
                             {sum[k]}
                           </span>
                         ))}
@@ -229,34 +218,34 @@ export function App() {
                   <span className="file-title">{selectedFile.newPath}</span>
                   {selectedFile.newPath !== "/dev/null" && (
                     <button onClick={() => openInViewer(selectedFile.newPath)}>
-                      在查看器中打开
+                      {s.openInViewer}
                     </button>
                   )}
                   {selectedEntry?.degradedReason &&
                     selectedEntry.degradedReason !== "no-profile" && (
                       <span className="dim">
-                        已退回原始 diff（{DEGRADE_LABEL[selectedEntry.degradedReason]}）
+                        {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
                       </span>
                     )}
                   {!showRaw && selectedEntry?.simplified && selectedEntry.simplified.stats.folded > 0 && (
-                    <span className="dim">已折叠 {selectedEntry.simplified.stats.folded} 行</span>
+                    <span className="dim">{s.foldedLines(selectedEntry.simplified.stats.folded)}</span>
                   )}
                   <span className="spacer" />
                   {hasSimplified && (
                     <span className="seg">
                       <button
-                        title="快捷键 S"
+                        title={s.shortcutS}
                         className={!showRaw ? "active" : ""}
                         onClick={() => setRawOverride(false)}
                       >
-                        简化
+                        {s.simplified}
                       </button>
                       <button
-                        title="快捷键 S"
+                        title={s.shortcutS}
                         className={showRaw ? "active" : ""}
                         onClick={() => setRawOverride(true)}
                       >
-                        原始 diff
+                        {s.rawDiff}
                       </button>
                     </span>
                   )}
@@ -266,13 +255,13 @@ export function App() {
                         className={viewType === "unified" ? "active" : ""}
                         onClick={() => setViewType("unified")}
                       >
-                        单列
+                        {s.unified}
                       </button>
                       <button
                         className={viewType === "split" ? "active" : ""}
                         onClick={() => setViewType("split")}
                       >
-                        双列
+                        {s.split}
                       </button>
                     </span>
                   )}

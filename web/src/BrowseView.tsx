@@ -3,6 +3,7 @@ import type { ViewerFile, ViewRow } from "../../src/analysis/types";
 import { rowIndexOfLine } from "../../src/analysis/view";
 import { FileTree } from "./FileTree";
 import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
+import { useStrings } from "./i18n";
 
 interface FilesPayload {
   ok: boolean;
@@ -21,14 +22,6 @@ export interface JumpTarget {
   line: number;
 }
 
-const DEGRADE_LABEL: Record<string, string> = {
-  // no-profile 不是失败，用户无从行动，仅显示"源码"表明投影态
-  "no-profile": "源码",
-  "parse-error": "已显示源码（解析失败）",
-  "too-large": "已显示源码（文件过大）",
-  binary: "二进制文件",
-};
-
 function splitPath(p: string): { dir: string; base: string } {
   const i = p.lastIndexOf("/");
   return i >= 0 ? { dir: p.slice(0, i + 1), base: p.slice(i + 1) } : { dir: "", base: p };
@@ -45,6 +38,7 @@ export function BrowseView({
   jump: JumpTarget | null;
   onJumpDone: () => void;
 }) {
+  const s = useStrings();
   const [files, setFiles] = useState<string[] | null>(null);
   const [filter, setFilter] = useState("");
   const [path, setPath] = useState<string | null>(jump?.path ?? null);
@@ -170,7 +164,7 @@ export function BrowseView({
         <div className="sidebar-filter">
           <input
             className="filter-input"
-            placeholder="过滤文件…"
+            placeholder={s.filterFiles}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -193,38 +187,38 @@ export function BrowseView({
                 </button>
               );
             })}
-            {files && visible.length === 0 && <div className="dim pad note">无匹配文件</div>}
+            {files && visible.length === 0 && <div className="dim pad note">{s.noMatchingFiles}</div>}
           </>
         ) : (
           files && <FileTree paths={files} selected={path} onSelect={setPath} />
         )}
       </aside>
       <main className="content">
-        {!path && <div className="center-note">选择一个文件开始浏览</div>}
+        {!path && <div className="center-note">{s.selectFileToBrowse}</div>}
         {path && (
           <>
             <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
               <span className="file-title">{path}</span>
-              {loading && <span className="dim">加载中…</span>}
+              {loading && <span className="dim">{s.loading}</span>}
               {data?.degradedReason && (
-                <span className="dim">{DEGRADE_LABEL[data.degradedReason]}</span>
+                <span className="dim">{s.viewerDegradeLabel[data.degradedReason]}</span>
               )}
               <span className="spacer" />
               {hasSimplified && (
                 <span className="seg">
                   <button
-                    title="快捷键 S"
+                    title={s.shortcutS}
                     className={!showSource ? "active" : ""}
                     onClick={() => setShowSource(false)}
                   >
-                    简化
+                    {s.simplified}
                   </button>
                   <button
-                    title="快捷键 S"
+                    title={s.shortcutS}
                     className={showSource ? "active" : ""}
                     onClick={() => setShowSource(true)}
                   >
-                    源码
+                    {s.source}
                   </button>
                 </span>
               )}
@@ -244,7 +238,7 @@ export function BrowseView({
               </div>
             )}
             {data?.source == null && data && (
-              <div className="dim pad note">该文件无法以文本查看。</div>
+              <div className="dim pad note">{s.notTextViewable}</div>
             )}
             {data && data.source != null && !showSource && data.view ? (
               <div className="sview">

@@ -1,5 +1,6 @@
 import { $ } from "bun";
 import { join } from "node:path";
+import { messages, type Locale } from "./i18n";
 
 /** git 空树的固定 hash，用于仓库尚无提交时作为对比基准 */
 export const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -19,9 +20,11 @@ export async function resolveDiffArgs(root: string, args: string[]): Promise<str
   return args.length > 0 ? args : [await defaultBase(root)];
 }
 
-export async function getDiff(root: string, args: string[]): Promise<string> {
+export async function getDiff(root: string, args: string[], locale: Locale): Promise<string> {
   const r = await $`git -C ${root} diff --no-color --no-ext-diff ${args}`.quiet().nothrow();
-  if (r.exitCode !== 0) throw new Error(`git diff 失败: ${r.stderr.toString().trim()}`);
+  if (r.exitCode !== 0) {
+    throw new Error(messages(locale).api.gitDiffFailed(r.stderr.toString().trim()));
+  }
   return r.text();
 }
 
@@ -43,11 +46,13 @@ export async function listUntracked(root: string, pathspecs: string[]): Promise<
 }
 
 /** 列出仓库全部文件（已跟踪 + 未跟踪，尊重 gitignore），供查看器浏览 */
-export async function listFiles(root: string): Promise<string[]> {
+export async function listFiles(root: string, locale: Locale): Promise<string[]> {
   const r = await $`git -C ${root} ls-files --cached --others --exclude-standard`
     .quiet()
     .nothrow();
-  if (r.exitCode !== 0) throw new Error(`git ls-files 失败: ${r.stderr.toString().trim()}`);
+  if (r.exitCode !== 0) {
+    throw new Error(messages(locale).api.gitLsFilesFailed(r.stderr.toString().trim()));
+  }
   return r
     .text()
     .split("\n")

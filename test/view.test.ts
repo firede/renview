@@ -6,12 +6,13 @@ import { parseSource } from "../src/analysis/parser";
 import { applySimplify, collectSimplifyOps } from "../src/analysis/simplify";
 import { simplifyTree } from "../src/analysis/simplify";
 import { buildViewRows, rowIndexOfLine } from "../src/analysis/view";
+import type { Locale } from "../src/i18n";
 
-async function viewRows(profile: LanguageProfile, source: string) {
+async function viewRows(profile: LanguageProfile, source: string, locale: Locale = "zh-CN") {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
   const simplified = simplifyTree(tree, source, profile.simplify!);
-  return buildViewRows(profile, tree, source, simplified);
+  return buildViewRows(profile, tree, source, simplified, locale);
 }
 
 async function simplify(profile: LanguageProfile, source: string): Promise<string[]> {
@@ -83,6 +84,38 @@ const b = 2;
       "",
       "const b = 2;",
     ]);
+  });
+});
+
+describe("buildViewRows：英文摘要", () => {
+  test("imports 折叠为英文措辞", async () => {
+    const src = `import { a } from "./a";
+import { b } from "./b";
+import type { C } from "./c";
+
+export const x = a;
+`;
+    const rows = await viewRows(typescriptProfile, src, "en");
+    expect(rows[0]).toMatchObject({ kind: "fold", text: "3 imports (./a, ./b, ./c)" });
+  });
+
+  test("成员截断的英文总数后缀", async () => {
+    const members = Array.from({ length: 8 }, (_, i) => `  m${i}: number;`).join("\n");
+    const src = `interface Big {\n${members}\n}\n`;
+    const rows = await viewRows(typescriptProfile, src, "en");
+    expect(rows[0]).toMatchObject({
+      kind: "fold",
+      text: "interface Big { m0, m1, m2, m3, m4, m5, … (8 total) }",
+    });
+  });
+
+  test("rust use 折叠的英文措辞", async () => {
+    const src = `use std::collections::HashMap;\nuse std::io;\n\nfn f() {}\n`;
+    const rows = await viewRows(rustProfile, src, "en");
+    expect(rows[0]).toMatchObject({
+      kind: "fold",
+      text: "2 uses (std::collections::HashMap, std::io)",
+    });
   });
 });
 

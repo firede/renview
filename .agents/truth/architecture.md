@@ -30,3 +30,7 @@
 - 已知局限：tree-sitter-typescript 0.23.2 无法解析 zod v4 部分新语法（语料实测 9/44 文件走解析失败降级），grammar 升级为候选改进。
 - 配置流向：server 每请求重读配置文件（按原始文本缓存，内容变化才重新解析并输出警告）→ /api/config → 前端 bootstrap 时应用、focus 时重拉；不做全量推送与文件 watch。
 - 字体/字号经 CSS token（--font-mono / --font-size-code）覆写生效；行高取字号恒定 5/3 倍（加法模型在大字号下会拥挤），行号字号 = 字号 − 1、行号栏宽随行号字号联动，阅读区几何整体等比缩放，保住简化/原始 diff 切换无位移的不变量。
+- 文案目录分两侧：核心 src/i18n.ts（Locale 类型、解析链、Messages 接口）+ src/locales/{zh-CN,en}.ts；前端 web/src/i18n.ts + web/src/locales/ 各持一份（两侧文案基本不相交，沿用 UiConfig 形状双份声明的既有做法），语言文件按 BCP 47 标签命名。
+- locale 以显式参数贯穿分析层（collect / foldSummary / nameList / analyzeParsed / outlineOf / buildViewRows），不用模块级全局态——数据流显式、测试互不污染，与"字节偏移唯一事实来源"同原则。
+- 语言流向：server 每个 /api 数据请求按当次配置解析 locale（分析串与 API 错误随请求生效）→ /api/config 携带 language → 前端 setLocale（useSyncExternalStore 通知重渲染）并同步 <html lang>；CLI 消息用启动时解析值。
+- 配置警告文本的语言由被解析配置自身决定（language 键优先于环境检测），确保警告以用户实际语言出现在终端。

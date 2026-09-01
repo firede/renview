@@ -300,7 +300,8 @@ async function processRepo(
       const newText = newSrc?.text ?? null;
 
       try {
-        await analyzeFile(profile, oldText, newText, oldLines, newLines);
+        // 语料回归只关心是否抛错，locale 固定中文摘要不影响统计
+        await analyzeFile(profile, oldText, newText, oldLines, newLines, "zh-CN");
       } catch {
         stats.parseErrors++;
       }

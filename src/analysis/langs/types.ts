@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import { messages, type Locale } from "../../i18n";
 import type { SimplifyWalker } from "../simplify";
 import type { DeclKind } from "../types";
 
@@ -24,17 +25,18 @@ export interface LanguageProfile {
   extensions: string[];
   /** 对应 parser.ts 的 wasm 语法名 */
   grammarFile: string;
-  collect(root: Node): DeclarationInfo[];
+  /** locale 决定声明名兜底（匿名/未知）等用户可见文本的语言 */
+  collect(root: Node, locale: Locale): DeclarationInfo[];
   /** 简化器规则；缺省时该语言不生成简化视图 */
   simplify?: SimplifyWalker;
   /** 顶层节点的折叠类别（由实现负责透视 export 等包装节点）；null = 不折叠 */
   foldKind?: (node: Node) => FoldKind | null;
-  /** 折叠块的单行摘要（nodes 为同类别的连续段） */
-  foldSummary?: (kind: FoldKind, nodes: Node[], source: string) => string;
+  /** 折叠块的单行摘要（nodes 为同类别的连续段）；locale 决定摘要语言 */
+  foldSummary?: (kind: FoldKind, nodes: Node[], source: string, locale: Locale) => string;
 }
 
 /** 折叠摘要的名字列表：超过 6 个截断并显示总数 */
-export function nameList(names: string[]): string {
+export function nameList(names: string[], locale: Locale): string {
   const shown = names.slice(0, 6).join(", ");
-  return names.length > 6 ? `${shown}, …（共 ${names.length} 个）` : shown;
+  return names.length > 6 ? messages(locale).analysis.nameList(shown, names.length) : shown;
 }

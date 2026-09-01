@@ -1,11 +1,12 @@
 import type { Node } from "web-tree-sitter";
+import { messages, type Locale } from "../../i18n";
 import { del, delSwallowingLeadingSpace, replaceNode, type SimplifyOp } from "../simplify";
 import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
 /** Go profile：声明收集 + 简化器（类型与错误传播机制擦除）+ 顶层块折叠 */
 
-function nameOf(node: Node): string {
-  return node.childForFieldName("name")?.text ?? "(匿名)";
+function nameOf(node: Node, locale: Locale): string {
+  return node.childForFieldName("name")?.text ?? messages(locale).analysis.anonymousName;
 }
 
 /** 方法接收者类型名（*T / *T[P] → T），作为配对容器 */
@@ -16,12 +17,12 @@ function receiverName(node: Node): string {
   return t.replace(/^\*+/, "").replace(/\[.*\]$/, "");
 }
 
-function collectNode(node: Node, container: string, out: DeclarationInfo[]): void {
+function collectNode(node: Node, container: string, out: DeclarationInfo[], locale: Locale): void {
   switch (node.type) {
     case "function_declaration": {
       out.push({
         kind: "function",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -32,7 +33,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
     case "method_declaration": {
       out.push({
         kind: "function",
-        name: nameOf(node),
+        name: nameOf(node, locale),
         typeLevel: false,
         node,
         bodyNode: node.childForFieldName("body"),
@@ -46,7 +47,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
         const t = spec.childForFieldName("type");
         out.push({
           kind: "type",
-          name: nameOf(spec),
+          name: nameOf(spec, locale),
           typeLevel: true,
           node: spec,
           bodyNode: t && (t.type === "struct_type" || t.type === "interface_type") ? t : null,
@@ -62,7 +63,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
       )) {
         out.push({
           kind: "variable",
-          name: nameOf(spec),
+          name: nameOf(spec, locale),
           typeLevel: false,
           node: spec,
           bodyNode: null,
@@ -108,6 +109,7 @@ function truncateSafe(text: string, limit: number): string {
 /**
  * `if err != nil { return … }`（无初始化语句、函数体仅一条 return）→ 单行标记；否则 null。
  * 返回值为 nil/err 之外的内容时保留其文本（fmt.Errorf 的包装信息是业务定位信息）。
+ * 标记文本锚定 Go 源码关键字，属伪代码而非文案，不随语言切换翻译。
  */
 function errCheckMarker(node: Node, source: string): string | null {
   if (node.childForFieldName("initializer")) return null; // if err := f(); … 的初始化里有真实调用，保留
@@ -214,45 +216,46 @@ function collectImportPaths(node: Node, out: string[]): void {
   for (const c of node.namedChildren) collectImportPaths(c, out);
 }
 
-function typeSpecSummary(spec: Node): string {
-  const name = nameOf(spec);
+function typeSpecSummary(spec: Node, locale: Locale): string {
+  const name = nameOf(spec, locale);
   const t = spec.childForFieldName("type");
   if (t?.type === "struct_type") {
     const list = t.namedChildren.find((c) => c.type === "field_declaration_list");
     const fields = (list?.namedChildren ?? [])
       .map((f) => f.childForFieldName("name")?.text ?? f.childForFieldName("type")?.text ?? null)
       .filter((x): x is string => x != null);
-    return fields.length > 0 ? `type ${name} struct { ${nameList(fields)} }` : `type ${name} struct`;
+    return fields.length > 0 ? `type ${name} struct { ${nameList(fields, locale)} }` : `type ${name} struct`;
   }
   if (t?.type === "interface_type") {
     const methods = t.namedChildren
       .filter((c) => c.type === "method_elem")
-      .map((m) => nameOf(m));
+      .map((m) => nameOf(m, locale));
     return methods.length > 0
-      ? `type ${name} interface { ${nameList(methods)} }`
+      ? `type ${name} interface { ${nameList(methods, locale)} }`
       : `type ${name} interface`;
   }
   return `type ${name}`;
 }
 
-function goFoldSummary(kind: FoldKind, nodes: Node[]): string {
+function goFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const paths: string[] = [];
     for (const n of nodes) collectImportPaths(n, paths);
-    const shown = paths.slice(0, 4).join("、");
-    return `import × ${paths.length}（${shown}${paths.length > 4 ? "…" : ""}）`;
+    return messages(locale).analysis.importsFold("import", paths.length, paths.slice(0, 4), paths.length > 4);
   }
   const specs = nodes[0]!.namedChildren.filter((c) => c.type === "type_spec");
-  return specs.map(typeSpecSummary).join("；");
+  return specs
+    .map((s) => typeSpecSummary(s, locale))
+    .join(messages(locale).analysis.typeSpecJoiner);
 }
 
 export const goProfile: LanguageProfile = {
   id: "go",
   extensions: ["go"],
   grammarFile: "go",
-  collect(root) {
+  collect(root, locale) {
     const out: DeclarationInfo[] = [];
-    for (const c of root.namedChildren) collectNode(c, "", out);
+    for (const c of root.namedChildren) collectNode(c, "", out, locale);
     return out;
   },
   simplify: goSimplify,

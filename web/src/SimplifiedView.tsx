@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import type { SRow, SimplifiedViewData } from "../../src/analysis/types";
 import { TokenSpans, useHighlightedLines } from "./highlight";
+import { useStrings } from "./i18n";
 
 function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: string | null }) {
+  const s = useStrings();
   const [open, setOpen] = useState(false);
   // 展开即审视：折叠的原始行带完整语法高亮（新旧两侧分别高亮）
   const oldTokens = useHighlightedLines(open ? row.oldLines.join("\n") : null, lang);
@@ -14,7 +16,7 @@ function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: st
         <span className="gutter" />
         <span className="gutter" />
         <span className="vfold-summary">
-          {open ? "▾" : "▸"} {row.count} 行类型/格式性变更已折叠
+          {open ? "▾" : "▸"} {s.foldedTypeFormat(row.count)}
         </span>
       </button>
       {open && (
@@ -44,6 +46,7 @@ function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: st
 }
 
 export function SimplifiedView({ data, lang }: { data: SimplifiedViewData; lang: string | null }) {
+  const s = useStrings();
   // 高亮文本 = 可见行（fold 行不参与）按序拼接；token 按下标回填。跨 hunk 拼接仅影响颜色连续性。
   const visibleRows = useMemo(
     () => data.rows.filter((r): r is Exclude<SRow, { kind: "fold" }> => r.kind !== "fold"),
@@ -53,7 +56,7 @@ export function SimplifiedView({ data, lang }: { data: SimplifiedViewData; lang:
   const tokens = useHighlightedLines(lang ? text : null, lang);
 
   if (data.rows.length === 0) {
-    return <div className="dim note pad">无可见变更（可能全部被折叠或为纯改名）。</div>;
+    return <div className="dim note pad">{s.noVisibleChanges}</div>;
   }
   let vi = 0;
   return (

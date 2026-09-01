@@ -1,11 +1,12 @@
 import type { Node } from "web-tree-sitter";
+import { messages, type Locale } from "../../i18n";
 import { del, delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
 import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
 /** Python profile：声明收集 + 类型/机制擦除（标注、self、cast、TYPE_CHECKING）+ 顶层块折叠 */
 
-function nameOf(node: Node): string {
-  return node.childForFieldName("name")?.text ?? "(匿名)";
+function nameOf(node: Node, locale: Locale): string {
+  return node.childForFieldName("name")?.text ?? messages(locale).analysis.anonymousName;
 }
 
 function joinContainer(container: string, name: string): string {
@@ -41,14 +42,14 @@ function isDataOnlyClass(node: Node): boolean {
   return true;
 }
 
-function collectNode(node: Node, container: string, out: DeclarationInfo[]): void {
+function collectNode(node: Node, container: string, out: DeclarationInfo[], locale: Locale): void {
   const unit = unwrapExprStmt(node); // expression_statement 包装无信息，剥掉
   const inner = unwrapDecorated(unit);
   switch (inner.type) {
     case "function_definition": {
       out.push({
         kind: "function",
-        name: nameOf(inner),
+        name: nameOf(inner, locale),
         typeLevel: false,
         node: unit, // 保留 decorated 包装（装饰器是契约）
         bodyNode: inner.childForFieldName("body"),
@@ -57,7 +58,7 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
       return;
     }
     case "class_definition": {
-      const name = nameOf(inner);
+      const name = nameOf(inner, locale);
       out.push({
         kind: "class",
         name,
@@ -68,14 +69,14 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
       });
       const body = inner.childForFieldName("body");
       if (body) {
-        for (const c of body.namedChildren) collectNode(c, joinContainer(container, name), out);
+        for (const c of body.namedChildren) collectNode(c, joinContainer(container, name), out, locale);
       }
       return;
     }
     case "type_alias_statement": {
       out.push({
         kind: "type",
-        name: inner.childForFieldName("left")?.text ?? "(匿名)",
+        name: inner.childForFieldName("left")?.text ?? messages(locale).analysis.anonymousName,
         typeLevel: true,
         node: unit,
         bodyNode: null,
@@ -154,7 +155,7 @@ export function pySimplify(node: Node, source: string, ops: SimplifyOp[]): boole
       return false;
     }
     case "if_statement": {
-      // if TYPE_CHECKING: 整块是类型导入机制 → 单行标记
+      // if TYPE_CHECKING: 整块是类型导入机制 → 单行标记（锚定源码关键字的伪代码，不随语言翻译）
       const cond = node.childForFieldName("condition");
       if (cond && cond.text.endsWith("TYPE_CHECKING")) {
         ops.push({
@@ -204,7 +205,7 @@ function pyFoldKind(node: Node): FoldKind | null {
   return null;
 }
 
-function pyFoldSummary(kind: FoldKind, nodes: Node[]): string {
+function pyFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const mods = nodes.map((n) => {
       if (n.type === "future_import_statement") return "__future__";
@@ -213,15 +214,14 @@ function pyFoldSummary(kind: FoldKind, nodes: Node[]): string {
       }
       return n.childForFieldName("name")?.text ?? "?";
     });
-    const shown = mods.slice(0, 4).join("、");
-    return `import × ${mods.length}（${shown}${mods.length > 4 ? "…" : ""}）`;
+    return messages(locale).analysis.importsFold("import", mods.length, mods.slice(0, 4), mods.length > 4);
   }
   const n = nodes[0]!;
   const inner = unwrapDecorated(n);
   if (inner.type === "type_alias_statement") {
     return `type ${inner.childForFieldName("left")?.text ?? "?"}`;
   }
-  const name = nameOf(inner);
+  const name = nameOf(inner, locale);
   const decorators =
     n.type === "decorated_definition"
       ? n.namedChildren.filter((c) => c.type === "decorator").map((d) => d.text)
@@ -232,16 +232,16 @@ function pyFoldSummary(kind: FoldKind, nodes: Node[]): string {
     .map((c) => c.childForFieldName("left")?.text ?? null)
     .filter((x): x is string => x != null);
   const head = [...decorators, `class ${name}`].join(" ");
-  return members.length > 0 ? `${head} { ${nameList(members)} }` : head;
+  return members.length > 0 ? `${head} { ${nameList(members, locale)} }` : head;
 }
 
 export const pythonProfile: LanguageProfile = {
   id: "python",
   extensions: ["py", "pyi"],
   grammarFile: "python",
-  collect(root) {
+  collect(root, locale) {
     const out: DeclarationInfo[] = [];
-    for (const c of root.namedChildren) collectNode(c, "", out);
+    for (const c of root.namedChildren) collectNode(c, "", out, locale);
     return out;
   },
   simplify: pySimplify,

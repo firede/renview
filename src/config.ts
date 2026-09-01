@@ -1,8 +1,9 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
+import { detectLocale, matchLocale, messages, resolveLocale, type Locale } from "./i18n";
 
-/** 经校验并与默认值合并后的界面配置，前端可直接应用 */
+/** 经校验、解析后的配置，CLI 与前端可直接应用 */
 export interface UiConfig {
   font: {
     /** 完整 CSS font-family 值：用户字体在前，内置系统栈兜底 */
@@ -10,6 +11,8 @@ export interface UiConfig {
     /** 代码阅读区字号（px） */
     size: number;
   };
+  /** 界面与输出语言：language 配置项经 BCP 47 根语言匹配；未设置/无法匹配时按环境检测，回落英文 */
+  language: Locale;
 }
 
 export interface LoadedConfig {
@@ -23,9 +26,12 @@ export const DEFAULT_FONT_FAMILY =
   'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
 export const DEFAULT_FONT_SIZE = 12;
 
-const DEFAULT_CONFIG: UiConfig = {
-  font: { family: DEFAULT_FONT_FAMILY, size: DEFAULT_FONT_SIZE },
-};
+const DEFAULT_FONT = { family: DEFAULT_FONT_FAMILY, size: DEFAULT_FONT_SIZE };
+
+/** 默认配置：字体取内置值；语言随环境检测，故按调用构造 */
+function defaultConfig(env: NodeJS.ProcessEnv): UiConfig {
+  return { font: { ...DEFAULT_FONT }, language: detectLocale(env) };
+}
 
 /** 配置文件位置：$XDG_CONFIG_HOME/renview/config.toml；Windows 落 %APPDATA%\renview\config.toml */
 export function configPath(env: NodeJS.ProcessEnv = process.env): string {
@@ -53,26 +59,58 @@ function resolveFontFamily(value: string): string {
 /**
  * 解析 TOML 文本并与默认值合并。
  * 语法错误整体回退默认；类型错误逐键回退并产生警告；未知键静默忽略（新旧版本互读不报错）。
+ * 警告文本随解析出的语言：language 键优先，缺失/非法时按环境检测（env 可注入以便测试）。
  */
-export function parseConfigText(raw: string): LoadedConfig {
+export function parseConfigText(
+  raw: string,
+  env: NodeJS.ProcessEnv = process.env,
+): LoadedConfig {
   let doc: unknown;
   try {
     doc = parseToml(raw);
   } catch (e) {
     return {
-      config: DEFAULT_CONFIG,
-      warnings: [`TOML 解析失败（${e instanceof Error ? e.message : String(e)}），已使用默认配置`],
+      config: defaultConfig(env),
+      warnings: [
+        messages(detectLocale(env)).config.tomlParseFailed(
+          e instanceof Error ? e.message : String(e),
+        ),
+      ],
     };
   }
-  const warnings: string[] = [];
-  const config: UiConfig = { font: { ...DEFAULT_CONFIG.font } };
   const d = doc as Record<string, unknown>;
 
+  // 先解析 language 以确定警告语言；无法匹配的值视为未设置（走环境检测链）并警告
+  let configured: string | undefined;
+  let languageIssue: { kind: "not-string" | "unsupported"; raw: unknown } | null = null;
+  if ("language" in d) {
+    if (typeof d.language === "string") {
+      const v = d.language.trim();
+      if (v) {
+        if (matchLocale(v)) configured = v;
+        else languageIssue = { kind: "unsupported", raw: d.language };
+      }
+      // 空串视为未设置，不算配置问题
+    } else {
+      languageIssue = { kind: "not-string", raw: d.language };
+    }
+  }
+  const language = resolveLocale(configured, env);
+  const m = messages(language);
+
+  const warnings: string[] = [];
+  if (languageIssue?.kind === "not-string") {
+    warnings.push(m.config.languageNotString(typeof languageIssue.raw));
+  } else if (languageIssue?.kind === "unsupported") {
+    warnings.push(m.config.languageUnsupported(languageIssue.raw as string));
+  }
+
+  const config: UiConfig = { font: { ...DEFAULT_FONT }, language };
   if ("font_family" in d) {
     if (typeof d.font_family === "string") {
       config.font.family = resolveFontFamily(d.font_family);
     } else {
-      warnings.push(`font_family 应为字符串（收到 ${typeof d.font_family}），已使用默认字体`);
+      warnings.push(m.config.fontFamilyNotString(typeof d.font_family));
     }
   }
   if ("font_size" in d) {
@@ -80,7 +118,7 @@ export function parseConfigText(raw: string): LoadedConfig {
       config.font.size = d.font_size;
     } else {
       warnings.push(
-        `font_size 应为正数（收到 ${JSON.stringify(d.font_size)}），已使用默认字号 ${DEFAULT_FONT_SIZE}`,
+        m.config.fontSizeNotPositive(JSON.stringify(d.font_size), DEFAULT_FONT_SIZE),
       );
     }
   }
@@ -91,7 +129,10 @@ export function parseConfigText(raw: string): LoadedConfig {
  * 带缓存的配置加载器：每次调用重新读文件（保存配置后窗口聚焦即生效，无需重启 CLI），
  * 内容未变则复用上次结果（引用相等，调用方据此只在变化时输出警告）。
  */
-export function createConfigLoader(path: string): () => Promise<LoadedConfig> {
+export function createConfigLoader(
+  path: string,
+  env: NodeJS.ProcessEnv = process.env,
+): () => Promise<LoadedConfig> {
   let lastRaw: string | null = null;
   let lastResult: LoadedConfig | null = null;
   return async () => {
@@ -103,7 +144,7 @@ export function createConfigLoader(path: string): () => Promise<LoadedConfig> {
     }
     if (lastResult && raw === lastRaw) return lastResult;
     const result: LoadedConfig =
-      raw == null ? { config: DEFAULT_CONFIG, warnings: [] } : parseConfigText(raw);
+      raw == null ? { config: defaultConfig(env), warnings: [] } : parseConfigText(raw, env);
     lastRaw = raw;
     lastResult = result;
     return result;

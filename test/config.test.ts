@@ -80,6 +80,41 @@ describe("parseConfigText", () => {
   });
 });
 
+describe("language 配置", () => {
+  test("language 生效", () => {
+    const { config, warnings } = parseConfigText(`language = "en"`, {});
+    expect(config.language).toBe("en");
+    expect(warnings).toEqual([]);
+  });
+
+  test("BCP 47 根语言匹配：zh-TW 归 zh-CN，en-US 归 en", () => {
+    expect(parseConfigText(`language = "zh-TW"`, {}).config.language).toBe("zh-CN");
+    expect(parseConfigText(`language = "en-US"`, {}).config.language).toBe("en");
+  });
+
+  test("未设置时按环境检测", () => {
+    expect(parseConfigText("", { LANG: "zh_CN.UTF-8" }).config.language).toBe("zh-CN");
+    expect(parseConfigText("", { LANG: "en_US.UTF-8" }).config.language).toBe("en");
+  });
+
+  test("无法匹配的值视为未设置：警告并走环境检测链", () => {
+    const { config, warnings } = parseConfigText(`language = "fr"`, { LANG: "zh_CN.UTF-8" });
+    expect(config.language).toBe("zh-CN");
+    expect(warnings).toHaveLength(1);
+  });
+
+  test("非字符串类型回退检测链并警告", () => {
+    const { config, warnings } = parseConfigText(`language = 42`, { LANG: "en_US.UTF-8" });
+    expect(config.language).toBe("en");
+    expect(warnings).toHaveLength(1);
+  });
+
+  test("空串视为未设置，不产生警告", () => {
+    const { warnings } = parseConfigText(`language = ""`, { LANG: "en_US.UTF-8" });
+    expect(warnings).toEqual([]);
+  });
+});
+
 describe("createConfigLoader", () => {
   test("配置文件不存在时返回全默认且无警告", async () => {
     const load = createConfigLoader(join(makeTmp(), "nope.toml"));

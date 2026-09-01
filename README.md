@@ -21,6 +21,9 @@ renview -p 8080 --no-open  # 指定端口、不自动打开浏览器
 配置文件为 TOML 格式，位置：`$XDG_CONFIG_HOME/renview/config.toml`（默认 `~/.config/renview/config.toml`），Windows 为 `%APPDATA%\renview\config.toml`。
 
 ```toml
+# 界面语言：BCP 47 标签，按根语言匹配（如 zh-TW 归为 zh-CN）；支持 zh-CN、en
+# 不设置时自动检测系统语言（LC_ALL/LC_MESSAGES/LANG），匹配不到回落英文
+language = "zh-CN"
 # 代码字体：逗号分隔列表，未安装时回落到内置系统等宽栈
 font_family = "JetBrains Mono, Sarasa Mono SC"
 # 代码阅读区字号（px，默认 12），行高随字号联动

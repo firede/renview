@@ -1,4 +1,5 @@
 import type { Node, Tree } from "web-tree-sitter";
+import type { Locale } from "../i18n";
 import type { FoldKind, LanguageProfile } from "./langs/types";
 
 /**
@@ -20,6 +21,7 @@ export function buildViewRows(
   tree: Tree,
   source: string,
   simplified: string[],
+  locale: Locale,
 ): ViewRow[] {
   const srcLines = source.split("\n");
   const folds: Array<{ range: [number, number]; text: string }> = [];
@@ -48,7 +50,7 @@ export function buildViewRows(
       const last = group[group.length - 1]!;
       folds.push({
         range: [first.startPosition.row + 1, last.endPosition.row + 1],
-        text: summaryOf(kind, group, source),
+        text: summaryOf(kind, group, source, locale),
       });
       i = j;
     }
