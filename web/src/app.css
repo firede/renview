@@ -375,38 +375,7 @@ body {
   color: #7ee2a8;
 }
 
-.srow-fold {
-  /* 与双 gutter 行对齐：两个行号栏宽 + 栏间距 */
-  margin: 3px 0 3px calc(var(--gutter-width) * 2 + 8px);
-}
-
-.fold-head {
-  background: var(--bg-raised);
-  border: 1px dashed var(--border);
-  color: var(--fg-dim);
-  border-radius: 6px;
-  padding: 2px 10px;
-  cursor: pointer;
-  /* 折叠标记在阅读流内而非镀铬：跟随行号字号缩放 */
-  font-size: var(--font-size-gutter);
-}
-
-.fold-head:hover {
-  color: var(--fg);
-  border-color: var(--fg-dim);
-}
-
-.fold-arrow {
-  display: inline-block;
-  width: 12px;
-}
-
-.fold-body {
-  border-left: 2px dashed var(--border);
-  margin: 4px 0 4px 6px;
-  padding-left: 8px;
-}
-
+/* 展开的折叠内容：与查看器一致为普通行，仅保留新旧侧文本着色 */
 .fold-body .scode.del {
   color: #ffa198;
 }
@@ -462,7 +431,7 @@ body {
   color: var(--fg-dim);
 }
 
-/* 查看器块折叠行（折叠态注释色降权；展开即审视，内容带完整高亮） */
+/* 折叠行（查看器块折叠与 diff 类型/格式折叠共用）：整行可点、gutter 留空，折叠态注释色降权；展开即审视，内容带完整高亮 */
 .vfold-head {
   display: flex;
   align-items: stretch;

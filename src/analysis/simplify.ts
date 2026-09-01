@@ -152,6 +152,7 @@ export interface SimplifiedViewData {
  * 在 git hunk 结构上构建简化 diff 行：
  * 简化后文本相同的 del/add 行对（含双双被抹空）折叠为 fold 标记；
  * 被抹空的变更行自动折叠；被抹空的上下文行直接不显示。
+ * 例外：原文为空行的变更不进折叠（展开无内容可审，折叠标记纯属干扰），以普通空行呈现。
  */
 export function buildSimplifiedRows(
   file: ParsedFile,
@@ -200,6 +201,12 @@ export function buildSimplifiedRows(
 
       const used = new Array<boolean>(adds.length).fill(false);
       for (const d of dels) {
+        // 空行不进折叠，直接以普通空行呈现（与空白上下文行作视觉间隔一致）
+        if (orig(d).trim() === "") {
+          rows.push({ kind: "del", text: "", oldLn: d.ln });
+          visible++;
+          continue;
+        }
         const ds = simpOld(d.ln!);
         const j = adds.findIndex((a, idx) => !used[idx] && simpNew(a.ln!) === ds);
         if (j >= 0) {
@@ -214,6 +221,11 @@ export function buildSimplifiedRows(
       }
       adds.forEach((a, idx) => {
         if (used[idx]) return;
+        if (orig(a).trim() === "") {
+          rows.push({ kind: "add", text: "", newLn: a.ln });
+          visible++;
+          return;
+        }
         const as = simpNew(a.ln!);
         if (as === "") {
           pushFold([], [orig(a)]);

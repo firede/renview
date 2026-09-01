@@ -171,4 +171,45 @@ describe("buildSimplifiedRows", () => {
     expect(stats.folded).toBe(1);
     expect(stats.visible).toBe(1);
   });
+
+  test("新增空行不进折叠，以普通空行呈现", () => {
+    const file = mkFile([{ type: "add", ln: 1, content: "+" }]);
+    const { rows, stats } = buildSimplifiedRows(file, [], [""]);
+    expect(rows).toEqual([{ kind: "add", text: "", oldLn: undefined, newLn: 1 }]);
+    expect(stats).toEqual({ folded: 0, visible: 1 });
+  });
+
+  test("删除空行不进折叠", () => {
+    const file = mkFile([{ type: "del", ln: 1, content: "-" }]);
+    const { rows, stats } = buildSimplifiedRows(file, [""], []);
+    expect(rows).toEqual([{ kind: "del", text: "", oldLn: 1, newLn: undefined }]);
+    expect(stats).toEqual({ folded: 0, visible: 1 });
+  });
+
+  test("被抹空的非空行仍然折叠", () => {
+    const file = mkFile([{ type: "add", ln: 1, content: "+x: string;" }]);
+    const { rows, stats } = buildSimplifiedRows(file, [], [""]);
+    expect(rows[0]!.kind).toBe("fold");
+    expect(stats.folded).toBe(1);
+  });
+
+  test("空行不消耗被抹空行的配对：空行直接呈现，被抹空行单独折叠", () => {
+    const file = mkFile([
+      { type: "del", ln: 1, content: "-" },
+      { type: "add", ln: 1, content: "+x: string;" },
+    ]);
+    const { rows, stats } = buildSimplifiedRows(file, [""], [""]);
+    expect(rows.map((r) => r.kind)).toEqual(["del", "fold"]);
+    expect(stats).toEqual({ folded: 1, visible: 1 });
+  });
+
+  test("被抹空的非空 del 与空行 add 仍可配对折叠", () => {
+    const file = mkFile([
+      { type: "del", ln: 1, content: "-x: string;" },
+      { type: "add", ln: 1, content: "+" },
+    ]);
+    const { rows, stats } = buildSimplifiedRows(file, [""], [""]);
+    expect(rows[0]!.kind).toBe("fold");
+    expect(stats.folded).toBe(1);
+  });
 });

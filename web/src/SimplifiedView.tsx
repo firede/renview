@@ -8,26 +8,38 @@ function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: st
   const oldTokens = useHighlightedLines(open ? row.oldLines.join("\n") : null, lang);
   const newTokens = useHighlightedLines(open ? row.newLines.join("\n") : null, lang);
   return (
-    <div className="srow-fold">
-      <button className="fold-head" onClick={() => setOpen(!open)}>
-        <span className="fold-arrow">{open ? "▾" : "▸"}</span>
-        {row.count} 行类型/格式性变更已折叠
+    <>
+      {/* 与查看器块折叠同一形态：整行可点、gutter 留空、箭头 + 注释色摘要 */}
+      <button className="vfold-head" onClick={() => setOpen(!open)}>
+        <span className="gutter" />
+        <span className="gutter" />
+        <span className="vfold-summary">
+          {open ? "▾" : "▸"} {row.count} 行类型/格式性变更已折叠
+        </span>
       </button>
       {open && (
         <div className="fold-body">
           {row.oldLines.map((l, i) => (
-            <pre key={`o${i}`} className="scode del">
-              − {oldTokens?.[i] ? <TokenSpans tokens={oldTokens[i]!} /> : l}
-            </pre>
+            <div key={`o${i}`} className="srow">
+              <span className="gutter" />
+              <span className="gutter" />
+              <pre className="scode del">
+                − {oldTokens?.[i] ? <TokenSpans tokens={oldTokens[i]!} /> : l}
+              </pre>
+            </div>
           ))}
           {row.newLines.map((l, i) => (
-            <pre key={`n${i}`} className="scode add">
-              + {newTokens?.[i] ? <TokenSpans tokens={newTokens[i]!} /> : l}
-            </pre>
+            <div key={`n${i}`} className="srow">
+              <span className="gutter" />
+              <span className="gutter" />
+              <pre className="scode add">
+                + {newTokens?.[i] ? <TokenSpans tokens={newTokens[i]!} /> : l}
+              </pre>
+            </div>
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
