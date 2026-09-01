@@ -23,7 +23,8 @@
 - 接缝空白修复只发生在删除/替换的接缝处（前段以空白结尾则去掉后段前导空白），不动缩进与字符串内部。
 - Rust 声明收集覆盖 function_item / struct / enum / trait / impl / const / static，impl 成员以 impl 目标名为容器。
 - 擦除 op（字节区间 + replacement）即 hover v1 数据源：悬停直接还原被擦除原文，无需额外分析。
-- 简化行与源码 1:1 行对齐是投影/源码切换与 diff→查看器跳转的统一锚定机制。
+- 锚定机制：diff 简化视图与查看器简化行均与源码 1:1 行对齐；查看器显示层（view.ts 的 ViewRow）在其上做块折叠与空行压缩，每行携带源码行号/区间，锚定不丢。
+- 块折叠规则按语言 profile 提供（foldKind / foldSummary），view.ts 引擎负责连续段合并、行重建与行号映射。
 - 查看器按文件懒加载（打开时 parse + simplify），不做全仓预计算与索引。
 - 投影与简化共用同一棵 CST（parseSide / analyzeParsed / simplifyTree），每侧源码只 parse 一次；声明收集管线扩展用途：diff 侧栏徽章 + 查看器文件大纲（outlineOf）。
 - 折叠过宽风险用 scripts/corpus-check.ts 在真实语料（zod/serde 最近 N 个提交）回归验证：统计折叠率 + 可疑折叠检测（折叠行对差异片段切词 + 类型/工程关键字白名单，数字不豁免、宁可误报）。
