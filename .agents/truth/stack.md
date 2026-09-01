@@ -13,5 +13,5 @@
 - 传统 diff 视图渲染选定 react-diff-view 3.3.3，投影视图为完全自研组件。
 - tree-sitter：web-tree-sitter 0.27.0 + tree-sitter-typescript 0.23.2 + tree-sitter-rust 0.24.0（官方 npm 包自带 wasm），精确锁版，wasm 由 scripts/sync-wasm.ts 复制到 wasm/ 后内嵌。
 - 已实测：bun build --compile 单文件二进制内 tree-sitter WASM 解析 + 内嵌 SPA 服务全链路可用。
-- 分发入口单一：GitHub Releases + 安装脚本，二进制 60–120MB 需 gzip 分发。
+- 分发主体为 bun --compile 单文件二进制：GitHub Releases + 安装脚本，npm 包仅作二进制 CDN（控制运行环境，避免非 bun 环境误装不可用）；二进制 60–120MB 需 gzip。
 - CI 锁定 Bun 版本，按平台跑真实二进制的冒烟测试。
