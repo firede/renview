@@ -7,6 +7,8 @@
   --fg-dim: #8b949e;
   --add: #3fb950;
   --del: #f85149;
+  /* react-diff-view 的 .diff-line 显式引用该变量，不走 .diff 的继承，需在此对齐简化视图字体 */
+  --diff-font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * {
@@ -202,9 +204,16 @@ body {
   border: none;
 }
 
+/* gutter 几何与简化视图 .srow .gutter 对齐（定宽 44px、11px 字号），切换视图行号不位移 */
+.diff-gutter-col {
+  width: 44px;
+}
+
 .diff-gutter {
   background: var(--bg);
   color: var(--fg-dim);
+  font-size: 11px;
+  padding: 0 6px;
 }
 
 .diff-gutter a {
@@ -214,6 +223,8 @@ body {
 .diff-code {
   background: var(--bg);
   color: var(--fg);
+  /* vendor 默认 0.5em 左内边距，去掉以对齐 .scode 的 0 */
+  padding-left: 0;
 }
 
 .diff-gutter-insert,
