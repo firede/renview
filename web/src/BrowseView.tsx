@@ -133,11 +133,9 @@ export function BrowseView({
   }, [data, showSource]);
 
   // 简化视图与源码视图都高亮（简化文本仍是合法语法的子集）
+  const lang = shikiLangForPath(data?.path);
   const text = useMemo(() => lines.join("\n"), [lines]);
-  const tokens = useHighlightedLines(
-    data?.source != null ? text : null,
-    shikiLangForPath(data?.path),
-  );
+  const tokens = useHighlightedLines(data?.source != null ? text : null, lang);
 
   const hasSimplified = data?.simplified != null;
 
@@ -218,7 +216,7 @@ export function BrowseView({
               <div className="sview">
                 {data.view.map((r, i) =>
                   r.kind === "fold" ? (
-                    <ViewFoldRow key={i} row={r} index={i} />
+                    <ViewFoldRow key={i} row={r} index={i} lang={lang} />
                   ) : (
                     <div key={i} id={`R${i}`} className="srow ctx">
                       <span className="gutter">{r.src}</span>
@@ -254,9 +252,19 @@ export function BrowseView({
   );
 }
 
-/** 折叠块：单行摘要（成员名/模块名保持可见），展开查看源码原文 */
-function ViewFoldRow({ row, index }: { row: Extract<ViewRow, { kind: "fold" }>; index: number }) {
+/** 折叠块：单行摘要用注释色降权（成员名/模块名保持可见）；展开即审视，源码原文带完整高亮 */
+function ViewFoldRow({
+  row,
+  index,
+  lang,
+}: {
+  row: Extract<ViewRow, { kind: "fold" }>;
+  index: number;
+  lang: string | null;
+}) {
   const [open, setOpen] = useState(false);
+  // 展开时才高亮原文（惰性）；原文是连续源码切片，脱离上下文高亮可能有轻微断色
+  const foldTokens = useHighlightedLines(open ? row.original.join("\n") : null, lang);
   return (
     <div className="vfold">
       <button className="vfold-head" id={`R${index}`} onClick={() => setOpen(!open)}>
@@ -272,7 +280,9 @@ function ViewFoldRow({ row, index }: { row: Extract<ViewRow, { kind: "fold" }>; 
           {row.original.map((l, i) => (
             <div key={i} className="srow ctx">
               <span className="gutter">{row.srcRange[0] + i}</span>
-              <pre className="scode">{l === "" ? " " : l}</pre>
+              <pre className="scode">
+                {foldTokens?.[i] ? <TokenSpans tokens={foldTokens[i]!} /> : l === "" ? " " : l}
+              </pre>
             </div>
           ))}
         </div>

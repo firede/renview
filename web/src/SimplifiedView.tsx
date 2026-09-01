@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import type { SRow, SimplifiedViewData } from "../../src/analysis/types";
 import { TokenSpans, useHighlightedLines } from "./highlight";
 
-function FoldRow({ row }: { row: Extract<SRow, { kind: "fold" }> }) {
+function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: string | null }) {
   const [open, setOpen] = useState(false);
+  // 展开即审视：折叠的原始行带完整语法高亮（新旧两侧分别高亮）
+  const oldTokens = useHighlightedLines(open ? row.oldLines.join("\n") : null, lang);
+  const newTokens = useHighlightedLines(open ? row.newLines.join("\n") : null, lang);
   return (
     <div className="srow-fold">
       <button className="fold-head" onClick={() => setOpen(!open)}>
@@ -13,10 +16,14 @@ function FoldRow({ row }: { row: Extract<SRow, { kind: "fold" }> }) {
       {open && (
         <div className="fold-body">
           {row.oldLines.map((l, i) => (
-            <pre key={`o${i}`} className="scode del">− {l}</pre>
+            <pre key={`o${i}`} className="scode del">
+              − {oldTokens?.[i] ? <TokenSpans tokens={oldTokens[i]!} /> : l}
+            </pre>
           ))}
           {row.newLines.map((l, i) => (
-            <pre key={`n${i}`} className="scode add">+ {l}</pre>
+            <pre key={`n${i}`} className="scode add">
+              + {newTokens?.[i] ? <TokenSpans tokens={newTokens[i]!} /> : l}
+            </pre>
           ))}
         </div>
       )}
@@ -40,7 +47,7 @@ export function SimplifiedView({ data, lang }: { data: SimplifiedViewData; lang:
   return (
     <div className="sview">
       {data.rows.map((r, i) => {
-        if (r.kind === "fold") return <FoldRow key={i} row={r} />;
+        if (r.kind === "fold") return <FoldRow key={i} row={r} lang={lang} />;
         const lineTokens = tokens?.[vi++] ?? null;
         return (
           <div key={i} className={`srow ${r.kind}`}>

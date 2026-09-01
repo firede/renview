@@ -439,7 +439,7 @@ body {
   color: var(--fg-dim);
 }
 
-/* 查看器块折叠行 */
+/* 查看器块折叠行（折叠态注释色降权；展开即审视，内容带完整高亮） */
 .vfold-head {
   display: flex;
   align-items: stretch;
@@ -465,8 +465,4 @@ body {
 .vfold-summary {
   line-height: 20px;
   font-style: italic;
-}
-
-.vfold-body .scode {
-  color: var(--fg-dim);
 }
