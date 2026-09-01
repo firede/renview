@@ -17,3 +17,4 @@
 - 分发主体为 bun --compile 单文件二进制：GitHub Releases + 安装脚本，npm 包仅作二进制 CDN（控制运行环境，避免非 bun 环境误装不可用）；二进制 60–120MB 需 gzip。
 - CI 锁定 Bun 版本，按平台跑真实二进制的冒烟测试。
 - UI 组件库：暂不引入；hover 披露（tooltip/popover 定位与焦点管理）落地时选用 headless 的 base-ui（与纯 CSS 相容），不引入 shadcn/ui（绑定 tailwind 样式体系，与"样式纯 CSS"冲突）。目录树等轻量交互自研（base-ui 本无现成 tree 组件）。
+- 代码字体：系统栈（ui-monospace → "SF Mono" → Menlo → Consolas → Liberation Mono → monospace），不内置字体资产；全站收敛到唯一 token `--font-mono` 并元素级声明（UA 的 pre 样式会压过继承值，代码区声明必须落在元素上），未来开放用户配置代码字体时覆写该 token 即可；若 dogfood 中跨设备渲染不一致影响审阅，再评估内置 OFL 等宽字体。

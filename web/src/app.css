@@ -7,8 +7,10 @@
   --fg-dim: #8b949e;
   --add: #3fb950;
   --del: #f85149;
-  /* react-diff-view 的 .diff-line 显式引用该变量，不走 .diff 的继承，需在此对齐简化视图字体 */
-  --diff-font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* 代码字体唯一 token：未来开放用户配置代码字体时只需覆写此处 */
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* react-diff-view 的 .diff-line 显式引用该变量，不走 .diff 的继承，须指向同一 token */
+  --diff-font-family: var(--font-mono);
 }
 
 * {
@@ -63,7 +65,7 @@ body {
 
 .args {
   color: var(--fg-dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -137,7 +139,7 @@ body {
 
 .file-path {
   display: flex;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -199,7 +201,7 @@ body {
 .diff {
   background: var(--bg);
   color: var(--fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   border: none;
 }
@@ -270,7 +272,7 @@ body {
 }
 
 .file-title {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -322,7 +324,7 @@ body {
 /* 简化 diff 视图 */
 .sview {
   padding: 8px 0 24px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -347,6 +349,8 @@ body {
   line-height: 20px;
   flex: 1;
   white-space: pre;
+  /* 元素级声明：UA 的 pre { font-family: monospace } 会压过继承值，泛型 monospace 各引擎解析不定（可落到衬线体） */
+  font-family: var(--font-mono);
 }
 
 .srow.del {
@@ -438,7 +442,7 @@ body {
   color: var(--fg);
   padding: 0 8px;
   font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   cursor: pointer;
 }
 
@@ -460,7 +464,7 @@ body {
   color: var(--fg-dim);
   cursor: pointer;
   padding: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   text-align: left;
 }
@@ -524,7 +528,7 @@ body {
   background: transparent;
   border: none;
   color: var(--fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   text-align: left;
   cursor: pointer;
