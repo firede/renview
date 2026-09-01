@@ -166,7 +166,9 @@ body {
 
 .file-meta {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
   font-size: 11px;
   color: var(--fg-dim);
 }
@@ -175,6 +177,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0 4px;
+  white-space: nowrap;
 }
 
 .status-add {
@@ -310,14 +313,15 @@ body {
 /* 文件列表汇总徽章 */
 .chips {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
-  margin-left: 4px;
 }
 
 .chip {
   border-radius: 4px;
   padding: 0 4px;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .chip-signature { color: #d29922; border: 1px solid #d2992255; }
