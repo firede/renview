@@ -18,3 +18,7 @@
 - 签名比较为空白归一化文本比较（已知局限：字符串字面量内的连续空格差异会被抹平）。
 - diff 两侧内容来源按参数推导：无 rev 时 index vs worktree，--staged 时 HEAD vs index，A...B 取 merge-base，A..B / A B 取对应 rev。
 - /api/diff 单接口全量返回 raw diff 文本 + 每文件投影，PR 级规模下不做分页。
+- 简化器 = CST walker 产出删除/替换 op，引擎做重叠消解（外层优先）与逐行重建，输出行与原文 1:1 对齐。
+- 简化在 git hunk 结构内进行（不重排 diff），折叠判定基于简化后文本相等，完全确定性。
+- 接缝空白修复只发生在删除/替换的接缝处（前段以空白结尾则去掉后段前导空白），不动缩进与字符串内部。
+- Rust 声明收集覆盖 function_item / struct / enum / trait / impl / const / static，impl 成员以 impl 目标名为容器。
