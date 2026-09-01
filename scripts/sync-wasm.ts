@@ -9,6 +9,7 @@ const MAP: Record<string, string> = {
   "node_modules/tree-sitter-typescript/tree-sitter-tsx.wasm": "wasm/tsx.wasm",
   "node_modules/tree-sitter-rust/tree-sitter-rust.wasm": "wasm/rust.wasm",
   "node_modules/tree-sitter-go/tree-sitter-go.wasm": "wasm/go.wasm",
+  "node_modules/tree-sitter-python/tree-sitter-python.wasm": "wasm/python.wasm",
 };
 
 mkdirSync("wasm", { recursive: true });

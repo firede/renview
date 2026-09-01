@@ -22,6 +22,7 @@ import { buildSimplifiedRows, simplifySource, type SRow } from "../src/analysis/
 const REPOS = [
   { name: "zod", url: "https://github.com/colinhacks/zod" },
   { name: "serde", url: "https://github.com/serde-rs/serde" },
+  { name: "pydantic", url: "https://github.com/pydantic/pydantic" },
 ];
 
 const DEFAULT_COMMITS = 25;
@@ -44,7 +45,10 @@ const WHITELIST = new Set(
    u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize f32 f64 bool str
    String Vec Option Result Box HashMap BTreeMap Iterator Debug Clone Copy Default
    PartialEq Eq Hash Ord PartialOrd Send Sync From Into TryFrom TryInto Display Error
-   ToString AsRef AsMut Deref Drop Fn FnMut FnOnce Sized Unpin`.split(/\s+/),
+   ToString AsRef AsMut Deref Drop Fn FnMut FnOnce Sized Unpin
+   self cls None True False def elif in is not and or with try except finally raise pass
+   lambda yield global nonlocal assert int float bool list dict set tuple bytes object
+   Exception print len range enumerate zip isinstance super staticmethod classmethod property`.split(/\s+/),
 );
 
 /** 差异片段切词：标识符与数字 */

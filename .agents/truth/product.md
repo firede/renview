@@ -8,7 +8,9 @@
 - 类型性变更的判定：同一 hunk 内简化后文本相同的 del/add 行对自动折叠为可见标记，点击展开看原始行。
 - 类型/结构体声明保留名字桩或成员名（数据形状变化保持可见，类型细节隐藏）。
 - 声明级单元卡片视图已移除；声明分类管线保留，仅用于侧栏徽章（签名/实现/类型计数）。
-- 简化器语言：TS/TSX、Rust、Go、GDScript；各语言按语义安全线擦除类型与工程机制（Rust 的 ?/unwrap/clone、TS 的 ?.、Go 的 if-err-return 单行标记等）。
+- 简化器语言：TS/TSX、Rust、Go、GDScript、Python；各语言按语义安全线擦除类型与工程机制（Rust 的 ?/unwrap/clone、TS 的 ?.、Go 的 if-err-return 单行标记、Python 的 self/cast/TYPE_CHECKING 等）。
+- Python 特有擦除：类方法的 self/cls 首参数（接收者是语言机制，函数体内 self. 保留——它区分实例状态与局部变量）、typing.cast、if TYPE_CHECKING 整块（单行标记）；装饰器保留（@dataclass/@property/@app.route 等是契约）。
+- Python 纯数据类（body 无方法/嵌套类：dataclass、pydantic 模型、Enum、TypedDict）折叠为带成员名的单行摘要，装饰器名保留在摘要里。
 - Go 的 `if err != nil { return }` 折叠为单行标记，非平凡返回值文本保留（fmt.Errorf 包装信息是业务定位信息）；带初始化语句的 err 判断不折叠（里面有真实调用）。
 - 语言扩展：无 profile 的语言退回行级 diff；dogfood 验证优先用维护者不熟悉的语言（避免熟悉度掩盖投影问题）。
 - 简化器规则引擎参考 ast-grep 的声明式思路，但不引入其 napi 原生依赖。

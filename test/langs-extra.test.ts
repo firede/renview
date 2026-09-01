@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { gdscriptProfile } from "../src/analysis/langs/gdscript";
 import { goProfile } from "../src/analysis/langs/go";
+import { pythonProfile } from "../src/analysis/langs/python";
 import type { LanguageProfile } from "../src/analysis/langs/types";
 import { parseSource } from "../src/analysis/parser";
 import { applySimplify, collectSimplifyOps, simplifyTree } from "../src/analysis/simplify";
@@ -175,8 +176,7 @@ func move_card(card: Node2D, dest: Vector2) -> bool:
   });
 });
 
-describe("gdscript 声明收集与折叠", () => {
-  test("collect：函数/变量/信号/enum", async () => {
+describe("gdscript 声明收集与折叠", () => {  test("collect：函数/变量/信号/enum", async () => {
     const src = `extends Node2D
 
 signal card_moved(card)
@@ -204,3 +204,97 @@ var state = State.IDLE
     expect(fold).toMatchObject({ kind: "fold", text: "enum State { IDLE, DRAGGING, DEALING }" });
   });
 });
+
+describe("python 简化器", () => {
+  test("类型标注/返回类型/泛型擦除", async () => {
+    const src = `def fetch(url: str, timeout: int = 10) -> Optional[str]:
+    cache: dict[str, str] = {}
+    return cache.get(url)
+`;
+    const out = await simplify(pythonProfile, src);
+    expect(out).toEqual([
+      "def fetch(url, timeout = 10):",
+      "    cache = {}",
+      "    return cache.get(url)",
+      "",
+    ]);
+  });
+
+  test("类方法的 self/cls 首参数擦除（含装饰器方法），函数体 self. 保留", async () => {
+    const src = `class A:
+    def m(self, x: int) -> None:
+        self.x = x
+
+    @classmethod
+    def c(cls, y):
+        return y
+
+def top(self_like, z):
+    return self_like
+`;
+    const out = await simplify(pythonProfile, src);
+    expect(out[1]).toBe("    def m(x):");
+    expect(out[2]).toBe("        self.x = x");
+    expect(out[5]).toBe("    def c(y):");
+    expect(out[8]).toBe("def top(self_like, z):");
+  });
+
+  test("cast 擦除与 if TYPE_CHECKING 折叠", async () => {
+    const src = `if TYPE_CHECKING:
+    from .models import User
+    from .db import Connection
+
+x = cast(str, get_value())
+`;
+    const out = await simplify(pythonProfile, src);
+    expect(out[0]).toBe("if TYPE_CHECKING: …");
+    expect(out[1]).toBe("");
+    expect(out[2]).toBe("");
+    expect(out[4]).toBe("x = get_value()");
+  });
+});
+
+describe("python 声明收集与折叠", () => {
+  test("collect：函数/类/成员变量/容器", async () => {
+    const src = `CONSTANT = 1
+
+class Repo:
+    kind = "git"
+
+    def fetch(self, ref):
+        pass
+`;
+    const tree = await parseSource("python", src);
+    const decls = pythonProfile.collect(tree.rootNode);
+    const byName = Object.fromEntries(decls.map((d) => [d.name, d]));
+    expect(byName.CONSTANT?.kind).toBe("variable");
+    expect(byName.Repo?.kind).toBe("class");
+    expect(byName.kind?.container).toBe("Repo");
+    expect(byName.fetch?.container).toBe("Repo");
+    expect(byName.fetch?.kind).toBe("function");
+  });
+
+  test("viewRows：imports 折叠、纯数据类折叠（装饰器保留）、含方法的类不折叠", async () => {
+    const src = `import os
+from typing import Optional
+
+@dataclass
+class Config:
+    timeout: int = 10
+    retries: int = 3
+
+class Worker:
+    def run(self):
+        pass
+`;
+    const rows = await viewRows(pythonProfile, src);
+    const folds = rows.filter((r) => r.kind === "fold");
+    expect(folds.map((f) => f.kind === "fold" && f.text)).toEqual([
+      "import × 2（os、typing）",
+      "@dataclass class Config { timeout, retries }",
+    ]);
+    // Worker 有方法，不折叠
+    expect(rows.some((r) => r.kind === "line" && r.text === "class Worker:")).toBe(true);
+  });
+});
+

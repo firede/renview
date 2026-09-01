@@ -5,6 +5,7 @@ import tsxWasm from "../../wasm/tsx.wasm" with { type: "file" };
 import rustWasm from "../../wasm/rust.wasm" with { type: "file" };
 import goWasm from "../../wasm/go.wasm" with { type: "file" };
 import gdscriptWasm from "../../wasm/gdscript.wasm" with { type: "file" };
+import pythonWasm from "../../wasm/python.wasm" with { type: "file" };
 
 /**
  * tree-sitter 解析层。
@@ -18,6 +19,7 @@ const GRAMMAR_WASM: Record<string, string> = {
   rust: rustWasm,
   go: goWasm,
   gdscript: gdscriptWasm,
+  python: pythonWasm,
 };
 
 let parserReady: Promise<void> | null = null;
