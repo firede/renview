@@ -198,7 +198,7 @@ export function BrowseView({
               )}
               <span className="spacer" />
               {hasSimplified && (
-                <>
+                <span className="seg">
                   <button
                     className={!showSource ? "active" : ""}
                     onClick={() => setShowSource(false)}
@@ -211,7 +211,7 @@ export function BrowseView({
                   >
                     源码
                   </button>
-                </>
+                </span>
               )}
             </div>
             {data && !showSource && data.outline.length > 0 && (

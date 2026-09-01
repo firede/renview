@@ -138,12 +138,14 @@ export function App() {
     <div className="layout">
       <header className="topbar">
         <span className="brand">renview</span>
-        <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
-          变更
-        </button>
-        <button className={mode === "browse" ? "active" : ""} onClick={() => setMode("browse")}>
-          浏览
-        </button>
+        <span className="seg">
+          <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
+            变更
+          </button>
+          <button className={mode === "browse" ? "active" : ""} onClick={() => setMode("browse")}>
+            浏览
+          </button>
+        </span>
         <span className="repo" title={payload.repoRoot}>
           {payload.repoRoot}
         </span>
@@ -155,18 +157,20 @@ export function App() {
               {files.length} 个文件 <em className="add">+{totals.adds}</em>{" "}
               <em className="del">−{totals.dels}</em>
             </span>
-            <button
-              className={viewType === "unified" ? "active" : ""}
-              onClick={() => setViewType("unified")}
-            >
-              单列
-            </button>
-            <button
-              className={viewType === "split" ? "active" : ""}
-              onClick={() => setViewType("split")}
-            >
-              双列
-            </button>
+            <span className="seg">
+              <button
+                className={viewType === "unified" ? "active" : ""}
+                onClick={() => setViewType("unified")}
+              >
+                单列
+              </button>
+              <button
+                className={viewType === "split" ? "active" : ""}
+                onClick={() => setViewType("split")}
+              >
+                双列
+              </button>
+            </span>
             <button onClick={() => void load()} disabled={refreshing}>
               {refreshing ? "刷新中…" : "刷新"}
             </button>
@@ -240,7 +244,7 @@ export function App() {
                   )}
                   <span className="spacer" />
                   {hasSimplified && (
-                    <>
+                    <span className="seg">
                       <button
                         className={!showRaw ? "active" : ""}
                         onClick={() => setRawOverride(false)}
@@ -253,7 +257,7 @@ export function App() {
                       >
                         原始 diff
                       </button>
-                    </>
+                    </span>
                   )}
                 </div>
                 {!showRaw && selectedEntry?.simplified ? (
