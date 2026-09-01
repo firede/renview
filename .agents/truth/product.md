@@ -8,7 +8,9 @@
 - 类型性变更的判定：同一 hunk 内简化后文本相同的 del/add 行对自动折叠为可见标记，点击展开看原始行。
 - 类型/结构体声明保留名字桩或成员名（数据形状变化保持可见，类型细节隐藏）。
 - 声明级单元卡片视图已移除；声明分类管线保留，仅用于侧栏徽章（签名/实现/类型计数）。
-- 简化器 v1 语言：Rust + TS/TSX；工程性质语法（Rust 的 ?、unwrap、clone、pub 等）暂不处理。
+- 简化器语言：TS/TSX、Rust、Go、GDScript；各语言按语义安全线擦除类型与工程机制（Rust 的 ?/unwrap/clone、TS 的 ?.、Go 的 if-err-return 单行标记等）。
+- Go 的 `if err != nil { return }` 折叠为单行标记，非平凡返回值文本保留（fmt.Errorf 包装信息是业务定位信息）；带初始化语句的 err 判断不折叠（里面有真实调用）。
+- 语言扩展：无 profile 的语言退回行级 diff；dogfood 验证优先用维护者不熟悉的语言（避免熟悉度掩盖投影问题）。
 - 简化器规则引擎参考 ast-grep 的声明式思路，但不引入其 napi 原生依赖。
 - v1 纯查看，不做评论、不做状态存储，用户发现问题后复制粘贴回 harness 用自然语言反馈。
 - 主要入口是 agent harness 内 slash 命令 / skill 触发 CLI，CLI 参数语义贴合 git diff。
@@ -20,7 +22,7 @@
 - 注释变更折叠为"注释变更"低优先级单元：可见、可展开，但不打断主审阅流程。
 - 排序与过滤同等重要：文件级汇总优先呈现公开 API / 签名变更。
 - 目标规模按单 PR 级 diff 设计，初期不做 monorepo 性能设计。
-- 语言顺序：TypeScript/TSX 先行，其余语言先退回行级 diff。
+- 语言扩展：无 profile 的语言退回行级 diff；dogfood 验证优先用维护者不熟悉的语言（避免熟悉度掩盖投影问题）。
 - worktree 支持、已看标记、agent 化 review 能力均为后期事项。
 - 竞品结论：静态语言感知投影 + 逐级披露的格子目前空缺（difftastic 做精度、SemanticDiff 只做风格噪音、CodeRabbit 等做 LLM 散文摘要），但存在窗口期。
 - npm 包名 renview 无冲突。
@@ -38,3 +40,4 @@
 - 折叠摘要保留成员/变体名（领域词汇即数据形状），超过 6 个截断并显示总数。
 - imports 在查看器折叠为单行标记；diff 视图中 import 变更保持可见（依赖变化是审阅信号）。
 - body 工程机制擦除 v1：Rust 的 ?/unwrap/clone/into/to_string/to_owned（零参）；TS 的 ?. → .。async/await 保留（挂起点影响流程理解，待 dogfood 评估）；日志/指标调用拟做"降权调暗"而非折叠（孤立单行折叠无纵向收益），需 annotate 型 op，与领域投影同一扩展点。
+- 函数体设计基线：body 视图 = 扫读叙述（步骤 + 决策点），起疑时下钻（hover/展开/源码）；不做常驻的 verification tooling（参数追踪/作用域/调用来源标注），避免把人拉回逐行验证。
