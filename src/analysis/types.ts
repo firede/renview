@@ -40,6 +40,15 @@ export interface FileProjection {
 
 export type FileStatus = "add" | "delete" | "modify" | "rename";
 
+/** 查看器文件大纲条目（来自声明收集，行号 1-based） */
+export interface OutlineItem {
+  kind: DeclKind;
+  name: string;
+  container: string;
+  typeLevel: boolean;
+  range: [number, number];
+}
+
 export interface FileEntry {
   oldPath: string | null;
   newPath: string | null;

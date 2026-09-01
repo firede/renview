@@ -25,4 +25,4 @@
 - 擦除 op（字节区间 + replacement）即 hover v1 数据源：悬停直接还原被擦除原文，无需额外分析。
 - 简化行与源码 1:1 行对齐是投影/源码切换与 diff→查看器跳转的统一锚定机制。
 - 查看器按文件懒加载（打开时 parse + simplify），不做全仓预计算与索引。
-- 声明收集管线保留并扩展：diff 侧栏徽章 + 查看器文件大纲；投影与简化将共用同一棵 CST，消除每文件双 parse（server.ts 现状）。
+- 投影与简化共用同一棵 CST（parseSide / analyzeParsed / simplifyTree），每侧源码只 parse 一次；声明收集管线扩展用途：diff 侧栏徽章 + 查看器文件大纲（outlineOf）。

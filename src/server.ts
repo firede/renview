@@ -1,8 +1,8 @@
 import parseDiff from "parse-diff";
 import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
-import { analyzeFile } from "./analysis/project";
-import { buildSimplifiedRows, simplifySource } from "./analysis/simplify";
+import { analyzeParsed, parseSide } from "./analysis/project";
+import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
 import type { FileEntry, FileStatus } from "./analysis/types";
 import {
   extractPathspecs,
@@ -98,19 +98,18 @@ async function buildFileEntry(
       return entry;
     }
     const { oldLines, newLines } = changedLinesOf(f);
-    entry.projection = await analyzeFile(profile, oldSource, newSource, oldLines, newLines);
-    const simplify = profile.simplify;
-    if (simplify) {
-      try {
-        const sp = { grammarFile: profile.grammarFile, simplify };
-        const [oldS, newS] = await Promise.all([
-          oldSource != null ? simplifySource(sp, oldSource) : null,
-          newSource != null ? simplifySource(sp, newSource) : null,
-        ]);
-        entry.simplified = buildSimplifiedRows(f, oldS, newS);
-      } catch {
-        entry.simplified = null;
-      }
+    // 每侧只 parse 一次：投影与简化共用同一棵 CST
+    const [oldSide, newSide] = await Promise.all([
+      oldSource != null ? parseSide(profile, oldSource) : null,
+      newSource != null ? parseSide(profile, newSource) : null,
+    ]);
+    entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines);
+    if (profile.simplify) {
+      entry.simplified = buildSimplifiedRows(
+        f,
+        oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
+        newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
+      );
     }
   } catch {
     entry.degradedReason = "parse-error";

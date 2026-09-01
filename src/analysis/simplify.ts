@@ -1,4 +1,4 @@
-import type { Node } from "web-tree-sitter";
+import type { Node, Tree } from "web-tree-sitter";
 import type { ParsedChange, ParsedFile } from "./map";
 import { parseSource } from "./parser";
 
@@ -112,14 +112,18 @@ export function collectSimplifyOps(root: Node, source: string, walker: SimplifyW
   return ops;
 }
 
+/** 对已解析的 CST 做简化（供一次 parse 多处复用）；存在错误节点时抛异常 */
+export function simplifyTree(tree: Tree, source: string, walker: SimplifyWalker): string[] {
+  if (tree.rootNode.hasError) throw new Error("tree-sitter 解析存在错误节点");
+  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, walker));
+}
+
 /** 解析 + 简化一段源码；解析出错时抛异常（调用方决定降级） */
 export async function simplifySource(
   profile: { grammarFile: string; simplify: SimplifyWalker },
   source: string,
 ): Promise<string[]> {
-  const tree = await parseSource(profile.grammarFile, source);
-  if (tree.rootNode.hasError) throw new Error("tree-sitter 解析存在错误节点");
-  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify));
+  return simplifyTree(await parseSource(profile.grammarFile, source), source, profile.simplify);
 }
 
 /* ---- 简化 diff 行构建 ---- */

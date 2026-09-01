@@ -1,8 +1,8 @@
-import type { Node } from "web-tree-sitter";
+import type { Node, Tree } from "web-tree-sitter";
 import type { DeclarationInfo, LanguageProfile } from "./langs/types";
 import { countLinesIn, touchedBy } from "./map";
 import { parseSource } from "./parser";
-import type { BodySummaryItem, ChangeKind, ChangeUnit, FileProjection } from "./types";
+import type { BodySummaryItem, ChangeKind, ChangeUnit, FileProjection, OutlineItem } from "./types";
 
 export class ParseError extends Error {}
 
@@ -87,26 +87,39 @@ const CHANGE_ORDER: Record<ChangeKind, number> = {
   "type-only": 4,
 };
 
+/** 一侧已解析的源码（投影与简化共用，每侧源码只 parse 一次） */
+export interface ParsedSide {
+  tree: Tree;
+  source: string;
+}
+
+/** 解析一侧源码为 ParsedSide */
+export async function parseSide(profile: LanguageProfile, source: string): Promise<ParsedSide> {
+  return { tree: await parseSource(profile.grammarFile, source), source };
+}
+
 /**
- * 分析单个文件的新旧版本，产出投影。
+ * 分析单个文件已解析的新旧版本，产出投影。
  * 配对基于全量声明（而非仅触碰的），避免"纯删除行导致新侧未触碰"被误判为 removed。
  * 触碰但归一化文本无变化的声明不产生单元（过滤纯注释/格式噪音）。
  */
-export async function analyzeFile(
+export function analyzeParsed(
   profile: LanguageProfile,
-  oldSource: string | null,
-  newSource: string | null,
+  oldSide: ParsedSide | null,
+  newSide: ParsedSide | null,
   oldLines: Set<number>,
   newLines: Set<number>,
-): Promise<FileProjection> {
-  const oldTree = oldSource != null ? await parseSource(profile.grammarFile, oldSource) : null;
-  const newTree = newSource != null ? await parseSource(profile.grammarFile, newSource) : null;
+): FileProjection {
+  const oldTree = oldSide?.tree ?? null;
+  const newTree = newSide?.tree ?? null;
+  const oldSource = oldSide?.source ?? null;
+  const newSource = newSide?.source ?? null;
   if (oldTree?.rootNode.hasError || newTree?.rootNode.hasError) {
     throw new ParseError("tree-sitter 解析存在错误节点");
   }
 
-  const olds = oldTree && oldSource != null ? profile.collect(oldTree.rootNode) : [];
-  const news = newTree && newSource != null ? profile.collect(newTree.rootNode) : [];
+  const olds = oldSide ? profile.collect(oldSide.tree.rootNode) : [];
+  const news = newSide ? profile.collect(newSide.tree.rootNode) : [];
   const pairs = pairUp(olds, news);
 
   const units: ChangeUnit[] = [];
@@ -175,6 +188,32 @@ export async function analyzeFile(
   for (const u of deduped) summary[u.change]++;
 
   return { language: profile.id, summary, units: deduped };
+}
+
+/** analyzeParsed 的包装：先解析两侧源码（服务端以外、无需复用 CST 的调用方使用） */
+export async function analyzeFile(
+  profile: LanguageProfile,
+  oldSource: string | null,
+  newSource: string | null,
+  oldLines: Set<number>,
+  newLines: Set<number>,
+): Promise<FileProjection> {
+  const [oldSide, newSide] = await Promise.all([
+    oldSource != null ? parseSide(profile, oldSource) : null,
+    newSource != null ? parseSide(profile, newSource) : null,
+  ]);
+  return analyzeParsed(profile, oldSide, newSide, oldLines, newLines);
+}
+
+/** 查看器用：从已解析的 CST 产出文件大纲（与投影/简化同源，复用声明收集） */
+export function outlineOf(profile: LanguageProfile, tree: Tree): OutlineItem[] {
+  return profile.collect(tree.rootNode).map((d) => ({
+    kind: d.kind,
+    name: d.name,
+    container: d.container,
+    typeLevel: d.typeLevel,
+    range: rangeOf(d),
+  }));
 }
 
 function classify(
