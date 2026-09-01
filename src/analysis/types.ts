@@ -1,4 +1,7 @@
 /** 投影数据模型：服务端构建，前端渲染。行号均为 1-based。 */
+import type { SimplifiedViewData } from "./simplify";
+
+export type { SimplifiedViewData, SRow } from "./simplify";
 
 export type ChangeKind = "signature" | "body" | "type-only" | "added" | "removed";
 export type DeclKind = "function" | "class" | "type" | "variable" | "other";
@@ -42,6 +45,8 @@ export interface FileEntry {
   newPath: string | null;
   status: FileStatus;
   projection: FileProjection | null;
+  /** 简化 diff 视图数据；无 profile / 失败时为 null（退回原始 diff） */
+  simplified?: SimplifiedViewData | null;
   /** 无投影（退回原始 diff）的原因 */
   degradedReason?: "no-profile" | "parse-error" | "too-large" | "no-source";
 }

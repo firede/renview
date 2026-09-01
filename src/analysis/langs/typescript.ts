@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import { del, delSpan, replaceNode, type SimplifyOp } from "../simplify";
 import type { DeclarationInfo, LanguageProfile } from "./types";
 
 /**
@@ -153,6 +154,51 @@ function collectInto(node: Node, container: string, out: DeclarationInfo[]): voi
   for (const child of node.namedChildren) collectNode(child, container, out, undefined);
 }
 
+/** TS/TSX 简化器：删除类型位置的语法（标注/泛型/断言/implements），类型别名保留名字桩 */
+export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boolean | void {
+  switch (node.type) {
+    case "type_annotation":
+    case "type_parameters":
+    case "type_arguments":
+    case "implements_clause":
+      ops.push(del(node));
+      return true;
+    case "as_expression":
+    case "satisfies_expression": {
+      // expr as T → expr（不 return true，让嵌套的 as 也被处理）
+      const expr = node.namedChildren[0];
+      if (expr) ops.push(delSpan(expr.endIndex, node.endIndex));
+      return false;
+    }
+    case "non_null_expression": {
+      const expr = node.namedChildren[0];
+      if (expr) ops.push(replaceNode(node, source.slice(expr.startIndex, expr.endIndex)));
+      return true;
+    }
+    case "optional_parameter":
+    case "property_signature":
+    case "method_signature": {
+      for (const c of node.children) {
+        if (c.type === "?" && !c.isNamed) ops.push(del(c));
+      }
+      return false;
+    }
+    case "type_alias_declaration": {
+      // type F = ...; → type F;
+      const name = node.childForFieldName("name");
+      if (name) ops.push({ start: name.endIndex, end: node.endIndex, replacement: ";" });
+      return true;
+    }
+    case "interface_declaration": {
+      // extends 是类型级关系，删除；成员由 property_signature 等规则处理
+      const heritage = node.children.find((c) => c.type === "extends_clause");
+      if (heritage) ops.push(del(heritage));
+      return false;
+    }
+  }
+  return false;
+}
+
 export const typescriptProfile: LanguageProfile = {
   id: "typescript",
   extensions: ["ts", "mts", "cts"],
@@ -162,6 +208,7 @@ export const typescriptProfile: LanguageProfile = {
     collectInto(root, "", out);
     return out;
   },
+  simplify: tsSimplify,
 };
 
 // tsx 语法是超集，可解析 .tsx/.jsx 及纯 JS

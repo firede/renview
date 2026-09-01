@@ -2,6 +2,7 @@ import parseDiff from "parse-diff";
 import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
 import { analyzeFile } from "./analysis/project";
+import { buildSimplifiedRows, simplifySource } from "./analysis/simplify";
 import type { FileEntry, FileStatus } from "./analysis/types";
 import {
   extractPathspecs,
@@ -98,6 +99,19 @@ async function buildFileEntry(
     }
     const { oldLines, newLines } = changedLinesOf(f);
     entry.projection = await analyzeFile(profile, oldSource, newSource, oldLines, newLines);
+    const simplify = profile.simplify;
+    if (simplify) {
+      try {
+        const sp = { grammarFile: profile.grammarFile, simplify };
+        const [oldS, newS] = await Promise.all([
+          oldSource != null ? simplifySource(sp, oldSource) : null,
+          newSource != null ? simplifySource(sp, newSource) : null,
+        ]);
+        entry.simplified = buildSimplifiedRows(f, oldS, newS);
+      } catch {
+        entry.simplified = null;
+      }
+    }
   } catch {
     entry.degradedReason = "parse-error";
   }

@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import type { SimplifyWalker } from "../simplify";
 import type { DeclKind } from "../types";
 
 /** 一个声明级审阅单元（函数 / 类 / 类型 / 变量…） */
@@ -21,4 +22,6 @@ export interface LanguageProfile {
   /** 对应 parser.ts 的 wasm 语法名 */
   grammarFile: string;
   collect(root: Node): DeclarationInfo[];
+  /** 简化器规则；缺省时该语言不生成简化视图 */
+  simplify?: SimplifyWalker;
 }

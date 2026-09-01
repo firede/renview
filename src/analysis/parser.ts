@@ -2,6 +2,7 @@ import { Language, Parser, type Tree } from "web-tree-sitter";
 import treeSitterWasm from "../../wasm/tree-sitter.wasm" with { type: "file" };
 import typescriptWasm from "../../wasm/typescript.wasm" with { type: "file" };
 import tsxWasm from "../../wasm/tsx.wasm" with { type: "file" };
+import rustWasm from "../../wasm/rust.wasm" with { type: "file" };
 
 /**
  * tree-sitter 解析层。
@@ -12,6 +13,7 @@ import tsxWasm from "../../wasm/tsx.wasm" with { type: "file" };
 const GRAMMAR_WASM: Record<string, string> = {
   typescript: typescriptWasm,
   tsx: tsxWasm,
+  rust: rustWasm,
 };
 
 let parserReady: Promise<void> | null = null;

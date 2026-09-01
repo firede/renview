@@ -1,8 +1,9 @@
 import type { LanguageProfile } from "./types";
+import { rustProfile } from "./rust";
 import { typescriptProfile, tsxProfile } from "./typescript";
 
 const byExtension = new Map<string, LanguageProfile>();
-for (const profile of [typescriptProfile, tsxProfile]) {
+for (const profile of [typescriptProfile, tsxProfile, rustProfile]) {
   for (const ext of profile.extensions) byExtension.set(ext, profile);
 }
 

@@ -20,6 +20,7 @@
     "react": "^19",
     "react-diff-view": "^3",
     "react-dom": "^19",
+    "tree-sitter-rust": "^0.24.0",
     "tree-sitter-typescript": "0.23.2",
     "web-tree-sitter": "0.27.0"
   },
