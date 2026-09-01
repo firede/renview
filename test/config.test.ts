@@ -1,0 +1,117 @@
+import { afterAll, describe, expect, test } from "bun:test";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import { join } from "node:path";
+import {
+  configPath,
+  createConfigLoader,
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
+  parseConfigText,
+} from "../src/config";
+
+const tmpdirs: string[] = [];
+
+function makeTmp(): string {
+  const dir = fs.mkdtempSync(join(os.tmpdir(), "renview-config-test-"));
+  tmpdirs.push(dir);
+  return dir;
+}
+
+afterAll(() => {
+  for (const d of tmpdirs) fs.rmSync(d, { recursive: true, force: true });
+});
+
+describe("parseConfigText", () => {
+  test("空配置返回全默认值且无警告", () => {
+    const { config, warnings } = parseConfigText("");
+    expect(config.font.family).toBe(DEFAULT_FONT_FAMILY);
+    expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
+    expect(warnings).toEqual([]);
+  });
+
+  test("font_family 加引号后拼在内置系统栈前", () => {
+    const { config, warnings } = parseConfigText(`font_family = "JetBrains Mono"`);
+    expect(config.font.family).toBe(`"JetBrains Mono", ${DEFAULT_FONT_FAMILY}`);
+    expect(warnings).toEqual([]);
+  });
+
+  test("font_family 支持逗号分隔的字体列表", () => {
+    const { config } = parseConfigText(`font_family = "JetBrains Mono, Sarasa Mono SC"`);
+    expect(config.font.family).toBe(`"JetBrains Mono", "Sarasa Mono SC", ${DEFAULT_FONT_FAMILY}`);
+  });
+
+  test("font_family 剥离引号与反斜杠，防 CSS 注入", () => {
+    const { config } = parseConfigText(`font_family = 'Bad"Name\\\\x'`);
+    expect(config.font.family).toBe(`"BadNamex", ${DEFAULT_FONT_FAMILY}`);
+  });
+
+  test("font_size 生效", () => {
+    const { config, warnings } = parseConfigText(`font_size = 14`);
+    expect(config.font.size).toBe(14);
+    expect(warnings).toEqual([]);
+  });
+
+  test("键类型错误回退默认并产生警告", () => {
+    const { config, warnings } = parseConfigText(`font_family = 42\nfont_size = "大"`);
+    expect(config.font.family).toBe(DEFAULT_FONT_FAMILY);
+    expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
+    expect(warnings).toHaveLength(2);
+  });
+
+  test("font_size 非正数回退默认并警告", () => {
+    const { config, warnings } = parseConfigText(`font_size = 0`);
+    expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
+    expect(warnings).toHaveLength(1);
+  });
+
+  test("TOML 语法错误整体回退默认并警告", () => {
+    const { config, warnings } = parseConfigText(`font_family = "未闭合`);
+    expect(config.font.family).toBe(DEFAULT_FONT_FAMILY);
+    expect(warnings).toHaveLength(1);
+  });
+
+  test("未知键静默忽略（新旧版本互读不报错）", () => {
+    const { config, warnings } = parseConfigText(
+      `appearance = "light"\n[llm]\nprovider = "kimi"`,
+    );
+    expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe("createConfigLoader", () => {
+  test("配置文件不存在时返回全默认且无警告", async () => {
+    const load = createConfigLoader(join(makeTmp(), "nope.toml"));
+    const { config, warnings } = await load();
+    expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
+    expect(warnings).toEqual([]);
+  });
+
+  test("内容未变时复用上次结果（引用相等），变化后重新解析", async () => {
+    const path = join(makeTmp(), "config.toml");
+    fs.writeFileSync(path, `font_size = 13`);
+    const load = createConfigLoader(path);
+
+    const first = await load();
+    expect(first.config.font.size).toBe(13);
+    expect(await load()).toBe(first);
+
+    fs.writeFileSync(path, `font_size = 15`);
+    const second = await load();
+    expect(second).not.toBe(first);
+    expect(second.config.font.size).toBe(15);
+  });
+});
+
+describe("configPath", () => {
+  test("尊重 XDG_CONFIG_HOME", () => {
+    expect(configPath({ XDG_CONFIG_HOME: "/tmp/xdg" })).toBe(
+      join("/tmp/xdg", "renview", "config.toml"),
+    );
+  });
+
+  test("默认落 ~/.config/renview/config.toml", () => {
+    expect(configPath({})).toBe(join(os.homedir(), ".config", "renview", "config.toml"));
+  });
+});

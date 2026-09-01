@@ -6,6 +6,7 @@ import { analyzeParsed, outlineOf, parseSide } from "./analysis/project";
 import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
 import { buildViewRows } from "./analysis/view";
 import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
+import { configPath, createConfigLoader, type LoadedConfig } from "./config";
 import {
   extractPathspecs,
   getDiff,
@@ -26,11 +27,28 @@ const MAX_ANALYZE_BYTES = 500_000;
 
 export async function startServer(root: string, gitArgs: string[], opts: ServerOptions) {
   const diffArgs = await resolveDiffArgs(root, gitArgs);
+
+  // 配置每请求重读（窗口聚焦刷新即生效）；引用相等判断只在内容变化时输出警告
+  const cfgPath = configPath();
+  const getConfig = createConfigLoader(cfgPath);
+  let lastConfig: LoadedConfig = await getConfig();
+  for (const w of lastConfig.warnings) console.error(`配置 ${cfgPath}: ${w}`);
+
+  async function handleConfig(): Promise<Response> {
+    const res = await getConfig();
+    if (res !== lastConfig) {
+      lastConfig = res;
+      for (const w of res.warnings) console.error(`配置 ${cfgPath}: ${w}`);
+    }
+    return Response.json({ ok: true, path: cfgPath, config: res.config });
+  }
+
   return Bun.serve({
     hostname: "127.0.0.1",
     port: opts.port ?? 0,
     async fetch(req) {
       const url = new URL(req.url);
+      if (url.pathname === "/api/config") return handleConfig();
       if (url.pathname === "/api/diff") return handleDiff(root, diffArgs);
       if (url.pathname === "/api/files") return handleFiles(root);
       if (url.pathname === "/api/file") return handleFile(root, url.searchParams.get("path"));

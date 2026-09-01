@@ -7,8 +7,15 @@
   --fg-dim: #8b949e;
   --add: #3fb950;
   --del: #f85149;
-  /* 代码字体唯一 token：未来开放用户配置代码字体时只需覆写此处 */
+  /* 代码字体唯一 token：配置 font_family 即覆写此处；默认值须与 src/config.ts 的 DEFAULT_FONT_FAMILY 保持一致 */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* 代码阅读区字号唯一 token（配置 font_size 覆写）；行高取字号恒定 5/3 倍——任意字号下松紧一致，加法模型（字号+N）在大字号下会显得拥挤 */
+  --font-size-code: 12px;
+  --line-height-code: calc(var(--font-size-code) * 5 / 3);
+  /* 行号字号跟随代码字号（小 1px 保持降权），大字号下行号不失读、不错位 */
+  --font-size-gutter: calc(var(--font-size-code) - 1px);
+  /* 行号栏宽随行号字号联动（默认即 44px），大字号下多位行号不顶格 */
+  --gutter-width: calc(var(--font-size-gutter) * 4);
   /* react-diff-view 的 .diff-line 显式引用该变量，不走 .diff 的继承，须指向同一 token */
   --diff-font-family: var(--font-mono);
 }
@@ -202,24 +209,22 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-code);
   border: none;
 }
 
-/* gutter 几何与简化视图 .srow .gutter 对齐（定宽 44px、11px 字号），切换视图行号不位移 */
+/* gutter 几何与简化视图对齐（栏宽共用 --gutter-width、行号共用 --font-size-gutter），切换视图行号不位移 */
 .diff-gutter-col {
-  width: 44px;
+  width: var(--gutter-width);
 }
 
 .diff-gutter {
   background: var(--bg);
   color: var(--fg-dim);
-  font-size: 11px;
+  font-size: var(--font-size-gutter);
   padding: 0 6px;
-}
-
-.diff-gutter a {
-  color: var(--fg-dim);
+  /* vendor 默认 cursor: pointer（为 gutterAnchor 链接设计），此处行号无交互，恢复默认光标 */
+  cursor: default;
 }
 
 .diff-code {
@@ -325,7 +330,7 @@ body {
 .sview {
   padding: 8px 0 24px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-code);
 }
 
 .srow {
@@ -333,20 +338,21 @@ body {
   align-items: stretch;
 }
 
-.srow .gutter {
-  width: 44px;
+/* gutter 几何三处共用（简化 diff 双 gutter、查看器行、查看器折叠头）：栏宽随字号联动，折叠头摘要与代码列对齐 */
+.gutter {
+  width: var(--gutter-width);
   flex: none;
   text-align: right;
   padding: 0 6px;
   color: var(--fg-dim);
   user-select: none;
-  font-size: 11px;
-  line-height: 20px;
+  font-size: var(--font-size-gutter);
+  line-height: var(--line-height-code);
 }
 
 .scode {
   margin: 0;
-  line-height: 20px;
+  line-height: var(--line-height-code);
   flex: 1;
   white-space: pre;
   /* 元素级声明：UA 的 pre { font-family: monospace } 会压过继承值，泛型 monospace 各引擎解析不定（可落到衬线体） */
@@ -370,7 +376,8 @@ body {
 }
 
 .srow-fold {
-  margin: 3px 0 3px 96px;
+  /* 与双 gutter 行对齐：两个行号栏宽 + 栏间距 */
+  margin: 3px 0 3px calc(var(--gutter-width) * 2 + 8px);
 }
 
 .fold-head {
@@ -380,7 +387,8 @@ body {
   border-radius: 6px;
   padding: 2px 10px;
   cursor: pointer;
-  font-size: 11px;
+  /* 折叠标记在阅读流内而非镀铬：跟随行号字号缩放 */
+  font-size: var(--font-size-gutter);
 }
 
 .fold-head:hover {
@@ -465,7 +473,7 @@ body {
   cursor: pointer;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-code);
   text-align: left;
 }
 
@@ -473,12 +481,8 @@ body {
   color: var(--fg);
 }
 
-.vfold-head .gutter {
-  font-size: 10px;
-}
-
 .vfold-summary {
-  line-height: 20px;
+  line-height: var(--line-height-code);
   font-style: italic;
 }
 
@@ -595,7 +599,7 @@ body {
 
 .diff-code,
 .diff-gutter {
-  line-height: 20px;
+  line-height: var(--line-height-code);
 }
 
 /* 投影态的文件工具条底色：扫一眼即知处于简化视图 */

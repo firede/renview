@@ -322,9 +322,8 @@ function ViewFoldRow({
         id={`R${index}`}
         onClick={() => setOpen(!open)}
       >
-        <span className="gutter">
-          {row.srcRange[0]}–{row.srcRange[1]}
-        </span>
+        {/* gutter 留空：折叠语义由箭头与摘要承担，行号区间可由上下文行号推断（大字号下区间文本必然拥挤） */}
+        <span className="gutter" />
         <span className="vfold-summary">
           {open ? "▾" : "▸"} {row.text}
         </span>

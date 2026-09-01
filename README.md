@@ -16,6 +16,19 @@ renview -p 8080 --no-open  # 指定端口、不自动打开浏览器
 
 界面含「变更 / 浏览」两种模式：变更 = diff 审阅（默认简化视图，可回退原始 diff）；浏览 = 完整文件的只读简化视图（可切源码、声明大纲跳转）。
 
+## 配置
+
+配置文件为 TOML 格式，位置：`$XDG_CONFIG_HOME/renview/config.toml`（默认 `~/.config/renview/config.toml`），Windows 为 `%APPDATA%\renview\config.toml`。
+
+```toml
+# 代码字体：逗号分隔列表，未安装时回落到内置系统等宽栈
+font_family = "JetBrains Mono, Sarasa Mono SC"
+# 代码阅读区字号（px，默认 12），行高随字号联动
+font_size = 13
+```
+
+保存后窗口重新聚焦即生效，无需重启。配置写坏（语法/类型错误）时回退默认值并在终端提示，不影响审阅。
+
 ## 开发
 
 ```bash
