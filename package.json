@@ -1,0 +1,34 @@
+{
+  "name": "renview",
+  "version": "0.1.0",
+  "description": "帮助人类降低认知负担的代码审核工具",
+  "type": "module",
+  "bin": {
+    "renview": "src/cli.ts"
+  },
+  "scripts": {
+    "sync:wasm": "bun run scripts/sync-wasm.ts",
+    "dev": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run --watch src/cli.ts --no-open",
+    "build:web": "vite build",
+    "gen:assets": "bun run scripts/gen-assets.ts",
+    "build": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run scripts/build.ts",
+    "test": "bun run sync:wasm && bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "parse-diff": "0.12.0",
+    "react": "^19",
+    "react-diff-view": "^3",
+    "react-dom": "^19",
+    "tree-sitter-typescript": "0.23.2",
+    "web-tree-sitter": "0.27.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5",
+    "bun-types": "^1",
+    "typescript": "^5",
+    "vite": "^7"
+  }
+}
