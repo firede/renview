@@ -34,6 +34,10 @@ const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   yaml: () => import("shiki/langs/yaml.mjs"),
   markdown: () => import("shiki/langs/markdown.mjs"),
   bash: () => import("shiki/langs/bash.mjs"),
+  css: () => import("shiki/langs/css.mjs"),
+  scss: () => import("shiki/langs/scss.mjs"),
+  sass: () => import("shiki/langs/sass.mjs"),
+  less: () => import("shiki/langs/less.mjs"),
 };
 
 /** 扩展名 → shiki 语言（有 profile 的语言 + 无简化规则但值得高亮的常见格式） */
@@ -61,6 +65,10 @@ const EXT_LANG: Record<string, string> = {
   yml: "yaml",
   md: "markdown",
   markdown: "markdown",
+  css: "css",
+  scss: "scss",
+  sass: "sass",
+  less: "less",
 };
 
 /** 按文件名的特殊映射（无扩展名）；gitignore 类文件无专用语法，用 bash 近似（注释与通配模式均可读） */
