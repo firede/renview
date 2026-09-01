@@ -14,6 +14,8 @@ renview -p 8080 --no-open  # 指定端口、不自动打开浏览器
 
 除 `-p/--port`、`--no-open`、`-h/--help`、`-v/--version` 外，参数原样透传给 `git diff`。
 
+界面含「变更 / 浏览」两种模式：变更 = diff 审阅（默认简化视图，可回退原始 diff）；浏览 = 完整文件的只读简化视图（可切源码、声明大纲跳转）。
+
 ## 开发
 
 ```bash
@@ -23,6 +25,10 @@ bun test                         # 分析层测试
 bun run typecheck
 bun run build                    # 交叉编译全平台单文件二进制到 dist/
 bun run scripts/build.ts --host  # 仅编译本机平台
+
+# 体验（示例变更仓库：math.ts / main.rs 已修改，util.ts 未跟踪）
+bun run scripts/gen-fixture.ts
+(cd test/fixture-repo && bun run ../../src/cli.ts)
 ```
 
 ## 决策记录
