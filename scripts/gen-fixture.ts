@@ -45,13 +45,38 @@ const untracked = `export function square(n: number): number {
 }
 `;
 
+const rustBase = `use std::collections::HashMap;
+
+pub fn tally<'a, I: Iterator<Item = &'a str>>(words: I) -> HashMap<&'a str, u32> {
+    let mut counts: HashMap<&'a str, u32> = HashMap::new();
+    for word in words {
+        *counts.entry(word).or_insert(0u32) += 1;
+    }
+    counts
+}
+`;
+
+// 类型大量变化（u32 → usize）+ 一处真实逻辑变化（+= 1 → += 2）
+const rustChanged = `use std::collections::HashMap;
+
+pub fn tally<'a, I: Iterator<Item = &'a str>>(words: I) -> HashMap<&'a str, usize> {
+    let mut counts: HashMap<&'a str, usize> = HashMap::new();
+    for word in words {
+        *counts.entry(word).or_insert(0usize) += 2;
+    }
+    counts
+}
+`;
+
 mkdirSync(dir, { recursive: true });
 await $`git -C ${dir} init -q`;
 await $`git -C ${dir} config user.email fixture@renview.local`;
 await $`git -C ${dir} config user.name fixture`;
 writeFileSync(`${dir}/math.ts`, base);
+writeFileSync(`${dir}/main.rs`, rustBase);
 await $`git -C ${dir} add .`;
 await $`git -C ${dir} commit -qm base`;
 writeFileSync(`${dir}/math.ts`, changed);
+writeFileSync(`${dir}/main.rs`, rustChanged);
 writeFileSync(`${dir}/util.ts`, untracked);
-console.log(`${dir} 已生成（math.ts 已修改，util.ts 未跟踪）`);
+console.log(`${dir} 已生成（math.ts / main.rs 已修改，util.ts 未跟踪）`);
