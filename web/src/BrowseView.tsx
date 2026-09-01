@@ -50,6 +50,8 @@ export function BrowseView({
   const [showSource, setShowSource] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scrollTo, setScrollTo] = useState<number | null>(jump?.line ?? null);
+  /** 跳转目标的源码行范围（用于闪烁提示）；[start, end]，1-based */
+  const [flash, setFlash] = useState<[number, number] | null>(null);
 
   const loadFiles = useCallback(async () => {
     try {
@@ -103,6 +105,7 @@ export function BrowseView({
     if (data && scrollTo != null) {
       const anchor = viewAnchor(data, scrollTo, showSource);
       if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "center" });
+      flashRange([scrollTo, scrollTo]);
       setScrollTo(null);
     }
   }, [data, scrollTo, showSource]);
@@ -114,10 +117,18 @@ export function BrowseView({
     return idx == null ? null : `R${idx}`;
   }
 
-  const scrollToLine = (ln: number) => {
+  /** 闪烁提示一段源码行范围（跳转目标的视觉反馈） */
+  function flashRange(range: [number, number]) {
+    setFlash(range);
+    setTimeout(() => setFlash((cur) => (cur === range ? null : cur)), 1700);
+  }
+
+  /** 大纲点击：滚动到声明并闪烁其行范围 */
+  const jumpToRange = (range: [number, number]) => {
     if (!data) return;
-    const anchor = viewAnchor(data, ln, showSource);
+    const anchor = viewAnchor(data, range[0], showSource);
     if (anchor) document.getElementById(anchor)?.scrollIntoView();
+    flashRange(range);
   };
 
   const visible = useMemo(() => {
@@ -202,7 +213,7 @@ export function BrowseView({
                     key={`${o.container}/${o.name}/${i}`}
                     className={`outline-item${o.typeLevel ? " type-level" : ""}`}
                     title={`${o.kind}${o.container ? ` · ${o.container}` : ""}`}
-                    onClick={() => scrollToLine(o.range[0])}
+                    onClick={() => jumpToRange(o.range)}
                   >
                     {o.name}
                   </button>
@@ -216,9 +227,19 @@ export function BrowseView({
               <div className="sview">
                 {data.view.map((r, i) =>
                   r.kind === "fold" ? (
-                    <ViewFoldRow key={i} row={r} index={i} lang={lang} />
+                    <ViewFoldRow
+                      key={i}
+                      row={r}
+                      index={i}
+                      lang={lang}
+                      flash={flash != null && r.srcRange[1] >= flash[0] && r.srcRange[0] <= flash[1]}
+                    />
                   ) : (
-                    <div key={i} id={`R${i}`} className="srow ctx">
+                    <div
+                      key={i}
+                      id={`R${i}`}
+                      className={`srow ctx${flash && r.src >= flash[0] && r.src <= flash[1] ? " flash" : ""}`}
+                    >
                       <span className="gutter">{r.src}</span>
                       <pre className="scode">
                         {tokens?.[r.src - 1] ? (
@@ -236,7 +257,11 @@ export function BrowseView({
             ) : data && data.source != null ? (
               <div className="sview">
                 {lines.map((t, i) => (
-                  <div key={i} id={`L${i + 1}`} className="srow ctx">
+                  <div
+                    key={i}
+                    id={`L${i + 1}`}
+                    className={`srow ctx${flash && i + 1 >= flash[0] && i + 1 <= flash[1] ? " flash" : ""}`}
+                  >
                     <span className="gutter">{i + 1}</span>
                     <pre className="scode">
                       {tokens?.[i] ? <TokenSpans tokens={tokens[i]!} /> : t === "" ? " " : t}
@@ -257,17 +282,23 @@ function ViewFoldRow({
   row,
   index,
   lang,
+  flash,
 }: {
   row: Extract<ViewRow, { kind: "fold" }>;
   index: number;
   lang: string | null;
+  flash: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // 展开时才高亮原文（惰性）；原文是连续源码切片，脱离上下文高亮可能有轻微断色
   const foldTokens = useHighlightedLines(open ? row.original.join("\n") : null, lang);
   return (
     <div className="vfold">
-      <button className="vfold-head" id={`R${index}`} onClick={() => setOpen(!open)}>
+      <button
+        className={`vfold-head${flash ? " flash" : ""}`}
+        id={`R${index}`}
+        onClick={() => setOpen(!open)}
+      >
         <span className="gutter">
           {row.srcRange[0]}–{row.srcRange[1]}
         </span>

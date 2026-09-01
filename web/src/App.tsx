@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseDiff, Diff, Hunk, type FileData, type ViewType } from "react-diff-view";
 import type { ChangeKind, FileEntry } from "../../src/analysis/types";
 import { BrowseView, type JumpTarget } from "./BrowseView";
@@ -100,6 +100,14 @@ export function App() {
     () => (payload?.ok && payload.diff ? parseDiff(payload.diff) : []),
     [payload],
   );
+  // 首次加载时若无任何变更，默认进入浏览模式（diff 审阅无内容可看）
+  const firstLoaded = useRef(false);
+  useEffect(() => {
+    if (!payload?.ok || firstLoaded.current) return;
+    firstLoaded.current = true;
+    if (files.length === 0) setMode("browse");
+  }, [payload, files.length]);
+
   // 服务端 files 与前端 parseDiff 解析同一文本，顺序一致，按下标对应
   const entries = payload?.files ?? [];
 
@@ -130,17 +138,17 @@ export function App() {
     <div className="layout">
       <header className="topbar">
         <span className="brand">renview</span>
-        <span className="repo" title={payload.repoRoot}>
-          {payload.repoRoot}
-        </span>
-        <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
-        <span className="spacer" />
         <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
           变更
         </button>
         <button className={mode === "browse" ? "active" : ""} onClick={() => setMode("browse")}>
           浏览
         </button>
+        <span className="repo" title={payload.repoRoot}>
+          {payload.repoRoot}
+        </span>
+        <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
+        <span className="spacer" />
         {mode === "review" && (
           <>
             <span className="totals">

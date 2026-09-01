@@ -76,6 +76,35 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[]): voi
   }
 }
 
+/** 截断文本但不切断字符串字面量（未闭合引号会把后续行高亮成字符串色） */
+function truncateSafe(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  let inStr: string | null = null;
+  let strStart = -1;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inStr) {
+      if (ch === "\\" && inStr !== "`") escaped = true; // 反引号是 Go 原始字符串，无转义
+      else if (ch === inStr) inStr = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      inStr = ch;
+      strStart = i;
+      continue;
+    }
+    if (i >= limit) return `${text.slice(0, i)}…`;
+  }
+  // limit 落在字符串内：从字符串起点前截断
+  if (inStr && strStart > 0) return `${text.slice(0, strStart)}…`;
+  return `${text.slice(0, limit)}…`;
+}
+
 /**
  * `if err != nil { return … }`（无初始化语句、函数体仅一条 return）→ 单行标记；否则 null。
  * 返回值为 nil/err 之外的内容时保留其文本（fmt.Errorf 的包装信息是业务定位信息）。
@@ -96,8 +125,7 @@ function errCheckMarker(node: Node, source: string): string | null {
   const returned = stmts[0]!.namedChildren[0]?.text.trim() ?? "";
   const trivial = returned === "" || returned.split(",").every((s) => ["nil", "err"].includes(s.trim()));
   if (trivial) return "if err: return";
-  const tail = returned.length > 60 ? `${returned.slice(0, 57)}…` : returned;
-  return `if err: return ${tail}`;
+  return `if err: return ${truncateSafe(returned, 60)}`;
 }
 
 /** Go 简化器：类型位置擦除 + `if err != nil { return }` 错误传播折叠为单行标记 */

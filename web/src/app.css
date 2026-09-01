@@ -466,3 +466,30 @@ body {
   line-height: 20px;
   font-style: italic;
 }
+
+/* tab 按 4 格渲染（Go 等 tab 缩进语言的可读性） */
+.scode,
+.diff-code {
+  tab-size: 4;
+}
+
+/* 大纲限高滚动（避免长文件的大纲占满屏幕） */
+.outline {
+  max-height: 84px;
+  overflow-y: auto;
+}
+
+/* 跳转目标的范围提示（闪烁一次后消退） */
+@keyframes flash-range {
+  from {
+    background: rgba(31, 111, 235, 0.28);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.srow.flash,
+.vfold-head.flash {
+  animation: flash-range 1.6s ease-out;
+}

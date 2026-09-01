@@ -80,6 +80,21 @@ func NewServer(addr string, opts ...Option) *Server {
     expect(out[2]).toBe("");
   });
 
+  test("if err 折叠截断不切断字符串字面量（未闭合引号会破坏高亮）", async () => {
+    const src = `func run() error {
+	if err != nil {
+		return &exitStatusError{code: 1, msg: fmt.Sprintf("doctor failed: %v and then some more text here", err)}
+	}
+	return nil
+}
+`;
+    const out = await simplify(goProfile, src);
+    const line = out[1]!;
+    expect(line.startsWith("\tif err: return")).toBe(true);
+    expect(line.endsWith("…")).toBe(true);
+    expect((line.match(/"/g) ?? []).length % 2).toBe(0); // 引号必须成对
+  });
+
   test("结构体字段类型擦除但 tag 保留（tag 是线协议）", async () => {
     const src = `type Server struct {
 	addr string \`json:"addr"\`
