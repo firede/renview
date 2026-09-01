@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ViewerFile, ViewRow } from "../../src/analysis/types";
 import { rowIndexOfLine } from "../../src/analysis/view";
+import { FileTree } from "./FileTree";
 import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 
 interface FilesPayload {
@@ -161,22 +162,29 @@ export function BrowseView({
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-        {visible.map((f) => {
-          const { dir, base } = splitPath(f);
-          return (
-            <button
-              key={f}
-              className={`file-item ${f === path ? "selected" : ""}`}
-              onClick={() => setPath(f)}
-            >
-              <span className="file-path" title={f}>
-                {dir && <span className="file-dir">{dir}</span>}
-                <span className="file-base">{base}</span>
-              </span>
-            </button>
-          );
-        })}
-        {files && visible.length === 0 && <div className="dim pad note">无匹配文件</div>}
+        {filter.trim() ? (
+          // 过滤时退回平铺列表（匹配结果本就稀疏）
+          <>
+            {visible.map((f) => {
+              const { dir, base } = splitPath(f);
+              return (
+                <button
+                  key={f}
+                  className={`file-item ${f === path ? "selected" : ""}`}
+                  onClick={() => setPath(f)}
+                >
+                  <span className="file-path" title={f}>
+                    {dir && <span className="file-dir">{dir}</span>}
+                    <span className="file-base">{base}</span>
+                  </span>
+                </button>
+              );
+            })}
+            {files && visible.length === 0 && <div className="dim pad note">无匹配文件</div>}
+          </>
+        ) : (
+          files && <FileTree paths={files} selected={path} onSelect={setPath} />
+        )}
       </aside>
       <main className="content">
         {!path && <div className="center-note">选择一个文件开始浏览</div>}

@@ -493,3 +493,46 @@ body {
 .vfold-head.flash {
   animation: flash-range 1.6s ease-out;
 }
+
+/* 跳转定位时避开 sticky 文件工具条（否则目标行被盖住） */
+.srow,
+.vfold-head {
+  scroll-margin-top: 48px;
+}
+
+/* 浏览模式目录树 */
+.file-tree {
+  padding: 4px 0;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tree-row:hover {
+  background: var(--bg-raised);
+}
+
+.tree-dir {
+  color: var(--fg-dim);
+}
+
+.tree-dir:hover {
+  color: var(--fg);
+}
+
+.tree-file.selected {
+  background: #1f6feb22;
+  box-shadow: inset 2px 0 0 #1f6feb;
+}
