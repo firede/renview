@@ -5,4 +5,5 @@ src/webassets.gen.ts
 wasm/
 test/fixture-repo/
 .corpus/
+.wasm-build/
 *.log

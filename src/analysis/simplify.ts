@@ -43,6 +43,12 @@ export function stripColonType(node: Node, ops: SimplifyOp[]): void {
   }
 }
 
+/** 删除 [start, end) 并吞掉紧邻的前导空白（"addr string" 擦除类型 → "addr"，不留空格） */
+export function delSwallowingLeadingSpace(start: number, end: number, source: string): SimplifyOp {
+  while (start > 0 && (source[start - 1] === " " || source[start - 1] === "\t")) start--;
+  return { start, end };
+}
+
 /** 删除函数返回类型（rust: 连同前面的 `->` 一起） */
 export function stripReturnType(node: Node, ops: SimplifyOp[]): void {
   const ret = node.childForFieldName("return_type");
@@ -76,7 +82,12 @@ export function applySimplify(source: string, ops: SimplifyOp[]): string[] {
     const le = ls + lines[li]!.length; // 不含换行符
     const lineOps = accepted
       .filter((op) => op.start < le && op.end > ls)
-      .map((op) => ({ ...op, start: Math.max(op.start, ls), end: Math.min(op.end, le) }));
+      .map((op) => ({
+        start: Math.max(op.start, ls),
+        end: Math.min(op.end, le),
+        // 跨行 op 的替换文本只落在起始行，后续行纯删除
+        replacement: op.start >= ls ? op.replacement : undefined,
+      }));
     if (lineOps.length === 0) {
       out.push(lines[li]!);
       continue;

@@ -1,9 +1,11 @@
 import type { LanguageProfile } from "./types";
+import { gdscriptProfile } from "./gdscript";
+import { goProfile } from "./go";
 import { rustProfile } from "./rust";
 import { typescriptProfile, tsxProfile } from "./typescript";
 
 const byExtension = new Map<string, LanguageProfile>();
-for (const profile of [typescriptProfile, tsxProfile, rustProfile]) {
+for (const profile of [typescriptProfile, tsxProfile, rustProfile, goProfile, gdscriptProfile]) {
   for (const ext of profile.extensions) byExtension.set(ext, profile);
 }
 

@@ -23,6 +23,8 @@ const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   tsx: () => import("shiki/langs/tsx.mjs"),
   javascript: () => import("shiki/langs/javascript.mjs"),
   rust: () => import("shiki/langs/rust.mjs"),
+  go: () => import("shiki/langs/go.mjs"),
+  gdscript: () => import("shiki/langs/gdscript.mjs"),
 };
 
 /** 按文件扩展名映射 shiki 语言；无映射返回 null（不高亮，纯文本渲染） */
@@ -44,6 +46,10 @@ export function shikiLangForPath(path: string | null | undefined): string | null
       return "tsx";
     case "rs":
       return "rust";
+    case "go":
+      return "go";
+    case "gd":
+      return "gdscript";
     default:
       return null;
   }
