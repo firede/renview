@@ -1,14 +1,16 @@
+import { resolve, sep } from "node:path";
 import parseDiff from "parse-diff";
 import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
-import { analyzeParsed, parseSide } from "./analysis/project";
+import { analyzeParsed, outlineOf, parseSide } from "./analysis/project";
 import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
-import type { FileEntry, FileStatus } from "./analysis/types";
+import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
 import {
   extractPathspecs,
   getDiff,
   getSideContent,
   getUntrackedDiff,
+  listFiles,
   resolveDiffArgs,
   resolveSides,
 } from "./git";
@@ -29,6 +31,8 @@ export async function startServer(root: string, gitArgs: string[], opts: ServerO
     async fetch(req) {
       const url = new URL(req.url);
       if (url.pathname === "/api/diff") return handleDiff(root, diffArgs);
+      if (url.pathname === "/api/files") return handleFiles(root);
+      if (url.pathname === "/api/file") return handleFile(root, url.searchParams.get("path"));
       return serveStatic(url.pathname);
     },
   });
@@ -60,6 +64,73 @@ async function handleDiff(root: string, diffArgs: string[]): Promise<Response> {
       { status: 500 },
     );
   }
+}
+
+async function handleFiles(root: string): Promise<Response> {
+  try {
+    return Response.json({ ok: true, files: await listFiles(root) });
+  } catch (e) {
+    return Response.json(
+      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
+}
+
+/** 查看器路径安全检查：拒绝绝对路径、.. 穿越与 .git，必须落在仓库内 */
+function safeRepoPath(root: string, path: string): string | null {
+  const parts = path.split(/[\\/]/);
+  if (
+    path.startsWith("/") ||
+    /^[A-Za-z]:/.test(path) ||
+    parts.some((p) => p === ".." || p === ".git")
+  ) {
+    return null;
+  }
+  const abs = resolve(root, path);
+  return abs.startsWith(root + sep) ? abs : null;
+}
+
+/** 查看器单文件：worktree 内容 + 一次 parse 产出大纲与简化行 */
+async function handleFile(root: string, path: string | null): Promise<Response> {
+  if (!path) return Response.json({ ok: false, error: "缺少 path 参数" }, { status: 400 });
+  const abs = safeRepoPath(root, path);
+  if (!abs) return Response.json({ ok: false, error: "非法路径" }, { status: 400 });
+
+  const f = Bun.file(abs);
+  if (!(await f.exists())) {
+    return Response.json({ ok: false, error: "文件不存在" }, { status: 404 });
+  }
+
+  const file: ViewerFile = { path, language: null, source: null, simplified: null, outline: [] };
+  const profile = profileForPath(path);
+  file.language = profile?.id ?? null;
+
+  // 头部含 NUL 即视为二进制，不返回内容
+  const head = new Uint8Array(await f.slice(0, 8192).arrayBuffer());
+  if (head.includes(0)) {
+    file.degradedReason = "binary";
+    return Response.json({ ok: true, file });
+  }
+
+  const source = await f.text();
+  file.source = source;
+  if (!profile) {
+    file.degradedReason = "no-profile";
+    return Response.json({ ok: true, file });
+  }
+  if (source.length > MAX_ANALYZE_BYTES) {
+    file.degradedReason = "too-large";
+    return Response.json({ ok: true, file });
+  }
+  try {
+    const side = await parseSide(profile, source);
+    file.outline = outlineOf(profile, side.tree);
+    if (profile.simplify) file.simplified = simplifyTree(side.tree, source, profile.simplify);
+  } catch {
+    file.degradedReason = "parse-error";
+  }
+  return Response.json({ ok: true, file });
 }
 
 async function buildFileEntry(

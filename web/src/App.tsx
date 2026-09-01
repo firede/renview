@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseDiff, Diff, Hunk, type FileData, type ViewType } from "react-diff-view";
 import type { ChangeKind, FileEntry } from "../../src/analysis/types";
+import { BrowseView, type JumpTarget } from "./BrowseView";
 import { SimplifiedView } from "./SimplifiedView";
 
 interface DiffPayload {
@@ -40,6 +41,13 @@ function splitPath(p: string): { dir: string; base: string } {
   return i >= 0 ? { dir: p.slice(0, i + 1), base: p.slice(i + 1) } : { dir: "", base: p };
 }
 
+/** 跳转到查看器时的定位行：优先简化视图首个变更行，其次首个有新侧区间的单元 */
+function viewerLineOf(entry: FileEntry | null): number {
+  const row = entry?.simplified?.rows.find((r) => r.kind !== "fold" && r.newLn != null);
+  if (row && row.kind !== "fold" && row.newLn != null) return row.newLn;
+  return entry?.projection?.units.find((u) => u.newRange)?.newRange?.[0] ?? 1;
+}
+
 function fileStats(f: FileData): { adds: number; dels: number } {
   let adds = 0;
   let dels = 0;
@@ -58,6 +66,14 @@ export function App() {
   const [selected, setSelected] = useState<number>(0);
   const [viewType, setViewType] = useState<ViewType>("unified");
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<"review" | "browse">("review");
+  const [jump, setJump] = useState<JumpTarget | null>(null);
+
+  // 从 diff 跳转查看器：打开该文件完整简化视图并定位到首个变更行（hunk 外上下文由查看器承接）
+  const openInViewer = (path: string) => {
+    setJump({ path, line: viewerLineOf(selectedEntry) });
+    setMode("browse");
+  };
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -116,27 +132,39 @@ export function App() {
         </span>
         <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
         <span className="spacer" />
-        <span className="totals">
-          {files.length} 个文件 <em className="add">+{totals.adds}</em>{" "}
-          <em className="del">−{totals.dels}</em>
-        </span>
-        <button
-          className={viewType === "unified" ? "active" : ""}
-          onClick={() => setViewType("unified")}
-        >
-          单列
+        <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
+          变更
         </button>
-        <button
-          className={viewType === "split" ? "active" : ""}
-          onClick={() => setViewType("split")}
-        >
-          双列
+        <button className={mode === "browse" ? "active" : ""} onClick={() => setMode("browse")}>
+          浏览
         </button>
-        <button onClick={() => void load()} disabled={refreshing}>
-          {refreshing ? "刷新中…" : "刷新"}
-        </button>
+        {mode === "review" && (
+          <>
+            <span className="totals">
+              {files.length} 个文件 <em className="add">+{totals.adds}</em>{" "}
+              <em className="del">−{totals.dels}</em>
+            </span>
+            <button
+              className={viewType === "unified" ? "active" : ""}
+              onClick={() => setViewType("unified")}
+            >
+              单列
+            </button>
+            <button
+              className={viewType === "split" ? "active" : ""}
+              onClick={() => setViewType("split")}
+            >
+              双列
+            </button>
+            <button onClick={() => void load()} disabled={refreshing}>
+              {refreshing ? "刷新中…" : "刷新"}
+            </button>
+          </>
+        )}
       </header>
-      {files.length === 0 ? (
+      {mode === "browse" ? (
+        <BrowseView jump={jump} onJumpDone={() => setJump(null)} />
+      ) : files.length === 0 ? (
         <div className="center-note">没有检测到变更</div>
       ) : (
         <div className="body">
@@ -186,6 +214,11 @@ export function App() {
               <>
                 <div className="file-toolbar">
                   <span className="file-title">{selectedFile.newPath}</span>
+                  {selectedFile.newPath !== "/dev/null" && (
+                    <button onClick={() => openInViewer(selectedFile.newPath)}>
+                      在查看器中打开
+                    </button>
+                  )}
                   {selectedEntry?.degradedReason && (
                     <span className="dim">
                       已退回原始 diff（{DEGRADE_LABEL[selectedEntry.degradedReason]}）

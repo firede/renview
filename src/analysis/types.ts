@@ -59,3 +59,15 @@ export interface FileEntry {
   /** 无投影（退回原始 diff）的原因 */
   degradedReason?: "no-profile" | "parse-error" | "too-large" | "no-source";
 }
+
+/** 查看器单文件响应 */
+export interface ViewerFile {
+  path: string;
+  language: string | null;
+  /** 源码全文；二进制时为 null */
+  source: string | null;
+  /** 简化行（与 source 1:1 对齐）；无简化规则或失败为 null */
+  simplified: string[] | null;
+  outline: OutlineItem[];
+  degradedReason?: "no-profile" | "parse-error" | "too-large" | "binary";
+}

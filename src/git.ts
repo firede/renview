@@ -42,6 +42,19 @@ export async function listUntracked(root: string, pathspecs: string[]): Promise<
     .filter((l) => l.length > 0);
 }
 
+/** 列出仓库全部文件（已跟踪 + 未跟踪，尊重 gitignore），供查看器浏览 */
+export async function listFiles(root: string): Promise<string[]> {
+  const r = await $`git -C ${root} ls-files --cached --others --exclude-standard`
+    .quiet()
+    .nothrow();
+  if (r.exitCode !== 0) throw new Error(`git ls-files 失败: ${r.stderr.toString().trim()}`);
+  return r
+    .text()
+    .split("\n")
+    .filter((l) => l.length > 0)
+    .sort();
+}
+
 /** 为 untracked 文件合成 new-file 风格的 unified diff（git diff 本身不含 untracked） */
 export async function getUntrackedDiff(root: string, pathspecs: string[]): Promise<string> {
   const files = await listUntracked(root, pathspecs);
