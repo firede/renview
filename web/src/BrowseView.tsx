@@ -152,6 +152,18 @@ export function BrowseView({
 
   const hasSimplified = data?.simplified != null;
 
+  // S 键在简化与源码间切换（输入框聚焦时不生效）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "s" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (hasSimplified) setShowSource((v) => !v);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hasSimplified]);
+
   return (
     <div className="body">
       <aside className="sidebar">
@@ -191,7 +203,7 @@ export function BrowseView({
         {!path && <div className="center-note">选择一个文件开始浏览</div>}
         {path && (
           <>
-            <div className="file-toolbar">
+            <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
               <span className="file-title">{path}</span>
               {loading && <span className="dim">加载中…</span>}
               {data?.degradedReason && (
@@ -201,12 +213,14 @@ export function BrowseView({
               {hasSimplified && (
                 <span className="seg">
                   <button
+                    title="快捷键 S"
                     className={!showSource ? "active" : ""}
                     onClick={() => setShowSource(false)}
                   >
                     简化
                   </button>
                   <button
+                    title="快捷键 S"
                     className={showSource ? "active" : ""}
                     onClick={() => setShowSource(true)}
                   >

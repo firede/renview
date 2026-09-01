@@ -131,6 +131,18 @@ export function App() {
   // 仅在展示原始 diff 时计算高亮 tokens（懒加载 shiki，完成前纯文本渲染）
   const diffTokens = useDiffTokens(selectedFile && showRaw ? selectedFile : null);
 
+  // S 键在简化与原始 diff 间切换（输入框聚焦时不生效）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "s" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (mode === "review" && hasSimplified) setRawOverride(!showRaw);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, hasSimplified, showRaw]);
+
   if (!payload) return <div className="center-note">加载中…</div>;
   if (!payload.ok) return <div className="center-note error">出错了：{payload.error}</div>;
 
@@ -156,20 +168,6 @@ export function App() {
             <span className="totals">
               {files.length} 个文件 <em className="add">+{totals.adds}</em>{" "}
               <em className="del">−{totals.dels}</em>
-            </span>
-            <span className="seg">
-              <button
-                className={viewType === "unified" ? "active" : ""}
-                onClick={() => setViewType("unified")}
-              >
-                单列
-              </button>
-              <button
-                className={viewType === "split" ? "active" : ""}
-                onClick={() => setViewType("split")}
-              >
-                双列
-              </button>
             </span>
             <button onClick={() => void load()} disabled={refreshing}>
               {refreshing ? "刷新中…" : "刷新"}
@@ -227,7 +225,7 @@ export function App() {
           <main className="content">
             {selectedFile && (
               <>
-                <div className="file-toolbar">
+                <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
                   <span className="file-title">{selectedFile.newPath}</span>
                   {selectedFile.newPath !== "/dev/null" && (
                     <button onClick={() => openInViewer(selectedFile.newPath)}>
@@ -247,16 +245,34 @@ export function App() {
                   {hasSimplified && (
                     <span className="seg">
                       <button
+                        title="快捷键 S"
                         className={!showRaw ? "active" : ""}
                         onClick={() => setRawOverride(false)}
                       >
                         简化
                       </button>
                       <button
+                        title="快捷键 S"
                         className={showRaw ? "active" : ""}
                         onClick={() => setRawOverride(true)}
                       >
                         原始 diff
+                      </button>
+                    </span>
+                  )}
+                  {showRaw && (
+                    <span className="seg">
+                      <button
+                        className={viewType === "unified" ? "active" : ""}
+                        onClick={() => setViewType("unified")}
+                      >
+                        单列
+                      </button>
+                      <button
+                        className={viewType === "split" ? "active" : ""}
+                        onClick={() => setViewType("split")}
+                      >
+                        双列
                       </button>
                     </span>
                   )}

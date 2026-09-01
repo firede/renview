@@ -568,3 +568,23 @@ body {
   color: var(--fg);
   box-shadow: inset 0 0 0 1px var(--border);
 }
+
+/* 简化视图与原始 diff 的垂直节奏对齐（切换视图不产生位移） */
+.sview {
+  padding: 0 0 24px;
+}
+
+.diff {
+  margin-bottom: 24px;
+}
+
+.diff-code,
+.diff-gutter {
+  line-height: 20px;
+}
+
+/* 投影态的文件工具条底色：扫一眼即知处于简化视图 */
+.file-toolbar.projected {
+  background: #1c2634;
+  border-bottom-color: #1f6feb66;
+}
