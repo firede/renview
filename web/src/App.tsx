@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseDiff, Diff, Hunk, type FileData, type ViewType } from "react-diff-view";
 import type { ChangeKind, FileEntry } from "../../src/analysis/types";
-import { ProjectionView } from "./ProjectionView";
+import { SimplifiedView } from "./SimplifiedView";
 
 interface DiffPayload {
   ok: boolean;
@@ -21,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const DEGRADE_LABEL: Record<string, string> = {
-  "no-profile": "该语言暂无投影",
+  "no-profile": "该语言暂无简化规则",
   "parse-error": "解析失败",
   "too-large": "文件过大",
   "no-source": "无法读取文件内容",
@@ -104,8 +104,8 @@ export function App() {
   if (!payload) return <div className="center-note">加载中…</div>;
   if (!payload.ok) return <div className="center-note error">出错了：{payload.error}</div>;
 
-  const hasProjection = selectedEntry?.projection != null;
-  const showRaw = rawOverride ?? !hasProjection;
+  const hasSimplified = selectedEntry?.simplified != null;
+  const showRaw = rawOverride ?? !hasSimplified;
 
   return (
     <div className="layout">
@@ -191,14 +191,17 @@ export function App() {
                       已退回原始 diff（{DEGRADE_LABEL[selectedEntry.degradedReason]}）
                     </span>
                   )}
+                  {!showRaw && selectedEntry?.simplified && selectedEntry.simplified.stats.folded > 0 && (
+                    <span className="dim">已折叠 {selectedEntry.simplified.stats.folded} 行</span>
+                  )}
                   <span className="spacer" />
-                  {hasProjection && (
+                  {hasSimplified && (
                     <>
                       <button
                         className={!showRaw ? "active" : ""}
                         onClick={() => setRawOverride(false)}
                       >
-                        投影
+                        简化
                       </button>
                       <button
                         className={showRaw ? "active" : ""}
@@ -209,8 +212,8 @@ export function App() {
                     </>
                   )}
                 </div>
-                {!showRaw && selectedEntry?.projection ? (
-                  <ProjectionView projection={selectedEntry.projection} />
+                {!showRaw && selectedEntry?.simplified ? (
+                  <SimplifiedView data={selectedEntry.simplified} />
                 ) : (
                   <Diff
                     key={`${selectedFile.oldPath}→${selectedFile.newPath}`}
