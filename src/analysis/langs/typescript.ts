@@ -1,6 +1,6 @@
 import type { Node } from "web-tree-sitter";
 import { del, delSpan, replaceNode, type SimplifyOp } from "../simplify";
-import type { DeclarationInfo, LanguageProfile } from "./types";
+import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
 /**
  * TypeScript/TSX profile。
@@ -154,8 +154,13 @@ function collectInto(node: Node, container: string, out: DeclarationInfo[]): voi
   for (const child of node.namedChildren) collectNode(child, container, out, undefined);
 }
 
-/** TS/TSX 简化器：删除类型位置的语法（标注/泛型/断言/implements），类型别名保留名字桩 */
+/** TS/TSX 简化器：删除类型位置的语法（标注/泛型/断言/implements）与空值安全机制（?.），类型别名保留名字桩 */
 export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boolean | void {
+  // a?.b → a.b；a?.() / a?.[i] → a() / a[i]（可选链是空值安全机制，按语义安全线擦除）
+  const optionalChain = node.childForFieldName("optional_chain");
+  if (optionalChain) {
+    ops.push(node.type === "member_expression" ? replaceNode(optionalChain, ".") : del(optionalChain));
+  }
   switch (node.type) {
     case "type_annotation":
     case "type_parameters":
@@ -199,6 +204,52 @@ export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
   return false;
 }
 
+/* ---- 顶层块折叠（查看器）：imports 与类型级声明压缩为单行摘要 ---- */
+
+/** 透视 export / declare 包装节点 */
+function unwrapDecl(node: Node): Node {
+  if (node.type === "export_statement" || node.type === "ambient_declaration") {
+    const inner = node.namedChildren.find((c) => c.type !== "comment");
+    if (inner) return inner;
+  }
+  return node;
+}
+
+function tsFoldKind(node: Node): FoldKind | null {
+  const n = unwrapDecl(node);
+  if (n.type === "import_statement") return "import";
+  if (
+    n.type === "interface_declaration" ||
+    n.type === "type_alias_declaration" ||
+    n.type === "enum_declaration"
+  ) {
+    return "type-decl";
+  }
+  return null;
+}
+
+function tsFoldSummary(kind: FoldKind, nodes: Node[]): string {
+  if (kind === "import") {
+    const mods = nodes.map((n) => {
+      const s = unwrapDecl(n).childForFieldName("source");
+      return s?.namedChildren[0]?.text ?? s?.text.replace(/^['"]|['"]$/g, "") ?? "?";
+    });
+    const shown = mods.slice(0, 4).join("、");
+    return `import × ${nodes.length}（${shown}${mods.length > 4 ? "…" : ""}）`;
+  }
+  const n = unwrapDecl(nodes[0]!);
+  const name = nameOf(n);
+  if (n.type === "type_alias_declaration") return `type ${name}`;
+  const keyword = n.type === "enum_declaration" ? "enum" : "interface";
+  const members = (n.childForFieldName("body")?.namedChildren ?? [])
+    .map(
+      (c) =>
+        c.childForFieldName("name")?.text ?? (c.type === "property_identifier" ? c.text : null),
+    )
+    .filter((x): x is string => x != null);
+  return members.length > 0 ? `${keyword} ${name} { ${nameList(members)} }` : `${keyword} ${name}`;
+}
+
 export const typescriptProfile: LanguageProfile = {
   id: "typescript",
   extensions: ["ts", "mts", "cts"],
@@ -209,6 +260,8 @@ export const typescriptProfile: LanguageProfile = {
     return out;
   },
   simplify: tsSimplify,
+  foldKind: tsFoldKind,
+  foldSummary: tsFoldSummary,
 };
 
 // tsx 语法是超集，可解析 .tsx/.jsx 及纯 JS

@@ -4,6 +4,7 @@ import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
 import { analyzeParsed, outlineOf, parseSide } from "./analysis/project";
 import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
+import { buildViewRows } from "./analysis/view";
 import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
 import {
   extractPathspecs,
@@ -102,7 +103,14 @@ async function handleFile(root: string, path: string | null): Promise<Response> 
     return Response.json({ ok: false, error: "文件不存在" }, { status: 404 });
   }
 
-  const file: ViewerFile = { path, language: null, source: null, simplified: null, outline: [] };
+  const file: ViewerFile = {
+    path,
+    language: null,
+    source: null,
+    simplified: null,
+    view: null,
+    outline: [],
+  };
   const profile = profileForPath(path);
   file.language = profile?.id ?? null;
 
@@ -126,7 +134,10 @@ async function handleFile(root: string, path: string | null): Promise<Response> 
   try {
     const side = await parseSide(profile, source);
     file.outline = outlineOf(profile, side.tree);
-    if (profile.simplify) file.simplified = simplifyTree(side.tree, source, profile.simplify);
+    if (profile.simplify) {
+      file.simplified = simplifyTree(side.tree, source, profile.simplify);
+      file.view = buildViewRows(profile, side.tree, source, file.simplified);
+    }
   } catch {
     file.degradedReason = "parse-error";
   }

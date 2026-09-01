@@ -16,6 +16,9 @@ export interface DeclarationInfo {
   container: string;
 }
 
+/** 顶层块折叠类别：import 连续段合并为一行；type-decl 每个声明各成一行 */
+export type FoldKind = "import" | "type-decl";
+
 export interface LanguageProfile {
   id: string;
   extensions: string[];
@@ -24,4 +27,14 @@ export interface LanguageProfile {
   collect(root: Node): DeclarationInfo[];
   /** 简化器规则；缺省时该语言不生成简化视图 */
   simplify?: SimplifyWalker;
+  /** 顶层节点的折叠类别（由实现负责透视 export 等包装节点）；null = 不折叠 */
+  foldKind?: (node: Node) => FoldKind | null;
+  /** 折叠块的单行摘要（nodes 为同类别的连续段） */
+  foldSummary?: (kind: FoldKind, nodes: Node[], source: string) => string;
+}
+
+/** 折叠摘要的名字列表：超过 6 个截断并显示总数 */
+export function nameList(names: string[]): string {
+  const shown = names.slice(0, 6).join(", ");
+  return names.length > 6 ? `${shown}, …（共 ${names.length} 个）` : shown;
 }

@@ -1,7 +1,9 @@
 /** 投影数据模型：服务端构建，前端渲染。行号均为 1-based。 */
 import type { SimplifiedViewData } from "./simplify";
+import type { ViewRow } from "./view";
 
 export type { SimplifiedViewData, SRow } from "./simplify";
+export type { ViewRow } from "./view";
 
 export type ChangeKind = "signature" | "body" | "type-only" | "added" | "removed";
 export type DeclKind = "function" | "class" | "type" | "variable" | "other";
@@ -68,6 +70,8 @@ export interface ViewerFile {
   source: string | null;
   /** 简化行（与 source 1:1 对齐）；无简化规则或失败为 null */
   simplified: string[] | null;
+  /** 查看器显示行（含块折叠）；无简化规则或失败为 null */
+  view: ViewRow[] | null;
   outline: OutlineItem[];
   degradedReason?: "no-profile" | "parse-error" | "too-large" | "binary";
 }

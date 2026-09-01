@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ViewerFile } from "../../src/analysis/types";
+import type { ViewerFile, ViewRow } from "../../src/analysis/types";
+import { rowIndexOfLine } from "../../src/analysis/view";
 import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 
 interface FilesPayload {
@@ -97,13 +98,27 @@ export function BrowseView({
     if (path) void loadFile(path);
   }, [path, loadFile]);
 
-  // 数据到达后滚动到目标行
+  // 数据到达后滚动到目标行（视图模式按源码行号映射到显示行）
   useEffect(() => {
     if (data && scrollTo != null) {
-      document.getElementById(`L${scrollTo}`)?.scrollIntoView({ block: "center" });
+      const anchor = viewAnchor(data, scrollTo, showSource);
+      if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "center" });
       setScrollTo(null);
     }
-  }, [data, scrollTo]);
+  }, [data, scrollTo, showSource]);
+
+  /** 大纲/跳转定位：源码行号 → 当前模式的元素 id */
+  function viewAnchor(d: ViewerFile, ln: number, sourceMode: boolean): string | null {
+    if (sourceMode || !d.view) return `L${ln}`;
+    const idx = rowIndexOfLine(d.view, ln);
+    return idx == null ? null : `R${idx}`;
+  }
+
+  const scrollToLine = (ln: number) => {
+    if (!data) return;
+    const anchor = viewAnchor(data, ln, showSource);
+    if (anchor) document.getElementById(anchor)?.scrollIntoView();
+  };
 
   const visible = useMemo(() => {
     if (!files) return [];
@@ -189,7 +204,7 @@ export function BrowseView({
                     key={`${o.container}/${o.name}/${i}`}
                     className={`outline-item${o.typeLevel ? " type-level" : ""}`}
                     title={`${o.kind}${o.container ? ` · ${o.container}` : ""}`}
-                    onClick={() => document.getElementById(`L${o.range[0]}`)?.scrollIntoView()}
+                    onClick={() => scrollToLine(o.range[0])}
                   >
                     {o.name}
                   </button>
@@ -199,7 +214,28 @@ export function BrowseView({
             {data?.source == null && data && (
               <div className="dim pad note">该文件无法以文本查看。</div>
             )}
-            {data && data.source != null && (
+            {data && data.source != null && !showSource && data.view ? (
+              <div className="sview">
+                {data.view.map((r, i) =>
+                  r.kind === "fold" ? (
+                    <ViewFoldRow key={i} row={r} index={i} />
+                  ) : (
+                    <div key={i} id={`R${i}`} className="srow ctx">
+                      <span className="gutter">{r.src}</span>
+                      <pre className="scode">
+                        {tokens?.[r.src - 1] ? (
+                          <TokenSpans tokens={tokens[r.src - 1]!} />
+                        ) : r.text === "" ? (
+                          " "
+                        ) : (
+                          r.text
+                        )}
+                      </pre>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : data && data.source != null ? (
               <div className="sview">
                 {lines.map((t, i) => (
                   <div key={i} id={`L${i + 1}`} className="srow ctx">
@@ -210,10 +246,37 @@ export function BrowseView({
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+/** 折叠块：单行摘要（成员名/模块名保持可见），展开查看源码原文 */
+function ViewFoldRow({ row, index }: { row: Extract<ViewRow, { kind: "fold" }>; index: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="vfold">
+      <button className="vfold-head" id={`R${index}`} onClick={() => setOpen(!open)}>
+        <span className="gutter">
+          {row.srcRange[0]}–{row.srcRange[1]}
+        </span>
+        <span className="vfold-summary">
+          {open ? "▾" : "▸"} {row.text}
+        </span>
+      </button>
+      {open && (
+        <div className="vfold-body">
+          {row.original.map((l, i) => (
+            <div key={i} className="srow ctx">
+              <span className="gutter">{row.srcRange[0] + i}</span>
+              <pre className="scode">{l === "" ? " " : l}</pre>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

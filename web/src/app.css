@@ -438,3 +438,35 @@ body {
 .outline-item.type-level {
   color: var(--fg-dim);
 }
+
+/* 查看器块折叠行 */
+.vfold-head {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  text-align: left;
+}
+
+.vfold-head:hover {
+  color: var(--fg);
+}
+
+.vfold-head .gutter {
+  font-size: 10px;
+}
+
+.vfold-summary {
+  line-height: 20px;
+  font-style: italic;
+}
+
+.vfold-body .scode {
+  color: var(--fg-dim);
+}

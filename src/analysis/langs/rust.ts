@@ -7,7 +7,7 @@ import {
   stripReturnType,
   type SimplifyOp,
 } from "../simplify";
-import type { DeclarationInfo, LanguageProfile } from "./types";
+import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
 /** Rust profile：声明收集（徽章分类用）+ 简化器（对齐 rust-beautifier 的擦除规则） */
 
@@ -141,9 +141,30 @@ function collectInto(node: Node, container: string, out: DeclarationInfo[]): voi
   for (const child of node.namedChildren) collectNode(child, container, out);
 }
 
-/** 类型性质 + 技巧性质擦除（工程性质如 ?/unwrap/clone 保留，留待后续） */
+/** 零参数机制调用：封解包/内存/转换（按语义安全线擦除，见 .agents/truth/product.md） */
+const MECH_CALLS = new Set(["unwrap", "clone", "into", "to_string", "to_owned"]);
+
+/** 类型性质 + 工程机制擦除（类型/泛型/生命周期/?/unwrap/clone 等；语言机制信任 agent 做对） */
 export function rustSimplify(node: Node, source: string, ops: SimplifyOp[]): boolean | void {
   switch (node.type) {
+    case "try_expression": {
+      // expr? → expr（错误传播机制）
+      const inner = node.namedChildren[0];
+      if (inner) ops.push(replaceNode(node, source.slice(inner.startIndex, inner.endIndex)));
+      return true;
+    }
+    case "call_expression": {
+      const fnNode = node.childForFieldName("function");
+      const args = node.childForFieldName("arguments");
+      if (fnNode?.type === "field_expression" && args && args.namedChildren.length === 0) {
+        const value = fnNode.childForFieldName("value");
+        if (value && MECH_CALLS.has(fnNode.childForFieldName("field")?.text ?? "")) {
+          ops.push(replaceNode(node, source.slice(value.startIndex, value.endIndex)));
+          return true;
+        }
+      }
+      return false;
+    }
     case "type_parameters":
     case "where_clause":
       ops.push(del(node));
@@ -183,6 +204,43 @@ export function rustSimplify(node: Node, source: string, ops: SimplifyOp[]): boo
   return false;
 }
 
+/* ---- 顶层块折叠（查看器）：use 与类型级声明压缩为单行摘要 ---- */
+
+function rustFoldKind(node: Node): FoldKind | null {
+  switch (node.type) {
+    case "use_declaration":
+      return "import";
+    case "struct_item":
+    case "enum_item":
+    case "trait_item":
+    case "type_item":
+      return "type-decl";
+    default:
+      return null;
+  }
+}
+
+/** 成员/变体名字（无 name 字段的节点跳过，如元组结构体字段） */
+function memberNames(node: Node): string[] {
+  return (node.childForFieldName("body")?.namedChildren ?? [])
+    .map((c) => c.childForFieldName("name")?.text ?? null)
+    .filter((x): x is string => x != null);
+}
+
+function rustFoldSummary(kind: FoldKind, nodes: Node[]): string {
+  if (kind === "import") {
+    const paths = nodes.map((n) => n.childForFieldName("argument")?.text ?? "?");
+    const shown = paths.slice(0, 4).join("、");
+    return `use × ${nodes.length}（${shown}${paths.length > 4 ? "…" : ""}）`;
+  }
+  const n = nodes[0]!;
+  const name = nameOf(n);
+  if (n.type === "type_item") return `type ${name}`;
+  const keyword = n.type === "struct_item" ? "struct" : n.type === "enum_item" ? "enum" : "trait";
+  const members = memberNames(n);
+  return members.length > 0 ? `${keyword} ${name} { ${nameList(members)} }` : `${keyword} ${name}`;
+}
+
 export const rustProfile: LanguageProfile = {
   id: "rust",
   extensions: ["rs"],
@@ -193,4 +251,6 @@ export const rustProfile: LanguageProfile = {
     return out;
   },
   simplify: rustSimplify,
+  foldKind: rustFoldKind,
+  foldSummary: rustFoldSummary,
 };
