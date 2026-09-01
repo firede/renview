@@ -22,9 +22,10 @@ export interface JumpTarget {
 }
 
 const DEGRADE_LABEL: Record<string, string> = {
-  "no-profile": "该语言暂无简化规则",
-  "parse-error": "解析失败",
-  "too-large": "文件过大",
+  // no-profile 不是失败，用户无从行动，仅显示"源码"表明投影态
+  "no-profile": "源码",
+  "parse-error": "已显示源码（解析失败）",
+  "too-large": "已显示源码（文件过大）",
   binary: "二进制文件",
 };
 
@@ -194,7 +195,7 @@ export function BrowseView({
               <span className="file-title">{path}</span>
               {loading && <span className="dim">加载中…</span>}
               {data?.degradedReason && (
-                <span className="dim">已显示源码（{DEGRADE_LABEL[data.degradedReason]}）</span>
+                <span className="dim">{DEGRADE_LABEL[data.degradedReason]}</span>
               )}
               <span className="spacer" />
               {hasSimplified && (

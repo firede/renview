@@ -25,34 +25,55 @@ const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   rust: () => import("shiki/langs/rust.mjs"),
   go: () => import("shiki/langs/go.mjs"),
   gdscript: () => import("shiki/langs/gdscript.mjs"),
+  json: () => import("shiki/langs/json.mjs"),
+  jsonc: () => import("shiki/langs/jsonc.mjs"),
+  json5: () => import("shiki/langs/json5.mjs"),
+  jsonl: () => import("shiki/langs/jsonl.mjs"),
+  toml: () => import("shiki/langs/toml.mjs"),
+  yaml: () => import("shiki/langs/yaml.mjs"),
+  markdown: () => import("shiki/langs/markdown.mjs"),
+  bash: () => import("shiki/langs/bash.mjs"),
 };
 
-/** 按文件扩展名映射 shiki 语言；无映射返回 null（不高亮，纯文本渲染） */
+/** 扩展名 → shiki 语言（有 profile 的语言 + 无简化规则但值得高亮的常见格式） */
+const EXT_LANG: Record<string, string> = {
+  ts: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  tsx: "tsx",
+  jsx: "tsx",
+  js: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  rs: "rust",
+  go: "go",
+  gd: "gdscript",
+  json: "json",
+  jsonc: "jsonc",
+  json5: "json5",
+  jsonl: "jsonl",
+  toml: "toml",
+  yaml: "yaml",
+  yml: "yaml",
+  md: "markdown",
+  markdown: "markdown",
+};
+
+/** 按文件名的特殊映射（无扩展名）；gitignore 类文件无专用语法，用 bash 近似（注释与通配模式均可读） */
+const FILENAME_LANG: Record<string, string> = {
+  ".gitignore": "bash",
+  ".gitattributes": "bash",
+  ".dockerignore": "bash",
+};
+
+/** 按文件名/扩展名映射 shiki 语言；无映射返回 null（不高亮，纯文本渲染） */
 export function shikiLangForPath(path: string | null | undefined): string | null {
-  const m = /\.([^.]+)$/.exec(path ?? "");
-  if (!m) return null;
-  switch (m[1]!.toLowerCase()) {
-    case "ts":
-    case "mts":
-    case "cts":
-      return "typescript";
-    case "tsx":
-      return "tsx";
-    case "js":
-    case "mjs":
-    case "cjs":
-      return "javascript";
-    case "jsx":
-      return "tsx";
-    case "rs":
-      return "rust";
-    case "go":
-      return "go";
-    case "gd":
-      return "gdscript";
-    default:
-      return null;
-  }
+  if (!path) return null;
+  const base = path.split("/").pop()!;
+  const byName = FILENAME_LANG[base];
+  if (byName) return byName;
+  const m = /\.([^.]+)$/.exec(base);
+  return m ? (EXT_LANG[m[1]!.toLowerCase()] ?? null) : null;
 }
 
 function highlighter(): Promise<HighlighterCore> {

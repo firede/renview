@@ -23,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const DEGRADE_LABEL: Record<string, string> = {
-  "no-profile": "该语言暂无简化规则",
+  // no-profile 不算降级（该语言本就没有投影），不展示
   "parse-error": "解析失败",
   "too-large": "文件过大",
   "no-source": "无法读取文件内容",
@@ -234,11 +234,12 @@ export function App() {
                       在查看器中打开
                     </button>
                   )}
-                  {selectedEntry?.degradedReason && (
-                    <span className="dim">
-                      已退回原始 diff（{DEGRADE_LABEL[selectedEntry.degradedReason]}）
-                    </span>
-                  )}
+                  {selectedEntry?.degradedReason &&
+                    selectedEntry.degradedReason !== "no-profile" && (
+                      <span className="dim">
+                        已退回原始 diff（{DEGRADE_LABEL[selectedEntry.degradedReason]}）
+                      </span>
+                    )}
                   {!showRaw && selectedEntry?.simplified && selectedEntry.simplified.stats.folded > 0 && (
                     <span className="dim">已折叠 {selectedEntry.simplified.stats.folded} 行</span>
                   )}
