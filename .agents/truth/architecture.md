@@ -6,7 +6,7 @@
 - 分析流程：git diff 取 hunk → git show 取新旧全量文件 → 两侧分别解析 → hunk 行区间映射到最小包裹命名节点 → 冒泡到声明级节点 → 新旧声明配对分类。
 - 声明配对分类枚举：signature-changed / body-only-changed / type-only-changed / added / removed / moved。
 - 移动 / 改名检测 v1 用归一化内容哈希匹配，GumTree 级树 diff 后置。
-- 投影规则按语言做 profile（语言无关核心 + per-language 规则集），规则文件化、用户可调，不硬编码在核心里。
+- 投影规则按语言做 profile：语言无关核心 + per-language 规则集（src/analysis/langs/），核心不含语言特定规则。
 - 前端刷新模型：窗口 focus / 手动刷新时重新拉取数据，不上 WebSocket。
 - 本地服务绑 127.0.0.1 + 随机端口，纯查看阶段不加 token。
 - hunk 映射永远基于完整文件解析，不解析 diff 片段；hunk 切断 token 时向上扩展到命名节点。
@@ -18,10 +18,9 @@
 - 签名比较为空白归一化文本比较（已知局限：字符串字面量内的连续空格差异会被抹平）。
 - diff 两侧内容来源按参数推导：无 rev 时 index vs worktree，--staged 时 HEAD vs index，A...B 取 merge-base，A..B / A B 取对应 rev。
 - /api/diff 单接口全量返回 raw diff 文本 + 每文件投影，PR 级规模下不做分页。
-- 简化器 = CST walker 产出删除/替换 op，引擎做重叠消解（外层优先）与逐行重建，输出行与原文 1:1 对齐。
+- 简化器 = CST walker 产出删除/替换 op（规则声明式风格参考 ast-grep），引擎做重叠消解（外层优先）与逐行重建，输出行与原文 1:1 对齐。
 - 简化在 git hunk 结构内进行（不重排 diff），折叠判定基于简化后文本相等，完全确定性。
 - 接缝空白修复只发生在删除/替换的接缝处（前段以空白结尾则去掉后段前导空白），不动缩进与字符串内部。
-- Rust 声明收集覆盖 function_item / struct / enum / trait / impl / const / static，impl 成员以 impl 目标名为容器。
 - 擦除 op（字节区间 + replacement）即 hover v1 数据源：悬停直接还原被擦除原文，无需额外分析。
 - 锚定机制：diff 简化视图与查看器简化行均与源码 1:1 行对齐；查看器显示层（view.ts 的 ViewRow）在其上做块折叠与空行压缩，每行携带源码行号/区间，锚定不丢。
 - 块折叠规则按语言 profile 提供（foldKind / foldSummary），view.ts 引擎负责连续段合并、行重建与行号映射。
