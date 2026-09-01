@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ViewerFile } from "../../src/analysis/types";
+import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 
 interface FilesPayload {
   ok: boolean;
@@ -116,6 +117,13 @@ export function BrowseView({
     return data.source?.split("\n") ?? [];
   }, [data, showSource]);
 
+  // 简化视图与源码视图都高亮（简化文本仍是合法语法的子集）
+  const text = useMemo(() => lines.join("\n"), [lines]);
+  const tokens = useHighlightedLines(
+    data?.source != null ? text : null,
+    shikiLangForPath(data?.path),
+  );
+
   const hasSimplified = data?.simplified != null;
 
   return (
@@ -196,7 +204,9 @@ export function BrowseView({
                 {lines.map((t, i) => (
                   <div key={i} id={`L${i + 1}`} className="srow ctx">
                     <span className="gutter">{i + 1}</span>
-                    <pre className="scode">{t === "" ? " " : t}</pre>
+                    <pre className="scode">
+                      {tokens?.[i] ? <TokenSpans tokens={tokens[i]!} /> : t === "" ? " " : t}
+                    </pre>
                   </div>
                 ))}
               </div>

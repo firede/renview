@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseDiff, Diff, Hunk, type FileData, type ViewType } from "react-diff-view";
 import type { ChangeKind, FileEntry } from "../../src/analysis/types";
 import { BrowseView, type JumpTarget } from "./BrowseView";
+import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { SimplifiedView } from "./SimplifiedView";
 
 interface DiffPayload {
@@ -122,6 +123,8 @@ export function App() {
 
   const hasSimplified = selectedEntry?.simplified != null;
   const showRaw = rawOverride ?? !hasSimplified;
+  // 仅在展示原始 diff 时计算高亮 tokens（懒加载 shiki，完成前纯文本渲染）
+  const diffTokens = useDiffTokens(selectedFile && showRaw ? selectedFile : null);
 
   return (
     <div className="layout">
@@ -246,13 +249,22 @@ export function App() {
                   )}
                 </div>
                 {!showRaw && selectedEntry?.simplified ? (
-                  <SimplifiedView data={selectedEntry.simplified} />
+                  <SimplifiedView
+                    data={selectedEntry.simplified}
+                    lang={shikiLangForPath(
+                      selectedFile.newPath !== "/dev/null"
+                        ? selectedFile.newPath
+                        : selectedFile.oldPath,
+                    )}
+                  />
                 ) : (
                   <Diff
                     key={`${selectedFile.oldPath}→${selectedFile.newPath}`}
                     diffType={selectedFile.type}
                     hunks={selectedFile.hunks}
                     viewType={viewType}
+                    tokens={diffTokens}
+                    renderToken={renderDiffToken}
                   >
                     {(hunks) => hunks.map((h) => <Hunk key={h.content} hunk={h} />)}
                   </Diff>

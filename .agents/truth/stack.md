@@ -3,7 +3,7 @@
 - 运行时与分发：Bun，`bun build --compile` 单文件跨平台分发（Claude Code / opencode 同款路线）。
 - 前端：React + TypeScript + Vite，构建产物嵌入二进制。
 - 传统 diff 视图用现成库渲染（首选 @git-diff-view/react 或 react-diff-view），投影视图完全自研。
-- 语法高亮：Shiki，浏览器内运行，按语言懒加载。
+- 语法高亮：Shiki（createHighlighterCore + JS 正则引擎，避开 oniguruma wasm 嵌入），浏览器内按语言懒加载，主题 github-dark-default；react-diff-view 经 tokens + renderToken 接入（按文件行号稀疏回填），自研视图经 useHighlightedLines 接入。
 - 前端不引入路由库与状态库，样式先纯 CSS。
 - tree-sitter 运行时用 web-tree-sitter（WASM），不用 node 原生 binding（避免 node-gyp / .node 分发问题）。
 - 语法 wasm 与 web-tree-sitter 版本、query 三位一体锁定，CI 自建语法 wasm。
