@@ -1,0 +1,20 @@
+# 架构决策
+
+- 分析核心用 tree-sitter（WASM），常驻、内嵌、离线；LSP 仅作可选的按需下钻增强层。
+- LSP 不做默认路径的原因：无法查询 diff 旧版本、冷启动慢（rust-analyzer 级）、依赖用户机器额外运行时。
+- git 操作一律 shell out 真实 git 二进制（worktree / submodule / partial clone 免费支持），不用 isomorphic-git / nodegit。
+- 分析流程：git diff 取 hunk → git show 取新旧全量文件 → 两侧分别解析 → hunk 行区间映射到最小包裹命名节点 → 冒泡到声明级节点 → 新旧声明配对分类。
+- 声明配对分类枚举：signature-changed / body-only-changed / type-only-changed / added / removed / moved。
+- 移动 / 改名检测 v1 用归一化内容哈希匹配，GumTree 级树 diff 后置。
+- 投影规则按语言做 profile（语言无关核心 + per-language 规则集），规则文件化、用户可调，不硬编码在核心里。
+- 前端刷新模型：窗口 focus / 手动刷新时重新拉取数据，不上 WebSocket。
+- 本地服务绑 127.0.0.1 + 随机端口，纯查看阶段不加 token。
+- hunk 映射永远基于完整文件解析，不解析 diff 片段；hunk 切断 token 时向上扩展到命名节点。
+- 字节偏移作为行区间映射的唯一事实来源（避免 git 与 tree-sitter 的换行统计差异）。
+- 声明配对基于全量声明（key = 容器/类别/名称 + 序号），而非仅被触碰的声明，避免纯删除行把新侧未触碰的声明误判为 removed。
+- 被触碰但归一化文本无变化的声明不产生审阅单元（过滤格式噪音）。
+- 类整体的 body 变更若已被成员单元完全覆盖，则不重复产生类级单元。
+- import 等声明之外的变更归入兜底"声明之外的变更"单元，保证任何变更都可审。
+- 签名比较为空白归一化文本比较（已知局限：字符串字面量内的连续空格差异会被抹平）。
+- diff 两侧内容来源按参数推导：无 rev 时 index vs worktree，--staged 时 HEAD vs index，A...B 取 merge-base，A..B / A B 取对应 rev。
+- /api/diff 单接口全量返回 raw diff 文本 + 每文件投影，PR 级规模下不做分页。
