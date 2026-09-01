@@ -102,7 +102,7 @@ export async function resolveSides(
     const [a, b] = range.split("...");
     const base = await mergeBase(root, a || "HEAD", b || "HEAD");
     return {
-      oldSide: { type: "rev", rev: base ?? a ?? "HEAD" },
+      oldSide: { type: "rev", rev: base ?? (a || "HEAD") },
       newSide: { type: "rev", rev: b || "HEAD" },
     };
   }
