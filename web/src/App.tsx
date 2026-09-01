@@ -118,13 +118,13 @@ export function App() {
     return { adds, dels };
   }, [files]);
 
-  if (!payload) return <div className="center-note">加载中…</div>;
-  if (!payload.ok) return <div className="center-note error">出错了：{payload.error}</div>;
-
   const hasSimplified = selectedEntry?.simplified != null;
   const showRaw = rawOverride ?? !hasSimplified;
   // 仅在展示原始 diff 时计算高亮 tokens（懒加载 shiki，完成前纯文本渲染）
   const diffTokens = useDiffTokens(selectedFile && showRaw ? selectedFile : null);
+
+  if (!payload) return <div className="center-note">加载中…</div>;
+  if (!payload.ok) return <div className="center-note error">出错了：{payload.error}</div>;
 
   return (
     <div className="layout">
