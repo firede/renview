@@ -35,7 +35,11 @@ async function syncGdscript(): Promise<void> {
     cpSync(`node_modules/tree-sitter-gdscript/${f}`, `${buildDir}/${f}`, { recursive: true });
   }
   // CLI 版本与 package.json devDependencies 的 tree-sitter-cli 保持一致
-  const cmd = "npm i --no-save --silent tree-sitter-cli@0.25.10 && npx tree-sitter build --wasm .";
+  // 容器内是 root，构建产物在 Linux 宿主机上属 root 所有，chown 回宿主用户以便清理与缓存
+  //（macOS/Windows 的 Docker Desktop 本就映射为宿主用户，chown 无害）
+  const uid = process.getuid?.() ?? 0;
+  const gid = process.getgid?.() ?? 0;
+  const cmd = `npm i --no-save --silent tree-sitter-cli@0.25.10 && npx tree-sitter build --wasm . && chown -R ${uid}:${gid} /work`;
   console.log("构建 tree-sitter-gdscript wasm（docker + emscripten，首次需拉取镜像）…");
   const r =
     await $`docker run --rm -v ${process.cwd()}/${buildDir}:/work -w /work emscripten/emsdk:3.1.74 bash -lc ${cmd}`
@@ -51,7 +55,12 @@ async function syncGdscript(): Promise<void> {
     process.exit(1);
   }
   copyFileSync(`${buildDir}/${built}`, dst);
-  rmSync(".wasm-build", { recursive: true, force: true });
+  try {
+    rmSync(".wasm-build", { recursive: true, force: true });
+  } catch {
+    // 产物已拷出，清理失败不影响结果（防御非预期的文件属主问题）
+    console.warn(".wasm-build 清理失败（不影响产物），可手动删除");
+  }
   console.log(`${buildDir}/${built} -> ${dst}`);
 }
 
