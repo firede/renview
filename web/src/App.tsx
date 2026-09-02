@@ -147,10 +147,12 @@ export function App() {
             {s.modeBrowse}
           </button>
         </span>
-        <span className="repo" title={payload.repoRoot}>
-          {payload.repoRoot}
+        <span className="topbar-detail">
+          <span className="repo" title={payload.repoRoot}>
+            {payload.repoRoot}
+          </span>
+          <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
         </span>
-        <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
         <span className="spacer" />
         {mode === "review" && (
           <>
