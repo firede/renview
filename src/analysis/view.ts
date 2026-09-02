@@ -1,6 +1,7 @@
 import type { Node, Tree } from "web-tree-sitter";
 import type { Locale } from "../i18n";
 import type { FoldKind, LanguageProfile } from "./langs/types";
+import type { EraseSpan } from "./simplify";
 
 /**
  * 查看器显示行：简化行 + 块折叠标记。
@@ -8,13 +9,14 @@ import type { FoldKind, LanguageProfile } from "./langs/types";
  * 折叠行展开时展示源码原文（折叠而非删除）。
  */
 export type ViewRow =
-  | { kind: "line"; text: string; src: number }
+  | { kind: "line"; text: string; src: number; erases?: EraseSpan[] }
   | { kind: "fold"; text: string; srcRange: [number, number]; original: string[] };
 
 /**
  * 由 1:1 简化行构建查看器显示行：
  * - profile 声明的顶层可折叠块（imports 连续段 / 类型级声明）压缩为单行摘要；
  * - 被抹空的行（原文非空、简化后为空）丢弃；原文即空的行保留为视觉间隔（连续空行压成一行）。
+ * erasures 与 simplified 同为 1:1 对齐源码行，挂到对应显示行上（折叠行展示原文，无擦除）。
  */
 export function buildViewRows(
   profile: LanguageProfile,
@@ -22,6 +24,7 @@ export function buildViewRows(
   source: string,
   simplified: string[],
   locale: Locale,
+  erasures?: EraseSpan[][],
 ): ViewRow[] {
   const srcLines = source.split("\n");
   const folds: Array<{ range: [number, number]; text: string }> = [];
@@ -77,7 +80,12 @@ export function buildViewRows(
     const text = simplified[ln - 1] ?? "";
     const srcBlank = srcLines[ln - 1]!.trim() === "";
     if (text !== "") {
-      rows.push({ kind: "line", text, src: ln });
+      const erases = erasures?.[ln - 1];
+      rows.push(
+        erases && erases.length > 0
+          ? { kind: "line", text, src: ln, erases }
+          : { kind: "line", text, src: ln },
+      );
       lastWasBlank = false;
     } else if (srcBlank && !lastWasBlank) {
       // 原文空行保留一个视觉间隔

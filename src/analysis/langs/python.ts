@@ -1,7 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { del, delSpan, delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
-import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
+import { nameList, nodeRowRange, type DeclarationInfo, type FoldKind, type LanguageProfile, type TypeDeclMembers } from "./types";
 
 /** Python profile：声明收集 + 类型/机制擦除（标注、self、cast、TYPE_CHECKING）+ 顶层块折叠 */
 
@@ -232,6 +232,23 @@ function pyFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
   return members.length > 0 ? `${head} { ${nameList(members, locale)} }` : head;
 }
 
+/** diff 折叠组的成员定位：仅纯数据类（普通类含方法，方法体内的折叠行会被错误归属到类成员） */
+function pyTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
+  if (node.type === "type_alias_statement") {
+    return { name: node.childForFieldName("left")?.text ?? "?", members: [] };
+  }
+  if (node.type !== "class_definition" || !isDataOnlyClass(node)) return null;
+  const members = (node.childForFieldName("body")?.namedChildren ?? [])
+    .map((c) => unwrapExprStmt(c))
+    .filter((c) => c.type === "assignment")
+    .map((c) => {
+      const name = c.childForFieldName("left")?.text ?? null;
+      return name ? { name, range: nodeRowRange(c) } : null;
+    })
+    .filter((x): x is { name: string; range: [number, number] } => x != null);
+  return { name: nameOf(node, locale), members };
+}
+
 export const pythonProfile: LanguageProfile = {
   id: "python",
   extensions: ["py", "pyi"],
@@ -244,4 +261,5 @@ export const pythonProfile: LanguageProfile = {
   simplify: pySimplify,
   foldKind: pyFoldKind,
   foldSummary: pyFoldSummary,
+  typeDeclMembers: pyTypeDeclMembers,
 };

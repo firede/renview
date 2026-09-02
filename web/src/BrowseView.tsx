@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ViewerFile, ViewRow } from "../../src/analysis/types";
 import { rowIndexOfLine } from "../../src/analysis/view";
+import { DecoratedLine } from "./decor";
 import { FileTree } from "./FileTree";
 import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 import { useStrings } from "./i18n";
@@ -259,13 +260,11 @@ export function BrowseView({
                     >
                       <span className="gutter">{r.src}</span>
                       <pre className="scode">
-                        {tokens?.[r.src - 1] ? (
-                          <TokenSpans tokens={tokens[r.src - 1]!} />
-                        ) : r.text === "" ? (
-                          " "
-                        ) : (
-                          r.text
-                        )}
+                        <DecoratedLine
+                          text={r.text}
+                          tokens={tokens?.[r.src - 1] ?? null}
+                          decor={{ erases: r.erases }}
+                        />
                       </pre>
                     </div>
                   ),

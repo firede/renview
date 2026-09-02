@@ -21,11 +21,13 @@
 - 简化器 = CST walker 产出删除/替换 op（规则声明式风格参考 ast-grep），引擎做重叠消解（外层优先）与逐行重建，输出行与原文 1:1 对齐；跨行擦除必须逐 token 删除（replacement 含换行会把多行文本压进首行、后续行被抹空，曾致链式调用的非空断言擦除出大片空行）。
 - 简化在 git hunk 结构内进行（不重排 diff），折叠判定基于简化后文本相等，完全确定性。
 - 接缝空白修复只发生在删除/替换的接缝处（前段以空白结尾则去掉后段前导空白），不动缩进与字符串内部。
-- 擦除 op（字节区间 + replacement）即 hover v1 数据源：悬停直接还原被擦除原文，无需额外分析。
+- 擦除 op（字节区间 + replacement）即 hover v1 数据源：applySimplify 重建行时同步产出 per-line 擦除记录（简化文本列区间 + 原文片段），随 diff 行与查看器文件透传前端；悬停直接还原被擦除原文，无需额外分析。
+- 词级高亮配对在服务端（buildSimplifiedRows 的 del/add 块内按相似度配对，行上带 pair id），词差计算与高亮渲染在前端——配对依赖 hunk 结构上下文，词差是纯文本处理。
 - 锚定机制：diff 简化视图与查看器简化行均与源码 1:1 行对齐；查看器显示层（view.ts 的 ViewRow）在其上做块折叠与空行压缩，每行携带源码行号/区间，锚定不丢。
 - 块折叠规则按语言 profile 提供（foldKind / foldSummary），view.ts 引擎负责连续段合并、行重建与行号映射。
 - 查看器按文件懒加载（打开时 parse + simplify），不做全仓预计算与索引。
 - 投影与简化共用同一棵 CST（parseSide / analyzeParsed / simplifyTree），每侧源码只 parse 一次；声明收集管线扩展用途：diff 侧栏徽章 + 查看器文件大纲（outlineOf）。
+- 成员级折叠摘要：diff 折叠行携带新旧行号区间，全部落在同一可提取成员的类型级声明（profile 的 typeDeclMembers hook）内时，摘要 = 声明名 + 涉及成员列表，关联不到或跨声明混合则回落通用行数摘要。
 - 折叠过宽风险用 scripts/corpus-check.ts 在真实语料（zod/serde/pydantic 最近 N 个提交）回归验证：统计折叠率 + 可疑折叠检测（折叠行对差异片段切词 + 类型/工程关键字白名单，数字不豁免、宁可误报）。
 - 已知局限：tree-sitter-typescript 0.23.2 无法解析 zod v4 部分新语法（语料实测 9/44 文件走解析失败降级），grammar 升级为候选改进。
 - 配置流向：server 每请求重读配置文件（按原始文本缓存，内容变化才重新解析并输出警告）→ /api/config → 前端 bootstrap 时应用、focus 时重拉；不做全量推送与文件 watch。

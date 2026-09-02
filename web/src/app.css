@@ -418,6 +418,81 @@ body {
   color: #7ee2a8;
 }
 
+/* 行内擦除披露：删除点为零宽 tick（净宽 0，不产生水平位移），替换段带虚线下划线；hover 浮层还原原文 */
+.erasure-mark {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  /* 扩大 hover 命中区但净宽为 0（padding 与负 margin 相消） */
+  padding: 0 3px;
+  margin: 0 -3px;
+  vertical-align: -0.2em;
+  cursor: help;
+}
+
+.erasure-mark::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 0.05em;
+  border-bottom: 2px dotted var(--fg-dim);
+  opacity: 0.5;
+}
+
+.erasure-mark:hover::after,
+.erasure-mark:focus-visible::after {
+  opacity: 1;
+}
+
+/* 焦点态反馈由浮层承担，轮廓收敛为细线 */
+.erasure-mark:focus-visible,
+.erasure-repl:focus-visible,
+.erasure-adj:focus-visible {
+  outline: 1px solid var(--fg-dim);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.erasure-repl,
+.erasure-adj {
+  border-bottom: 1px dotted var(--fg-dim);
+  cursor: help;
+}
+
+/* 悬停/聚焦时锚定词轻微提亮，可点性可见 */
+.erasure-adj:hover,
+.erasure-adj:focus-visible,
+.erasure-repl:hover,
+.erasure-repl:focus-visible {
+  border-bottom-color: var(--fg);
+}
+
+.erasure-pop {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--fg);
+  font-size: var(--font-size-code);
+  z-index: 50;
+}
+
+.erasure-pop code {
+  font-family: var(--font-mono);
+  white-space: pre;
+}
+
+/* 词级行内差异高亮（简化视图的配对 del/add 行）。无圆角：一段差异会因 token 着色切成多个相邻 span，圆角会暴露分段边界 */
+.wdel {
+  background: rgba(248, 81, 73, 0.28);
+}
+
+.wadd {
+  background: rgba(63, 185, 80, 0.28);
+}
+
 /* 查看器 */
 .sidebar-filter {
   padding: 8px 12px;

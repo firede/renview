@@ -20,6 +20,12 @@ export interface DeclarationInfo {
 /** 顶层块折叠类别：import 连续段合并为一行；type-decl 每个声明各成一行 */
 export type FoldKind = "import" | "type-decl";
 
+/** 类型级声明的成员清单（diff 折叠组的成员级摘要用；行号 1-based） */
+export interface TypeDeclMembers {
+  name: string;
+  members: Array<{ name: string; range: [number, number] }>;
+}
+
 export interface LanguageProfile {
   id: string;
   extensions: string[];
@@ -33,10 +39,17 @@ export interface LanguageProfile {
   foldKind?: (node: Node) => FoldKind | null;
   /** 折叠块的单行摘要（nodes 为同类别的连续段）；locale 决定摘要语言 */
   foldSummary?: (kind: FoldKind, nodes: Node[], source: string, locale: Locale) => string;
+  /** node 为可提取成员的类型级声明时返回声明名与成员（含行范围），否则 null（diff 折叠摘要定位用） */
+  typeDeclMembers?: (node: Node, locale: Locale) => TypeDeclMembers | null;
 }
 
 /** 折叠摘要的名字列表：超过 6 个截断并显示总数 */
 export function nameList(names: string[], locale: Locale): string {
   const shown = names.slice(0, 6).join(", ");
   return names.length > 6 ? messages(locale).analysis.nameList(shown, names.length) : shown;
+}
+
+/** 节点的 1-based 行范围（typeDeclMembers 的成员区间用） */
+export function nodeRowRange(node: Node): [number, number] {
+  return [node.startPosition.row + 1, node.endPosition.row + 1];
 }

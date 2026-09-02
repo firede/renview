@@ -1,7 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { del, delSwallowingLeadingSpace, replaceNode, type SimplifyOp } from "../simplify";
-import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
+import { nameList, nodeRowRange, type DeclarationInfo, type FoldKind, type LanguageProfile, type TypeDeclMembers } from "./types";
 
 /** Go profile：声明收集 + 简化器（类型与错误传播机制擦除）+ 顶层块折叠 */
 
@@ -249,6 +249,38 @@ function goFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
     .join(messages(locale).analysis.typeSpecJoiner);
 }
 
+/** diff 折叠组的成员定位：挂在 type_spec 上（type (...) 多 spec 声明有逐 spec 精度） */
+function goTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
+  if (node.type !== "type_spec") return null;
+  const name = nameOf(node, locale);
+  const t = node.childForFieldName("type");
+  const memberOf = (m: Node) => {
+    const n = m.childForFieldName("name")?.text ?? null;
+    return n ? { name: n, range: nodeRowRange(m) } : null;
+  };
+  if (t?.type === "struct_type") {
+    const list = t.namedChildren.find((c) => c.type === "field_declaration_list");
+    const members = (list?.namedChildren ?? [])
+      .map((f) => {
+        // 嵌入字段没有 name，取类型文本（与 typeSpecSummary 一致）
+        const named = memberOf(f);
+        if (named) return named;
+        const embedded = f.childForFieldName("type")?.text ?? null;
+        return embedded ? { name: embedded, range: nodeRowRange(f) } : null;
+      })
+      .filter((x): x is { name: string; range: [number, number] } => x != null);
+    return { name, members };
+  }
+  if (t?.type === "interface_type") {
+    const members = t.namedChildren
+      .filter((c) => c.type === "method_elem")
+      .map(memberOf)
+      .filter((x): x is { name: string; range: [number, number] } => x != null);
+    return { name, members };
+  }
+  return { name, members: [] };
+}
+
 export const goProfile: LanguageProfile = {
   id: "go",
   extensions: ["go"],
@@ -261,4 +293,5 @@ export const goProfile: LanguageProfile = {
   simplify: goSimplify,
   foldKind: goFoldKind,
   foldSummary: goFoldSummary,
+  typeDeclMembers: goTypeDeclMembers,
 };

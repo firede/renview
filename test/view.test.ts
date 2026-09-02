@@ -11,14 +11,14 @@ import type { Locale } from "../src/i18n";
 async function viewRows(profile: LanguageProfile, source: string, locale: Locale = "zh-CN") {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
-  const simplified = simplifyTree(tree, source, profile.simplify!);
-  return buildViewRows(profile, tree, source, simplified, locale);
+  const { lines, erasures } = simplifyTree(tree, source, profile.simplify!);
+  return buildViewRows(profile, tree, source, lines, locale, erasures);
 }
 
 async function simplify(profile: LanguageProfile, source: string): Promise<string[]> {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
-  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!));
+  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!)).lines;
 }
 
 describe("buildViewRows：ts 块折叠", () => {
@@ -224,5 +224,19 @@ const z = w ?? 0;
     expect(out[0]).toBe("const x = a.b.c;");
     expect(out[1]).toBe("const y = d.e();");
     expect(out[2]).toBe("const z = w ?? 0;");
+  });
+});
+
+describe("buildViewRows：行内擦除记录", () => {
+  test("擦除挂到对应显示行，无擦除行不带 erases", async () => {
+    const src = `const x: number = 1;
+const y = 2;
+`;
+    const rows = await viewRows(typescriptProfile, src);
+    expect(rows[0]).toMatchObject({ kind: "line", src: 1 });
+    expect(
+      rows[0]!.kind === "line" && rows[0]!.erases?.some((e) => e.original === ": number"),
+    ).toBe(true);
+    expect(rows[1]!.kind === "line" && rows[1]!.erases).toBeUndefined();
   });
 });

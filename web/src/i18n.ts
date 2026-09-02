@@ -67,6 +67,8 @@ export interface Strings {
   source: string;
   /** 折叠的类型/格式性变更行数摘要 */
   foldedTypeFormat: (n: number) => string;
+  /** 擦除标记的无障碍标注（hover 浮层还原被擦除的原文） */
+  erasureHint: string;
   /** 简化视图无可见变更的占位 */
   noVisibleChanges: string;
 }

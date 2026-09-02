@@ -27,7 +27,7 @@ export function greet(name: string): string {
 
 const changed = `export interface Point {
   x: number;
-  y: number;
+  y: bigint;
   z?: number;
 }
 
@@ -42,6 +42,15 @@ export function greet(name: string): string {
 
 const untracked = `export function square(n: number): number {
   return n * n;
+}
+
+// 复杂类型注解：擦除后锚定到紧邻标识符（锚定词起点可在 token 中段，曾致重复渲染）
+export function pickBest(items: number[]): number | null {
+  let best: { value: number; index: number } | null = null;
+  for (const [index, value] of items.entries()) {
+    if (value > (best?.value ?? -Infinity)) best = { value, index };
+  }
+  return best?.value ?? null;
 }
 `;
 

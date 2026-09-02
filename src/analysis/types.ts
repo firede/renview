@@ -2,7 +2,7 @@
 import type { SimplifiedViewData } from "./simplify";
 import type { ViewRow } from "./view";
 
-export type { SimplifiedViewData, SRow } from "./simplify";
+export type { EraseSpan, SimplifiedViewData, SRow } from "./simplify";
 export type { ViewRow } from "./view";
 
 export type ChangeKind = "signature" | "body" | "type-only" | "added" | "removed";

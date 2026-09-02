@@ -8,7 +8,14 @@ import {
   stripReturnType,
   type SimplifyOp,
 } from "../simplify";
-import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
+import {
+  nameList,
+  nodeRowRange,
+  type DeclarationInfo,
+  type FoldKind,
+  type LanguageProfile,
+  type TypeDeclMembers,
+} from "./types";
 
 /** Rust profile：声明收集（徽章分类用）+ 简化器（对齐 rust-beautifier 的擦除规则） */
 
@@ -240,6 +247,25 @@ function memberNames(node: Node): string[] {
     .filter((x): x is string => x != null);
 }
 
+/** diff 折叠组的成员定位：struct/enum/trait/type 的成员（含行范围） */
+function rustTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
+  if (
+    node.type !== "struct_item" &&
+    node.type !== "enum_item" &&
+    node.type !== "trait_item" &&
+    node.type !== "type_item"
+  ) {
+    return null;
+  }
+  const members = (node.childForFieldName("body")?.namedChildren ?? [])
+    .map((c) => {
+      const name = c.childForFieldName("name")?.text ?? null;
+      return name ? { name, range: nodeRowRange(c) } : null;
+    })
+    .filter((x): x is { name: string; range: [number, number] } => x != null);
+  return { name: nameOf(node, locale), members };
+}
+
 function rustFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const paths = nodes.map((n) => n.childForFieldName("argument")?.text ?? "?");
@@ -265,4 +291,5 @@ export const rustProfile: LanguageProfile = {
   simplify: rustSimplify,
   foldKind: rustFoldKind,
   foldSummary: rustFoldSummary,
+  typeDeclMembers: rustTypeDeclMembers,
 };

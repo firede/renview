@@ -98,11 +98,24 @@ export function App() {
   }, [payload, files.length]);
 
   // 服务端 files 与前端 parseDiff 解析同一文本，顺序一致，按下标对应
-  const entries = payload?.files ?? [];
+  const entries = useMemo(() => payload?.files ?? [], [payload]);
 
-  const safeSelected = Math.min(selected, Math.max(files.length - 1, 0));
-  const selectedFile = files[safeSelected] ?? null;
-  const selectedEntry = entries[safeSelected] ?? null;
+  // 侧栏排序：含签名变更的文件优先（先看契约再看实现），组内保持 diff 原顺序（sort 稳定）
+  const items = useMemo(
+    () =>
+      files
+        .map((file, i) => ({ file, entry: entries[i] ?? null }))
+        .sort(
+          (a, b) =>
+            Number((b.entry?.projection?.summary.signature ?? 0) > 0) -
+            Number((a.entry?.projection?.summary.signature ?? 0) > 0),
+        ),
+    [files, entries],
+  );
+
+  const safeSelected = Math.min(selected, Math.max(items.length - 1, 0));
+  const selectedFile = items[safeSelected]?.file ?? null;
+  const selectedEntry = items[safeSelected]?.entry ?? null;
 
   const totals = useMemo(() => {
     let adds = 0;
@@ -173,9 +186,8 @@ export function App() {
       ) : (
         <div className="body">
           <aside className="sidebar">
-            {files.map((f, i) => {
+            {items.map(({ file: f, entry }, i) => {
               const stat = fileStats(f);
-              const entry = entries[i];
               const sum = entry?.projection?.summary;
               return (
                 <button

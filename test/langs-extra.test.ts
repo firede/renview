@@ -11,13 +11,14 @@ import type { Locale } from "../src/i18n";
 async function simplify(profile: LanguageProfile, source: string): Promise<string[]> {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
-  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!));
+  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!)).lines;
 }
 
 async function viewRows(profile: LanguageProfile, source: string, locale: Locale = "zh-CN") {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
-  return buildViewRows(profile, tree, source, simplifyTree(tree, source, profile.simplify!), locale);
+  const { lines } = simplifyTree(tree, source, profile.simplify!);
+  return buildViewRows(profile, tree, source, lines, locale);
 }
 
 describe("go 简化器", () => {

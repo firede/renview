@@ -74,5 +74,7 @@ Examples:
     importsFold: (keyword, count, shown, hasMore) =>
       `${count} ${keyword}${count === 1 ? "" : "s"} (${shown.join(", ")}${hasMore ? ", …" : ""})`,
     typeSpecJoiner: "; ",
+    foldedTypeMembers: (decl, members) =>
+      members ? `${decl}: ${members} (type/format changes)` : `${decl} (type/format changes)`,
   },
 };

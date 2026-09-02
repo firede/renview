@@ -1,7 +1,14 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { del, delSpan, replaceNode, type SimplifyOp } from "../simplify";
-import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
+import {
+  nameList,
+  nodeRowRange,
+  type DeclarationInfo,
+  type FoldKind,
+  type LanguageProfile,
+  type TypeDeclMembers,
+} from "./types";
 
 /**
  * TypeScript/TSX profile。
@@ -263,6 +270,28 @@ function tsFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
   return members.length > 0 ? `${keyword} ${name} { ${nameList(members, locale)} }` : `${keyword} ${name}`;
 }
 
+/** diff 折叠组的成员定位：interface/enum 取 body 成员，type 别名取对象字面量成员 */
+function tsTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
+  const n = unwrapDecl(node);
+  let memberNodes: Node[];
+  if (n.type === "interface_declaration" || n.type === "enum_declaration") {
+    memberNodes = n.childForFieldName("body")?.namedChildren ?? [];
+  } else if (n.type === "type_alias_declaration") {
+    const value = n.childForFieldName("value");
+    memberNodes = value?.type === "object_type" ? value.namedChildren : [];
+  } else {
+    return null;
+  }
+  const members = memberNodes
+    .map((c) => {
+      const name =
+        c.childForFieldName("name")?.text ?? (c.type === "property_identifier" ? c.text : null);
+      return name ? { name, range: nodeRowRange(c) } : null;
+    })
+    .filter((x): x is { name: string; range: [number, number] } => x != null);
+  return { name: nameOf(n, locale), members };
+}
+
 export const typescriptProfile: LanguageProfile = {
   id: "typescript",
   extensions: ["ts", "mts", "cts"],
@@ -275,6 +304,7 @@ export const typescriptProfile: LanguageProfile = {
   simplify: tsSimplify,
   foldKind: tsFoldKind,
   foldSummary: tsFoldSummary,
+  typeDeclMembers: tsTypeDeclMembers,
 };
 
 // tsx 语法是超集，可解析 .tsx/.jsx 及纯 JS

@@ -8,9 +8,17 @@ import {
   applySimplify,
   buildSimplifiedRows,
   collectSimplifyOps,
+  type SRow,
 } from "../src/analysis/simplify";
 
 async function simplify(profile: LanguageProfile, source: string): Promise<string[]> {
+  const tree = await parseSource(profile.grammarFile, source);
+  if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
+  return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!)).lines;
+}
+
+/** 简化 + 擦除记录（P0 hover 披露的数据源） */
+async function simplifyWithErasures(profile: LanguageProfile, source: string) {
   const tree = await parseSource(profile.grammarFile, source);
   if (tree.rootNode.hasError) throw new Error("测试源码解析出错");
   return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!));
@@ -164,21 +172,24 @@ describe("buildSimplifiedRows", () => {
     expect(stats.visible).toBe(0);
   });
 
-  test("参数增减（形状变化）在简化后依然可见", async () => {
+  test("参数增减（形状变化）在简化后依然可见，且行对被打上 pair id", async () => {
     const oldSrc = `export function add(a: number, b: number): number {\n}\n`;
     const newSrc = `export function add(a: number, b: number, c?: number): number {\n}\n`;
-    const oldS = await simplify(typescriptProfile, oldSrc);
-    const newS = await simplify(typescriptProfile, newSrc);
+    const oldS = await simplifyWithErasures(typescriptProfile, oldSrc);
+    const newS = await simplifyWithErasures(typescriptProfile, newSrc);
     const file = mkFile([
       { type: "del", ln: 1, content: "-export function add(a: number, b: number): number {" },
       { type: "add", ln: 1, content: "+export function add(a: number, b: number, c?: number): number {" },
     ]);
     const { rows, stats } = buildSimplifiedRows(file, oldS, newS);
-    expect(rows).toEqual([
-      { kind: "del", text: "export function add(a, b) {", oldLn: 1, newLn: undefined },
-      { kind: "add", text: "export function add(a, b, c) {", oldLn: undefined, newLn: 1 },
-    ]);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ kind: "del", text: "export function add(a, b) {", oldLn: 1 });
+    expect(rows[1]).toMatchObject({ kind: "add", text: "export function add(a, b, c) {", newLn: 1 });
     expect(stats.visible).toBe(2);
+    // 配对：del/add 携带相同 pair id；擦除记录随行透传
+    expect(rows[0]!.kind === "del" && rows[0]!.pair).toBeTruthy();
+    expect(rows[0]!.kind === "del" && rows[1]!.kind === "add" && rows[0]!.pair === rows[1]!.pair).toBe(true);
+    expect(rows[0]!.kind === "del" && rows[0]!.erases!.some((e) => e.original === ": number")).toBe(true);
   });
 
   test("interface 成员类型变化折叠、成员增减可见", async () => {
@@ -250,5 +261,103 @@ describe("buildSimplifiedRows", () => {
     const { rows, stats } = buildSimplifiedRows(file, [""], [""]);
     expect(rows[0]!.kind).toBe("fold");
     expect(stats.folded).toBe(1);
+  });
+});
+
+describe("擦除记录（hover 披露数据源）", () => {
+  test("ts：类型标注为零宽删除点，?. 替换记录覆盖替换文本", async () => {
+    const { lines, erasures } = await simplifyWithErasures(
+      typescriptProfile,
+      `const x: number = a?.b;\n`,
+    );
+    expect(lines[0]).toBe("const x = a.b;");
+    // `: number` 删除点落在 "const x" 之后（列 7），零宽；`?.` → `.` 区间覆盖替换后的 "."
+    expect(erasures[0]).toEqual([
+      { start: 7, end: 7, original: ": number" },
+      { start: 11, end: 12, original: "?." },
+    ]);
+  });
+
+  test("rust：数字后缀替换记录原文；无擦除的行为空数组", async () => {
+    const { lines, erasures } = await simplifyWithErasures(
+      rustProfile,
+      `let n = 0u32;\nlet m = n;\n`,
+    );
+    expect(lines[0]).toBe("let n = 0;");
+    expect(erasures[0]).toEqual([{ start: 8, end: 9, original: "0u32" }]);
+    expect(erasures[1]).toEqual([]);
+  });
+
+  test("源中相邻的连续擦除合并为一个标记（`?` + `: T`）", async () => {
+    const { lines, erasures } = await simplifyWithErasures(
+      typescriptProfile,
+      `function f(c?: number) {}\n`,
+    );
+    expect(lines[0]).toBe("function f(c) {}");
+    expect(erasures[0]).toEqual([{ start: 12, end: 12, original: "?: number" }]);
+  });
+
+  test("跨行擦除逐行记录：每行的删除点落在本行内", async () => {
+    const src = `let v = foo
+    .bar()
+    .baz()?;
+`;
+    const { lines, erasures } = await simplifyWithErasures(rustProfile, src);
+    expect(lines).toEqual(["let v = foo", "    .bar()", "    .baz();", ""]);
+    // `?` 在第三行（下标 2），其余行无擦除
+    expect(erasures[0]).toEqual([]);
+    expect(erasures[1]).toEqual([]);
+    expect(erasures[2]).toHaveLength(1);
+    expect(erasures[2]![0]!.original).toBe("?");
+  });
+});
+
+describe("del/add 相似度配对", () => {
+  function mkFile(changes: ParsedFile["chunks"][number]["changes"]): ParsedFile {
+    return { chunks: [{ changes }], from: "a.ts", to: "a.ts", deletions: 0, additions: 0 };
+  }
+
+  test("相似行对配对，无关行不配对", async () => {
+    const oldSrc = `const x = compute();
+return a + b;
+`;
+    const newSrc = `console.log('done');
+return a + c;
+`;
+    const oldS = await simplify(typescriptProfile, oldSrc);
+    const newS = await simplify(typescriptProfile, newSrc);
+    const file = mkFile([
+      { type: "del", ln: 1, content: "-const x = compute();" },
+      { type: "del", ln: 2, content: "-return a + b;" },
+      { type: "add", ln: 1, content: "+console.log('done');" },
+      { type: "add", ln: 2, content: "+return a + c;" },
+    ]);
+    const { rows } = buildSimplifiedRows(file, oldS, newS);
+    expect(rows.map((r) => r.kind)).toEqual(["del", "del", "add", "add"]);
+    const at = (i: number) => rows[i] as Extract<SRow, { kind: "ctx" | "del" | "add" }>;
+    const [d1, d2, a1, a2] = [at(0), at(1), at(2), at(3)];
+    // return 行配对；compute 与 console.log 行不配对
+    expect(d2.pair).toBeTruthy();
+    expect(d2.pair).toBe(a2.pair);
+    expect(d1.pair).toBeUndefined();
+    expect(a1.pair).toBeUndefined();
+  });
+
+  test("配对不跨 del/add 块", async () => {
+    const src = `alpha = 1;
+beta = 2;
+gamma = 3;
+`;
+    const s = await simplify(typescriptProfile, src);
+    const file = mkFile([
+      { type: "del", ln: 1, content: "-alpha = 1;" },
+      { type: "normal", ln1: 2, ln2: 2, content: " beta = 2;" },
+      { type: "add", ln: 3, content: "+alpha = 2;" },
+    ]);
+    const { rows } = buildSimplifiedRows(file, s, s);
+    const del = rows[0]!;
+    const add = rows[2]!;
+    expect(del.kind === "del" && del.pair).toBeUndefined();
+    expect(add.kind === "add" && add.pair).toBeUndefined();
   });
 });

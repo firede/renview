@@ -114,5 +114,7 @@ export interface Messages {
     importsFold: (keyword: string, count: number, shown: string[], hasMore: boolean) => string;
     /** 多个 type 声明摘要之间的连接符 */
     typeSpecJoiner: string;
+    /** diff 折叠组的成员级摘要（定位到类型声明时）；members 为 null 时只给声明名 */
+    foldedTypeMembers: (decl: string, members: string | null) => string;
   };
 }

@@ -49,5 +49,6 @@ export const en: Strings = {
   source: "Source",
   foldedTypeFormat: (n) =>
     n === 1 ? "1 type/format-only line collapsed" : `${n} type/format-only lines collapsed`,
+  erasureHint: "Original text hidden by simplification",
   noVisibleChanges: "No visible changes (everything is folded, or it's rename-only).",
 };

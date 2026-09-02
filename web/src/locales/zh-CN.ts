@@ -50,5 +50,6 @@ export const zhCN: Strings = {
   notTextViewable: "该文件无法以文本查看。",
   source: "源码",
   foldedTypeFormat: (n) => `${n} 行类型/格式性变更已折叠`,
+  erasureHint: "被简化隐藏的原文",
   noVisibleChanges: "无可见变更（可能全部被折叠或为纯改名）。",
 };

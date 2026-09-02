@@ -1,7 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
-import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
+import { nameList, nodeRowRange, type DeclarationInfo, type FoldKind, type LanguageProfile, type TypeDeclMembers } from "./types";
 
 /** GDScript profile：声明收集 + 类型擦除（标注/返回类型）+ enum 折叠 */
 
@@ -129,6 +129,19 @@ function gdFoldSummary(_kind: FoldKind, nodes: Node[], _source: string, locale: 
   return members.length > 0 ? `${label} { ${nameList(members, locale)} }` : label;
 }
 
+/** diff 折叠组的成员定位：enum 的变体（含行范围） */
+function gdTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
+  if (node.type !== "enum_definition") return null;
+  const members = (node.childForFieldName("body")?.namedChildren ?? [])
+    .flatMap((c) => (c.type === "enumerator_list" ? c.namedChildren : [c]))
+    .map((e) => {
+      const name = e.childForFieldName("left")?.text ?? null;
+      return name ? { name, range: nodeRowRange(e) } : null;
+    })
+    .filter((x): x is { name: string; range: [number, number] } => x != null);
+  return { name: nameOf(node, locale), members };
+}
+
 export const gdscriptProfile: LanguageProfile = {
   id: "gdscript",
   extensions: ["gd"],
@@ -141,4 +154,5 @@ export const gdscriptProfile: LanguageProfile = {
   simplify: gdSimplify,
   foldKind: gdFoldKind,
   foldSummary: gdFoldSummary,
+  typeDeclMembers: gdTypeDeclMembers,
 };

@@ -71,5 +71,7 @@ export const zhCN: Messages = {
     importsFold: (keyword, count, shown, hasMore) =>
       `${keyword} × ${count}（${shown.join("、")}${hasMore ? "…" : ""}）`,
     typeSpecJoiner: "；",
+    foldedTypeMembers: (decl, members) =>
+      members ? `${decl}：${members}（类型/格式变更）` : `${decl}（类型/格式变更）`,
   },
 };

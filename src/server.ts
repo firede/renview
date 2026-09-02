@@ -1,5 +1,6 @@
 import { resolve, sep } from "node:path";
 import parseDiff from "parse-diff";
+import { foldDescriber } from "./analysis/foldescribe";
 import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
 import { analyzeParsed, outlineOf, parseSide } from "./analysis/project";
@@ -171,8 +172,9 @@ async function handleFile(
     const side = await parseSide(profile, source);
     file.outline = outlineOf(profile, side.tree, locale);
     if (profile.simplify) {
-      file.simplified = simplifyTree(side.tree, source, profile.simplify);
-      file.view = buildViewRows(profile, side.tree, source, file.simplified, locale);
+      const r = simplifyTree(side.tree, source, profile.simplify);
+      file.simplified = r.lines;
+      file.view = buildViewRows(profile, side.tree, source, r.lines, locale, r.erasures);
     }
   } catch {
     file.degradedReason = "parse-error";
@@ -228,6 +230,7 @@ async function buildFileEntry(
         f,
         oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
         newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
+        foldDescriber(profile, oldSide, newSide, locale),
       );
     }
   } catch {
