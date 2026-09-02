@@ -4,6 +4,7 @@ import type { Strings } from "../i18n";
 export const en: Strings = {
   loading: "Loading…",
   loadError: (error) => `Something went wrong: ${error}`,
+  serverGoneTitle: "renview is no longer running",
   modeChanges: "Changes",
   modeBrowse: "Browse",
   fileCount: (n) => `${n} ${n === 1 ? "file" : "files"}`,

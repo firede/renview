@@ -19,6 +19,8 @@ export interface Strings {
   loading: string;
   /** 整页加载失败提示 */
   loadError: (error: string) => string;
+  /** CLI 进程退出/服务不可达的状态页（只说状态，不加引导） */
+  serverGoneTitle: string;
   /** 顶栏分段：变更审阅 */
   modeChanges: string;
   /** 顶栏分段：浏览 */

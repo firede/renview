@@ -234,6 +234,12 @@ body {
   color: var(--del);
 }
 
+/* 服务断开状态：正常色稍大字号的单行状态，不加引导文案 */
+.center-note.gone {
+  color: var(--fg);
+  font-size: 14px;
+}
+
 /* react-diff-view 深色适配 */
 .diff {
   background: var(--bg);

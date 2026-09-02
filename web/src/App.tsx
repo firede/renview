@@ -14,6 +14,8 @@ interface DiffPayload {
   files?: FileEntry[];
   generatedAt?: number;
   error?: string;
+  /** 网络层失败（进程退出/端口不可达），与服务端返回的业务错误区分 */
+  unreachable?: boolean;
 }
 
 /** 变更分类徽章的样式类（顺序即展示顺序；文案在 i18n 目录的 summaryChips） */
@@ -70,8 +72,16 @@ export function App() {
 
   const load = useCallback(async () => {
     setRefreshing(true);
+    let r: Response;
     try {
-      const r = await fetch("/api/diff");
+      r = await fetch("/api/diff");
+    } catch {
+      // fetch 抛错 = 网络层失败：CLI 进程已退出或端口不可达（页面还能打开但拿不到数据）
+      setPayload({ ok: false, unreachable: true });
+      setRefreshing(false);
+      return;
+    }
+    try {
       setPayload((await r.json()) as DiffPayload);
     } catch (e) {
       setPayload({ ok: false, error: String(e) });
@@ -149,6 +159,9 @@ export function App() {
   }, [mode, hasSimplified, showRaw]);
 
   if (!payload) return <div className="center-note">{s.loading}</div>;
+  if (!payload.ok && payload.unreachable) {
+    return <div className="center-note gone">{s.serverGoneTitle}</div>;
+  }
   if (!payload.ok) return <div className="center-note error">{s.loadError(payload.error ?? "")}</div>;
 
   return (
