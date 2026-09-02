@@ -1,0 +1,19 @@
+{
+  "name": "renview-www",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler dev"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.2.6",
+    "astro": "^7.2.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "wrangler": "^4.128.0"
+  }
+}

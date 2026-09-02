@@ -16,3 +16,4 @@
 - 代码字体：系统栈（ui-monospace → "SF Mono" → Menlo → Consolas → Liberation Mono → monospace），不内置字体资产；全站收敛到唯一 token `--font-mono` 并元素级声明（UA 的 pre 样式会压过继承值，代码区声明必须落在元素上）；用户经配置文件 `font_family` 覆写该 token（用户字体拼在系统栈前，未安装自然回落）；若 dogfood 中跨设备渲染不一致影响审阅，再评估内置 OFL 等宽字体。
 - TOML 解析用 smol-toml：纯 JS 无原生依赖、可打进单文件二进制；不自写 TOML 解析器（手写 parser 容易在注释/引号/转义边角出错）。
 - i18n 不引入 react-i18next / ICU 类库：文案量小（每侧几十条）、插值用模板函数、英文单复数内联分支即可；自研微型目录零依赖，对单文件二进制与前端 bundle 都最省心。
+- 官网（www/）用 Astro + @astrojs/cloudflare，为发布/安装管线提供稳定域名；独立 npm 包、各持 lockfile，官网依赖树不进主项目。

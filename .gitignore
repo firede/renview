@@ -1,6 +1,8 @@
 node_modules/
 dist/
 web/dist/
+.astro/
+.wrangler/
 src/webassets.gen.ts
 wasm/
 test/fixture-repo/
