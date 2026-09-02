@@ -91,6 +91,25 @@ describe("parseConfigText", () => {
     expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
     expect(warnings).toEqual([]);
   });
+
+  test("theme 默认 auto", () => {
+    const { config, warnings } = parseConfigText("");
+    expect(config.theme).toBe("auto");
+    expect(warnings).toEqual([]);
+  });
+
+  test("theme 生效：dark / light", () => {
+    expect(parseConfigText(`theme = "dark"`).config.theme).toBe("dark");
+    expect(parseConfigText(`theme = "light"`).config.theme).toBe("light");
+  });
+
+  test("theme 非法值回退 auto 并警告", () => {
+    for (const raw of [`theme = "night"`, `theme = 42`]) {
+      const { config, warnings } = parseConfigText(raw);
+      expect(config.theme).toBe("auto");
+      expect(warnings).toHaveLength(1);
+    }
+  });
 });
 
 describe("language 配置", () => {

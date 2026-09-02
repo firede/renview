@@ -55,6 +55,7 @@ Examples:
     languageUnsupported: (v) =>
       `language ${JSON.stringify(v)} matches no supported language (supported: zh-CN, en); detecting automatically`,
     updateCheckNotBoolean: (got) => `update_check should be a boolean (got ${got}); using the default (on)`,
+    themeUnsupported: (v) => `theme should be one of auto, dark, light (got ${v}); following the system`,
   },
   api: {
     missingPath: "Missing path parameter",

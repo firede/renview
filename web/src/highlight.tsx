@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { isDelete, isInsert, isNormal, type HunkData, type HunkTokens, type RenderToken, type TokenNode } from "react-diff-view";
 import type { HighlighterCore } from "shiki/core";
+import { useTheme, type ResolvedTheme } from "./theme";
 
 /** 一行的高亮 token（shiki 输出精简为渲染所需字段） */
 export interface HToken {
@@ -13,10 +14,20 @@ export interface HToken {
 /*
  * shiki 高开销且非首屏必需：核心、主题与各语言语法全部动态 import（按语言懒加载）。
  * 用 JS 正则引擎而非 oniguruma wasm，避开 wasm 嵌入/加载问题。
+ * 明暗双主题：主题 JSON 同样懒加载，按当前解析主题取色（主题切换时 hook 重算 token）。
  */
 let corePromise: Promise<HighlighterCore> | null = null;
 const loadedLangs = new Set<string>();
-const THEME = "github-dark-default";
+const loadedThemes = new Set<ResolvedTheme>();
+
+const THEME_NAME: Record<ResolvedTheme, string> = {
+  dark: "github-dark-default",
+  light: "github-light-default",
+};
+const THEME_LOADERS: Record<ResolvedTheme, () => Promise<{ default: unknown }>> = {
+  dark: () => import("shiki/themes/github-dark-default.mjs"),
+  light: () => import("shiki/themes/github-light-default.mjs"),
+};
 
 const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   typescript: () => import("shiki/langs/typescript.mjs"),
@@ -96,7 +107,7 @@ function highlighter(): Promise<HighlighterCore> {
       import("shiki/engine/javascript"),
     ]);
     return createHighlighterCore({
-      themes: [import("shiki/themes/github-dark-default.mjs")],
+      themes: [],
       langs: [],
       engine: createJavaScriptRegexEngine(),
     });
@@ -105,28 +116,37 @@ function highlighter(): Promise<HighlighterCore> {
 }
 
 /** 高亮整段文本，返回逐行 token；语言不支持时返回 null */
-export async function highlightText(text: string, lang: string): Promise<HToken[][] | null> {
+export async function highlightText(
+  text: string,
+  lang: string,
+  theme: ResolvedTheme,
+): Promise<HToken[][] | null> {
   const loader = LANG_LOADERS[lang];
   if (!loader) return null;
   const h = await highlighter();
+  if (!loadedThemes.has(theme)) {
+    await h.loadTheme((await THEME_LOADERS[theme]()).default as never);
+    loadedThemes.add(theme);
+  }
   if (!loadedLangs.has(lang)) {
     await h.loadLanguage((await loader()).default as never);
     loadedLangs.add(lang);
   }
-  const { tokens } = h.codeToTokens(text, { lang: lang as never, theme: THEME });
+  const { tokens } = h.codeToTokens(text, { lang: lang as never, theme: THEME_NAME[theme] });
   return tokens.map((line) =>
     line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle })),
   );
 }
 
-/** React hook：文本/语言变化时异步高亮；完成前返回 null（调用方先渲染纯文本，完成后替换） */
+/** React hook：文本/语言/主题变化时异步高亮；完成前返回 null（调用方先渲染纯文本，完成后替换） */
 export function useHighlightedLines(text: string | null, lang: string | null): HToken[][] | null {
+  const theme = useTheme();
   const [tokens, setTokens] = useState<HToken[][] | null>(null);
   useEffect(() => {
     let cancelled = false;
     setTokens(null);
     if (text == null || !lang) return;
-    highlightText(text, lang)
+    highlightText(text, lang, theme)
       .then((t) => {
         if (!cancelled) setTokens(t);
       })
@@ -134,7 +154,7 @@ export function useHighlightedLines(text: string | null, lang: string | null): H
     return () => {
       cancelled = true;
     };
-  }, [text, lang]);
+  }, [text, lang, theme]);
   return tokens;
 }
 
@@ -179,7 +199,11 @@ function toNodes(line: HToken[]): TokenNode[] {
  * 再按行号回填为 react-diff-view 的 HunkTokens。
  * 局限：跨 hunk 的多行语法构造（块注释/模板串）在空洞处可能断色，仅影响颜色不影响文本。
  */
-export async function highlightDiff(hunks: HunkData[], lang: string): Promise<HunkTokens> {
+export async function highlightDiff(
+  hunks: HunkData[],
+  lang: string,
+  theme: ResolvedTheme,
+): Promise<HunkTokens> {
   const oldByLine = new Map<number, string>();
   const newByLine = new Map<number, string>();
   let oldMax = 0;
@@ -205,7 +229,7 @@ export async function highlightDiff(hunks: HunkData[], lang: string): Promise<Hu
     const out: TokenNode[][] = [];
     if (max === 0) return out;
     const text = Array.from({ length: max }, (_, i) => byLine.get(i + 1) ?? "").join("\n");
-    const lines = await highlightText(text, lang);
+    const lines = await highlightText(text, lang, theme);
     if (!lines) return out;
     for (const ln of byLine.keys()) {
       const t = lines[ln - 1];
@@ -236,6 +260,7 @@ export const renderDiffToken: RenderToken = (token, renderDefault, index) =>
 
 /** 当前选中 diff 文件的高亮 tokens；无语言映射或切走文件时返回 null（纯文本渲染） */
 export function useDiffTokens(file: { hunks: HunkData[]; newPath: string; oldPath: string } | null): HunkTokens | null {
+  const theme = useTheme();
   const [tokens, setTokens] = useState<HunkTokens | null>(null);
   const path = file ? (file.newPath !== "/dev/null" ? file.newPath : file.oldPath) : null;
   const lang = shikiLangForPath(path);
@@ -243,7 +268,7 @@ export function useDiffTokens(file: { hunks: HunkData[]; newPath: string; oldPat
     let cancelled = false;
     setTokens(null);
     if (file && lang) {
-      highlightDiff(file.hunks, lang)
+      highlightDiff(file.hunks, lang, theme)
         .then((t) => {
           if (!cancelled) setTokens(t);
         })
@@ -252,6 +277,6 @@ export function useDiffTokens(file: { hunks: HunkData[]; newPath: string; oldPat
     return () => {
       cancelled = true;
     };
-  }, [file, lang]);
+  }, [file, lang, theme]);
   return tokens;
 }

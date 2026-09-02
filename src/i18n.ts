@@ -92,6 +92,7 @@ export interface Messages {
     languageNotString: (got: string) => string;
     languageUnsupported: (value: string) => string;
     updateCheckNotBoolean: (got: string) => string;
+    themeUnsupported: (value: string) => string;
   };
   api: {
     missingPath: string;

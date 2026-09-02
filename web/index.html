@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>renview</title>
+    <script>
+      // 首帧前按系统主题预设（默认 auto 的行为）；配置项 theme 到达后在渲染前覆写
+      document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "dark";
+    </script>
   </head>
   <body>
     <div id="root"></div>

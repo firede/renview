@@ -3,6 +3,9 @@ import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { detectLocale, matchLocale, messages, resolveLocale, type Locale } from "./i18n";
 
+/** 界面主题：auto 跟随系统（prefers-color-scheme），dark/light 强制 */
+export type ThemeSetting = "auto" | "dark" | "light";
+
 /** 经校验、解析后的配置，CLI 与前端可直接应用 */
 export interface UiConfig {
   font: {
@@ -13,6 +16,8 @@ export interface UiConfig {
   };
   /** 界面与输出语言：language 配置项经 BCP 47 根语言匹配；未设置/无法匹配时按环境检测，回落英文 */
   language: Locale;
+  /** 界面主题（theme 配置项），默认 auto */
+  theme: ThemeSetting;
   /** 启动时被动检查更新并提示一行（update_check 配置项；RENVIEW_DISABLE_UPDATE_CHECK 环境变量亦可关闭） */
   updateCheck: boolean;
 }
@@ -32,7 +37,7 @@ const DEFAULT_FONT = { family: DEFAULT_FONT_FAMILY, size: DEFAULT_FONT_SIZE };
 
 /** 默认配置：字体取内置值；语言随环境检测，故按调用构造 */
 function defaultConfig(env: NodeJS.ProcessEnv): UiConfig {
-  return { font: { ...DEFAULT_FONT }, language: detectLocale(env), updateCheck: true };
+  return { font: { ...DEFAULT_FONT }, language: detectLocale(env), theme: "auto", updateCheck: true };
 }
 
 /** 配置文件位置：$XDG_CONFIG_HOME/renview/config.toml；Windows 落 %APPDATA%\renview\config.toml */
@@ -107,7 +112,7 @@ export function parseConfigText(
     warnings.push(m.config.languageUnsupported(languageIssue.raw as string));
   }
 
-  const config: UiConfig = { font: { ...DEFAULT_FONT }, language, updateCheck: true };
+  const config: UiConfig = { font: { ...DEFAULT_FONT }, language, theme: "auto", updateCheck: true };
   if ("font_family" in d) {
     if (typeof d.font_family === "string") {
       config.font.family = resolveFontFamily(d.font_family);
@@ -129,6 +134,13 @@ export function parseConfigText(
       config.updateCheck = d.update_check;
     } else {
       warnings.push(m.config.updateCheckNotBoolean(typeof d.update_check));
+    }
+  }
+  if ("theme" in d) {
+    if (d.theme === "auto" || d.theme === "dark" || d.theme === "light") {
+      config.theme = d.theme;
+    } else {
+      warnings.push(m.config.themeUnsupported(JSON.stringify(d.theme)));
     }
   }
   return { config, warnings };

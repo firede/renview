@@ -52,6 +52,7 @@ export const zhCN: Messages = {
     languageUnsupported: (v) =>
       `language 无法匹配已支持的语言（收到 ${JSON.stringify(v)}，支持 zh-CN、en），已自动检测语言`,
     updateCheckNotBoolean: (got) => `update_check 应为布尔值（收到 ${got}），已使用默认开启`,
+    themeUnsupported: (v) => `theme 只支持 auto、dark、light（收到 ${v}），已跟随系统`,
   },
   api: {
     missingPath: "缺少 path 参数",
