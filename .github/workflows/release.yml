@@ -49,7 +49,7 @@ jobs:
           key: wasm-${{ hashFiles('bun.lock') }}
 
       - run: bun install --frozen-lockfile
-      - run: bun test
+      - run: bun run test # 走 package.json 脚本（含 sync:wasm），裸 bun test 在 fresh clone 上没有 wasm
       - run: bun run typecheck
       - run: bun run build
       - run: bun run scripts/pack.ts
