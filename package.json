@@ -2,6 +2,7 @@
   "name": "renview",
   "version": "0.1.0",
   "description": "帮助人类降低认知负担的代码审核工具",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "renview": "src/cli.ts"
