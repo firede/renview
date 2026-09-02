@@ -19,6 +19,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # 祖先判定需要完整历史
+
+      - name: 仅允许 main 分支上的提交发版
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD \
+            || { echo "::error::tag ${GITHUB_REF_NAME} 指向的提交不在 main 分支上，拒绝发版"; exit 1; }
 
       # Bun 版本与本地开发锁定一致（见 .agents/truth/stack.md）
       - uses: oven-sh/setup-bun@v2

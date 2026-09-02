@@ -13,6 +13,7 @@
 - 分发制品宿主：npm registry 是二进制 CDN 与唯一版本源——5 个无作用域平台包 renview-<target>（os/cpu 过滤）+ 壳包 renview（optionalDependencies 钉版 + postinstall 硬链接，registry 下载兜底），GitHub Releases 只挂 tar.gz+checksums 作人类可读镜像；选 npm 而非 GitHub 作下载源因国内可达性远好于 GitHub，且 registry 元数据自带 sha512 integrity 可免费校验。
 - npm 发布认证用 Trusted Publishing OIDC（release.yml 配 id-token: write），不持有 NPM_TOKEN——classic token 已被 npm 废除，granular write token 强制 90 天轮换。
 - CI（release.yml）锁定 Bun 1.4.0（对齐本地开发版本），冒烟矩阵 macos-14 / macos-15-intel / ubuntu-24.04 / ubuntu-24.04-arm / windows-latest 跑真实二进制 --version 对拍 tag 版本——macos-13 镜像已退役，Intel mac 仅剩 macos-15-intel。
+- 发版仅限 main：release.yml 校验 tag 提交是 origin/main 的祖先，否则拒绝构建——防止特性分支上的 tag 误触发公开发布。
 - UI 组件库：暂不引入；hover 披露（tooltip/popover 定位与焦点管理）落地时选用 headless 的 base-ui（与纯 CSS 相容），不引入 shadcn/ui（绑定 tailwind 样式体系，与"样式纯 CSS"冲突）。目录树等轻量交互自研（base-ui 本无现成 tree 组件）。
 - 代码字体：系统栈（ui-monospace → "SF Mono" → Menlo → Consolas → Liberation Mono → monospace），不内置字体资产；全站收敛到唯一 token `--font-mono` 并元素级声明（UA 的 pre 样式会压过继承值，代码区声明必须落在元素上）；用户经配置文件 `font_family` 覆写该 token（用户字体拼在系统栈前，未安装自然回落）；若 dogfood 中跨设备渲染不一致影响审阅，再评估内置 OFL 等宽字体。
 - TOML 解析用 smol-toml：纯 JS 无原生依赖、可打进单文件二进制；不自写 TOML 解析器（手写 parser 容易在注释/引号/转义边角出错）。

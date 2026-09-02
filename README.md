@@ -65,7 +65,8 @@ bun run scripts/build.ts --host  # 仅编译本机平台
 bun run scripts/pack.ts          # 组装 dist/npm/（6 个 npm 包）与 dist/release/（tarball + checksums）
 
 # 发版（tag 触发 release.yml：构建 → 5 平台冒烟 → npm Trusted Publishing + GitHub Release）
-npm version patch                # 或 minor / major；改动 package.json 并打 tag
+# npm version 会自动改 package.json + 提交 + 打 v 前缀 tag；tag 提交必须在 main 祖先链上，否则 CI 拒绝
+npm version patch                # 或 minor / major
 git push --follow-tags
 
 # 体验（示例变更仓库：math.ts / main.rs 已修改，util.ts 未跟踪）
