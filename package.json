@@ -14,7 +14,7 @@
     "gen:assets": "bun run scripts/gen-assets.ts",
     "build": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run scripts/build.ts",
     "test": "bun run sync:wasm && bun test",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun run build:web && bun run gen:assets && tsc --noEmit",
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {
