@@ -484,6 +484,12 @@ body {
   white-space: pre;
 }
 
+/* 实现摘要注释行（body 变更的决策点/调用枚举）：注释色降权、斜体、不可交互 */
+.srow.note .note-text {
+  color: var(--fg-dim);
+  font-style: italic;
+}
+
 /* 词级行内差异高亮（简化视图的配对 del/add 行）。无圆角：一段差异会因 token 着色切成多个相邻 span，圆角会暴露分段边界 */
 .wdel {
   background: rgba(248, 81, 73, 0.28);

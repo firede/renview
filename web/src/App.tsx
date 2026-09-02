@@ -32,8 +32,11 @@ function splitPath(p: string): { dir: string; base: string } {
 
 /** 跳转到查看器时的定位行：优先简化视图首个变更行，其次首个有新侧区间的单元 */
 function viewerLineOf(entry: FileEntry | null): number {
-  const row = entry?.simplified?.rows.find((r) => r.kind !== "fold" && r.newLn != null);
-  if (row && row.kind !== "fold" && row.newLn != null) return row.newLn;
+  const row = entry?.simplified?.rows.find(
+    (r) => (r.kind === "ctx" || r.kind === "del" || r.kind === "add") && r.newLn != null,
+  );
+  if (row && (row.kind === "ctx" || row.kind === "del" || row.kind === "add") && row.newLn != null)
+    return row.newLn;
   return entry?.projection?.units.find((u) => u.newRange)?.newRange?.[0] ?? 1;
 }
 

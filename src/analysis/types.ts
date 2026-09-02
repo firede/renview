@@ -13,6 +13,8 @@ export interface BodySummaryItem {
   kind: string;
   /** 首行预览（截断） */
   preview: string;
+  /** 该语句在新侧的起始行号（1-based），供取简化文本 */
+  newLn: number;
   changedLines: number;
 }
 

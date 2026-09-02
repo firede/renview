@@ -3,6 +3,7 @@ import { messages, type Locale } from "../i18n";
 import type { DeclarationInfo, LanguageProfile } from "./langs/types";
 import { countLinesIn, touchedBy } from "./map";
 import { parseSource } from "./parser";
+import type { SRow } from "./simplify";
 import type { BodySummaryItem, ChangeKind, ChangeUnit, FileProjection, OutlineItem } from "./types";
 
 export class ParseError extends Error {}
@@ -68,10 +69,13 @@ function summarizeBody(body: Node, lines: Set<number>): BodySummaryItem[] {
   const items: BodySummaryItem[] = [];
   for (const child of body.namedChildren) {
     if (!touchedBy(child, lines)) continue;
+    // 注释不是决策点，不进摘要（注释变更已有低优先级单元承接）
+    if (child.type.includes("comment")) continue;
     const firstLine = child.text.split("\n", 1)[0] ?? "";
     items.push({
       kind: child.type,
       preview: firstLine.trim().slice(0, 80),
+      newLn: child.startPosition.row + 1,
       changedLines: countLinesIn(child, lines),
     });
   }
@@ -194,6 +198,55 @@ export function analyzeParsed(
   for (const u of deduped) summary[u.change]++;
 
   return { language: profile.id, summary, units: deduped };
+}
+
+/** 单条实现摘要最多列出的条目数（超出以总数收尾） */
+const BODY_NOTE_MAX_ITEMS = 3;
+/** 产出行内摘要的条目门槛：单条变更在行流中自明，摘要纯属重复 */
+const BODY_NOTE_MIN_ITEMS = 2;
+
+/**
+ * 实现摘要注释行：body 变更单元的决策点/调用枚举（结构化枚举，非自然语言），
+ * 插入该单元范围内首个变更行之前。预览取简化文本（与行流同一投影），被抹空时回落原始预览。
+ */
+export function insertBodyNotes(
+  rows: SRow[],
+  units: ChangeUnit[],
+  newSimplifiedLines: string[] | null,
+  locale: Locale,
+): SRow[] {
+  const pending: Array<{ start: number; end: number; text: string }> = [];
+  for (const u of units) {
+    if (u.change !== "body" || !u.newRange) continue;
+    const items = u.bodySummary ?? [];
+    if (items.length < BODY_NOTE_MIN_ITEMS) continue;
+    const parts = items
+      .slice(0, BODY_NOTE_MAX_ITEMS)
+      .map((it) => (newSimplifiedLines?.[it.newLn - 1]?.trim() || it.preview).slice(0, 80));
+    pending.push({
+      start: u.newRange[0],
+      end: u.newRange[1],
+      text: messages(locale).analysis.bodyNote(parts, items.length, items.length > BODY_NOTE_MAX_ITEMS),
+    });
+  }
+  if (pending.length === 0) return rows;
+  pending.sort((a, b) => a.start - b.start);
+
+  const out: SRow[] = [];
+  let pi = 0;
+  for (const row of rows) {
+    // del 行无新侧行号，用旧侧行号近似定位（插入位置的启发式，不用于锚定）
+    const ln = row.kind === "fold" || row.kind === "note" ? null : (row.newLn ?? row.oldLn ?? null);
+    if (ln != null) {
+      while (pi < pending.length && ln > pending[pi]!.end) pi++; // 范围内无可挂行，放弃该摘要
+      while (pi < pending.length && ln >= pending[pi]!.start) {
+        out.push({ kind: "note", text: pending[pi]!.text });
+        pi++;
+      }
+    }
+    out.push(row);
+  }
+  return out;
 }
 
 /** analyzeParsed 的包装：先解析两侧源码（服务端以外、无需复用 CST 的调用方使用） */

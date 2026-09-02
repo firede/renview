@@ -73,5 +73,7 @@ export const zhCN: Messages = {
     typeSpecJoiner: "；",
     foldedTypeMembers: (decl, members) =>
       members ? `${decl}：${members}（类型/格式变更）` : `${decl}（类型/格式变更）`,
+    bodyNote: (parts, total, hasMore) =>
+      `实现变化：${parts.join("；")}${hasMore ? `（共 ${total} 处）` : ""}`,
   },
 };

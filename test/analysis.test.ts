@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { typescriptProfile } from "../src/analysis/langs/typescript";
-import { analyzeFile } from "../src/analysis/project";
+import { analyzeFile, insertBodyNotes } from "../src/analysis/project";
+import type { SRow } from "../src/analysis/simplify";
+import type { ChangeUnit } from "../src/analysis/types";
 
 function lines(...ns: number[]): Set<number> {
   return new Set(ns);
@@ -29,6 +31,7 @@ describe("analyzeFile", () => {
     expect(u.change).toBe("body");
     expect(u.name).toBe("greet");
     expect(u.bodySummary?.[0]?.kind).toBe("return_statement");
+    expect(u.bodySummary?.[0]?.newLn).toBe(11);
     expect(p.summary.body).toBe(1);
   });
 
@@ -141,5 +144,105 @@ describe("analyzeFile", () => {
     const p = await analyzeFile(typescriptProfile, BASE, next, lines(), lines(10), "en");
     expect(p.units[0]!.kind).toBe("other");
     expect(p.units[0]!.name).toBe("Comment changes");
+  });
+});
+
+describe("insertBodyNotes：实现摘要注释行", () => {
+  const unit = (items: Array<[number, string]>, range: [number, number] = [1, 8]): ChangeUnit => ({
+    id: "f:0",
+    kind: "function",
+    name: "price",
+    change: "body",
+    newRange: range,
+    bodySummary: items.map(([newLn, preview]) => ({
+      kind: "x",
+      preview,
+      newLn,
+      changedLines: 1,
+    })),
+  });
+
+  test("插入到单元范围内首行之前，预览取简化文本", () => {
+    const rows: SRow[] = [
+      { kind: "ctx", text: "function price(user) {", oldLn: 1, newLn: 1 },
+      { kind: "del", text: "  let total = 0;", oldLn: 2 },
+      { kind: "add", text: "  let total = 1;", newLn: 2 },
+    ];
+    // 新侧简化行：第 3 行类型注解已被擦除（preview 原始含类型）
+    const newLines = [
+      "function price(user) {",
+      "  let total = 1;",
+      "  if (user.vip) {",
+      "  return total * 2;",
+    ];
+    const u = unit([
+      [2, "let total = 1;"],
+      [3, "if (user.vip: boolean) {"], // 原始预览带类型，应被简化行替换
+      [4, "return total * 2;"],
+    ]);
+    const out = insertBodyNotes(rows, [u], newLines, "zh-CN");
+    expect(out.map((r) => r.kind)).toEqual(["note", "ctx", "del", "add"]);
+    expect(out[0]).toMatchObject({
+      kind: "note",
+      text: "实现变化：let total = 1;；if (user.vip) {；return total * 2;",
+    });
+  });
+
+  test("单条摘要不产注释行（行流中自明）", () => {
+    const rows: SRow[] = [{ kind: "add", text: "x();", newLn: 2 }];
+    const out = insertBodyNotes(rows, [unit([[2, "x();"]])], null, "zh-CN");
+    expect(out).toHaveLength(1);
+  });
+
+  test("超过 3 条截断并显示总数；英文措辞", () => {
+    const rows: SRow[] = [{ kind: "add", text: "x();", newLn: 2 }];
+    const u = unit([
+      [2, "a();"],
+      [3, "b();"],
+      [4, "c();"],
+      [5, "d();"],
+      [6, "e();"],
+    ]);
+    const out = insertBodyNotes(rows, [u], null, "en");
+    expect(out[0]).toMatchObject({
+      kind: "note",
+      text: "Body changes: a();; b();; c(); (5 total)",
+    });
+  });
+
+  test("单元范围内无可挂行时摘要被放弃，不影响后续单元", () => {
+    const rows: SRow[] = [{ kind: "add", text: "x();", newLn: 20 }];
+    const lost = unit(
+      [
+        [3, "a();"],
+        [4, "b();"],
+      ],
+      [1, 5],
+    );
+    const hit = unit(
+      [
+        [20, "c();"],
+        [21, "d();"],
+      ],
+      [18, 22],
+    );
+    const out = insertBodyNotes(rows, [lost, hit], null, "zh-CN");
+    expect(out.map((r) => r.kind)).toEqual(["note", "add"]);
+    expect(out[0]).toMatchObject({ text: "实现变化：c();；d();" });
+  });
+
+  test("signature/added/removed 单元不产注释行", () => {
+    const rows: SRow[] = [{ kind: "add", text: "x();", newLn: 2 }];
+    const sig: ChangeUnit = {
+      id: "s:0",
+      kind: "function",
+      name: "s",
+      change: "signature",
+      newRange: [1, 3],
+      signature: "function s()",
+      oldSignature: "function s(a)",
+    };
+    const out = insertBodyNotes(rows, [sig], null, "zh-CN");
+    expect(out).toHaveLength(1);
   });
 });

@@ -3,7 +3,7 @@ import parseDiff from "parse-diff";
 import { foldDescriber } from "./analysis/foldescribe";
 import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
-import { analyzeParsed, outlineOf, parseSide } from "./analysis/project";
+import { analyzeParsed, insertBodyNotes, outlineOf, parseSide } from "./analysis/project";
 import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
 import { buildViewRows } from "./analysis/view";
 import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
@@ -226,12 +226,13 @@ async function buildFileEntry(
     ]);
     entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
     if (profile.simplify) {
-      entry.simplified = buildSimplifiedRows(
-        f,
-        oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
-        newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
-        foldDescriber(profile, oldSide, newSide, locale),
-      );
+      const oldS = oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null;
+      const newS = newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null;
+      const data = buildSimplifiedRows(f, oldS, newS, foldDescriber(profile, oldSide, newSide, locale));
+      entry.simplified = {
+        ...data,
+        rows: insertBodyNotes(data.rows, entry.projection.units, newS?.lines ?? null, locale),
+      };
     }
   } catch {
     entry.degradedReason = "parse-error";

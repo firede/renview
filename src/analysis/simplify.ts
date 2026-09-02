@@ -210,6 +210,11 @@ export type SRow =
       newLns?: number[];
       /** 成员级折叠摘要（关联到类型声明时由 describeFold 产出）；缺省时前端按 count 回落 */
       summary?: string;
+    }
+  | {
+      /** 实现摘要注释行：body 变更单元的决策点/调用枚举（P2），非代码、不参与行号锚定 */
+      kind: "note";
+      text: string;
     };
 
 export interface SimplifiedViewData {
