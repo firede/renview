@@ -1,0 +1,124 @@
+name: release
+
+# 发版唯一入口：npm version patch|minor|major && git push --follow-tags
+# tag 去掉 v 前缀必须等于 package.json version（build 的第一步校验）
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      # Bun 版本与本地开发锁定一致（见 .agents/truth/stack.md）
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+
+      - name: 校验 tag 与 package.json 版本一致
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(bun -e 'console.log(JSON.parse(require("fs").readFileSync("package.json", "utf8")).version)')"
+          echo "tag=$tag package.json=$pkg"
+          [ "$tag" = "$pkg" ]
+
+      # gdscript.wasm 靠 docker+emscripten 自建（慢），按 lockfile 缓存；命中后 sync-wasm 自动跳过
+      - uses: actions/cache@v4
+        with:
+          path: wasm/
+          key: wasm-${{ hashFiles('bun.lock') }}
+
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run typecheck
+      - run: bun run build
+      - run: bun run scripts/pack.ts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-packages
+          path: dist/npm/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist/release/
+          if-no-files-found: error
+
+  # 按平台在真实 runner 上冒烟：解开对应 tarball，--version 输出必须等于 tag 版本
+  smoke:
+    needs: build
+    strategy:
+      matrix:
+        include:
+          - { os: macos-14, target: darwin-arm64 }
+          - { os: macos-15-intel, target: darwin-x64 } # macos-13 已退役，Intel 仅剩此镜像
+          - { os: ubuntu-24.04, target: linux-x64 }
+          - { os: ubuntu-24.04-arm, target: linux-arm64 }
+          - { os: windows-latest, target: windows-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist/release
+      - name: 真实二进制 --version 对拍 tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -xzf "dist/release/renview-${{ matrix.target }}.tar.gz" -C dist/release
+          bin="dist/release/renview"
+          if [ "${{ matrix.target }}" = "windows-x64" ]; then bin="dist/release/renview.exe"; fi
+          got="$("$bin" --version | tr -d '[:space:]')"
+          expected="${GITHUB_REF_NAME#v}"
+          echo "target=${{ matrix.target }} got=$got expected=$expected"
+          [ "$got" = "$expected" ]
+
+  publish:
+    needs: smoke
+    # 防 fork 误发
+    if: github.repository == 'firede/renview'
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write # npm Trusted Publishing (OIDC)，免 NPM_TOKEN
+      contents: write # gh release create
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-packages
+          path: dist/npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist/release
+
+      # Trusted Publishing 要求 npm CLI ≥ 11.5.1；node 24 自带的未必够新，显式升级
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install -g npm@latest
+
+      - name: 发布平台包与壳包（先平台后壳，OIDC 自动带 provenance）
+        run: |
+          set -euo pipefail
+          for p in dist/npm/renview-*/; do
+            npm publish --access public "$p"
+          done
+          npm publish --access public dist/npm/renview
+
+      - name: GitHub Release 挂 tarball 镜像
+        run: gh release create "$GITHUB_REF_NAME" dist/release/*.tar.gz dist/release/checksums.txt --title "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

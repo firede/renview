@@ -9,6 +9,10 @@ export const en: Messages = {
     help: `renview — a code review tool built to lower human cognitive load
 
 Usage: renview [options] [<git diff args>...]
+       renview upgrade [version]
+
+Commands:
+  upgrade [version]     Upgrade to the latest (or a specific) version
 
 Options:
   -p, --port <port>   Use a specific local port (random by default)
@@ -29,6 +33,18 @@ Examples:
     started: (url) => `renview started: ${url}`,
     repo: (root) => `Repository: ${root}`,
     configWarning: (path, w) => `Config ${path}: ${w}`,
+    updateAvailable: (current, latest) =>
+      `renview v${latest} is available (current: v${current}) — run: renview upgrade`,
+    upgradeInvalidVersion: (v) => `Invalid version: ${v}`,
+    upgradeFetchFailed:
+      "Could not fetch the latest version; check your network (or the registry RENVIEW_REGISTRY points to)",
+    upgradeUnknownInstall:
+      "This renview binary was not installed via the install script or a package manager (possibly a dev build); please update it manually",
+    upgradeAlreadyLatest: (v) => `Already up to date (v${v})`,
+    upgradeViaScript: (v) => `Upgrading to v${v} via the install script…`,
+    upgradeViaPm: (pm, v) => `Upgrading to v${v} via ${pm}…`,
+    upgradeFailed: (d) => `Upgrade failed: ${d}`,
+    upgradeManualHint: "Manual upgrade: curl -fsSL https://renview.6636.tech/install | bash",
   },
   config: {
     tomlParseFailed: (d) => `Failed to parse TOML (${d}); using defaults`,
@@ -38,6 +54,7 @@ Examples:
     languageNotString: (got) => `language should be a string (got ${got}); detecting language automatically`,
     languageUnsupported: (v) =>
       `language ${JSON.stringify(v)} matches no supported language (supported: zh-CN, en); detecting automatically`,
+    updateCheckNotBoolean: (got) => `update_check should be a boolean (got ${got}); using the default (on)`,
   },
   api: {
     missingPath: "Missing path parameter",

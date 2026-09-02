@@ -73,6 +73,17 @@ export interface Messages {
     started: (url: string) => string;
     repo: (root: string) => string;
     configWarning: (path: string, warning: string) => string;
+    /** 被动更新提示：启动时一行（缓存命中才打印） */
+    updateAvailable: (current: string, latest: string) => string;
+    upgradeInvalidVersion: (value: string) => string;
+    upgradeFetchFailed: string;
+    /** 非安装脚本/包管理器渠道（源码或 dist/ 直跑），拒绝升级 */
+    upgradeUnknownInstall: string;
+    upgradeAlreadyLatest: (version: string) => string;
+    upgradeViaScript: (version: string) => string;
+    upgradeViaPm: (pm: string, version: string) => string;
+    upgradeFailed: (detail: string) => string;
+    upgradeManualHint: string;
   };
   config: {
     tomlParseFailed: (detail: string) => string;
@@ -80,6 +91,7 @@ export interface Messages {
     fontSizeNotPositive: (got: string, fallback: number) => string;
     languageNotString: (got: string) => string;
     languageUnsupported: (value: string) => string;
+    updateCheckNotBoolean: (got: string) => string;
   };
   api: {
     missingPath: string;

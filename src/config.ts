@@ -13,6 +13,8 @@ export interface UiConfig {
   };
   /** 界面与输出语言：language 配置项经 BCP 47 根语言匹配；未设置/无法匹配时按环境检测，回落英文 */
   language: Locale;
+  /** 启动时被动检查更新并提示一行（update_check 配置项；RENVIEW_DISABLE_UPDATE_CHECK 环境变量亦可关闭） */
+  updateCheck: boolean;
 }
 
 export interface LoadedConfig {
@@ -30,7 +32,7 @@ const DEFAULT_FONT = { family: DEFAULT_FONT_FAMILY, size: DEFAULT_FONT_SIZE };
 
 /** 默认配置：字体取内置值；语言随环境检测，故按调用构造 */
 function defaultConfig(env: NodeJS.ProcessEnv): UiConfig {
-  return { font: { ...DEFAULT_FONT }, language: detectLocale(env) };
+  return { font: { ...DEFAULT_FONT }, language: detectLocale(env), updateCheck: true };
 }
 
 /** 配置文件位置：$XDG_CONFIG_HOME/renview/config.toml；Windows 落 %APPDATA%\renview\config.toml */
@@ -105,7 +107,7 @@ export function parseConfigText(
     warnings.push(m.config.languageUnsupported(languageIssue.raw as string));
   }
 
-  const config: UiConfig = { font: { ...DEFAULT_FONT }, language };
+  const config: UiConfig = { font: { ...DEFAULT_FONT }, language, updateCheck: true };
   if ("font_family" in d) {
     if (typeof d.font_family === "string") {
       config.font.family = resolveFontFamily(d.font_family);
@@ -120,6 +122,13 @@ export function parseConfigText(
       warnings.push(
         m.config.fontSizeNotPositive(JSON.stringify(d.font_size), DEFAULT_FONT_SIZE),
       );
+    }
+  }
+  if ("update_check" in d) {
+    if (typeof d.update_check === "boolean") {
+      config.updateCheck = d.update_check;
+    } else {
+      warnings.push(m.config.updateCheckNotBoolean(typeof d.update_check));
     }
   }
   return { config, warnings };

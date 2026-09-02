@@ -27,7 +27,20 @@ describe("parseConfigText", () => {
     const { config, warnings } = parseConfigText("");
     expect(config.font.family).toBe(DEFAULT_FONT_FAMILY);
     expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
+    expect(config.updateCheck).toBe(true);
     expect(warnings).toEqual([]);
+  });
+
+  test("update_check = false 关闭更新提示", () => {
+    const { config, warnings } = parseConfigText(`update_check = false`);
+    expect(config.updateCheck).toBe(false);
+    expect(warnings).toEqual([]);
+  });
+
+  test("update_check 非布尔回退默认并警告", () => {
+    const { config, warnings } = parseConfigText(`update_check = "no"`);
+    expect(config.updateCheck).toBe(true);
+    expect(warnings).toHaveLength(1);
   });
 
   test("font_family 加引号后拼在内置系统栈前", () => {

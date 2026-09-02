@@ -30,7 +30,8 @@
 - hover 细节分两层：v1 展示被擦除的原文片段；参数类型结构等语义级 hover 依赖 LSP 增强层，后置。
 - hunk 外上下文不在 diff 视图内展开，由跳转查看器完整文件视图承接。
 - 领域投影（如 JSX 内 tailwind 原子类 → 元素 hover 样式预览）为远期方向，非 v1 承诺。
-- 发布节奏：先 dogfood 至维护者认可再考虑公开发布，分发工程随之推后。
+- 发布节奏：公开发布由维护者显式打 tag（npm version + git push --follow-tags）触发 release.yml，dogfood 认可前不发 tag；分发工程（安装脚本 / npm CDN / upgrade）已落地。
+- 更新检测默认开启：启动时缓存命中才打印一行提示、后台异步刷新（24h 间隔），升级只能由用户显式 `renview upgrade` 触发——不自动升级、不阻塞审阅；`update_check = false` 或 `RENVIEW_DISABLE_UPDATE_CHECK` 可关闭。
 - 查看器 v1 固定展示 working tree 版本（与 diff 默认语义一致），rev 切换后置。
 - 擦除语义安全线：以"是否影响业务抽象理解"而非"是否影响运行时语义"划线——内存/指针/封解包等语言机制（如 Rust 的 &/&mut、数字后缀）信任 agent 做对、可以擦除；使用者聚焦业务模型是否与现实相符、大体如何工作。
 - 查看器与 diff 均默认展示简化视图；投影态通过工具栏"简化/源码"激活态常驻可见（投影不伪装成源码）。

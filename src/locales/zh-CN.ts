@@ -6,6 +6,10 @@ export const zhCN: Messages = {
     help: `renview — 帮助人类降低认知负担的代码审核工具
 
 用法: renview [选项] [<git diff 参数>...]
+      renview upgrade [版本]
+
+子命令:
+  upgrade [版本]        升级到最新（或指定）版本
 
 选项:
   -p, --port <端口>   指定本地服务端口（默认随机）
@@ -26,6 +30,18 @@ export const zhCN: Messages = {
     started: (url) => `renview 已启动: ${url}`,
     repo: (root) => `仓库: ${root}`,
     configWarning: (path, w) => `配置 ${path}: ${w}`,
+    updateAvailable: (current, latest) =>
+      `发现新版本 v${latest}（当前 v${current}），运行 renview upgrade 升级`,
+    upgradeInvalidVersion: (v) => `无效版本号: ${v}`,
+    upgradeFetchFailed:
+      "获取最新版本失败，请检查网络（或 RENVIEW_REGISTRY 指向的 registry 是否可用）",
+    upgradeUnknownInstall:
+      "当前 renview 不是经安装脚本或包管理器安装的（可能是开发构建），请手动更新",
+    upgradeAlreadyLatest: (v) => `已是最新版本（v${v}）`,
+    upgradeViaScript: (v) => `正在通过安装脚本升级到 v${v}…`,
+    upgradeViaPm: (pm, v) => `正在通过 ${pm} 升级到 v${v}…`,
+    upgradeFailed: (d) => `升级失败: ${d}`,
+    upgradeManualHint: "手动升级: curl -fsSL https://renview.6636.tech/install | bash",
   },
   config: {
     tomlParseFailed: (d) => `TOML 解析失败（${d}），已使用默认配置`,
@@ -35,6 +51,7 @@ export const zhCN: Messages = {
     languageNotString: (got) => `language 应为字符串（收到 ${got}），已自动检测语言`,
     languageUnsupported: (v) =>
       `language 无法匹配已支持的语言（收到 ${JSON.stringify(v)}，支持 zh-CN、en），已自动检测语言`,
+    updateCheckNotBoolean: (got) => `update_check 应为布尔值（收到 ${got}），已使用默认开启`,
   },
   api: {
     missingPath: "缺少 path 参数",

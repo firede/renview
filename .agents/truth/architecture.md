@@ -34,3 +34,5 @@
 - locale 以显式参数贯穿分析层（collect / foldSummary / nameList / analyzeParsed / outlineOf / buildViewRows），不用模块级全局态——数据流显式、测试互不污染，与"字节偏移唯一事实来源"同原则。
 - 语言流向：server 每个 /api 数据请求按当次配置解析 locale（分析串与 API 错误随请求生效）→ /api/config 携带 language → 前端 setLocale（useSyncExternalStore 通知重渲染）并同步 <html lang>；CLI 消息用启动时解析值。
 - 配置警告文本的语言由被解析配置自身决定（language 键优先于环境检测），确保警告以用户实际语言出现在终端。
+- 更新检测数据流：npm registry 的 renview/latest 为唯一版本源；被动提示读 config 目录 update-check.json（上次结果先行提示，后台刷新供下次启动使用），fire-and-forget 任何失败静默；upgrade 按 process.execPath 分流——~/.renview/bin 下重跑官网安装脚本，pm 全局目录调对应包管理器，其余渠道（开发构建 / dist 直跑）拒绝。
+- 安装脚本 www/public/install 静态托管于官网（renview.6636.tech/install，随 main 推送由 Cloudflare 部署）：从 npm registry 解析 latest 版本与平台包 tarball，校验 dist.integrity（sha512）后落 ~/.renview/bin 并幂等写 PATH；RENVIEW_REGISTRY 可换镜像。

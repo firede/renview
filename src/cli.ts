@@ -4,6 +4,7 @@ import { configPath, createConfigLoader } from "./config";
 import { findRepoRoot } from "./git";
 import { messages, type Messages } from "./i18n";
 import { startServer } from "./server";
+import { checkForUpdate, upgrade } from "./updater";
 
 interface CliOptions {
   port?: number;
@@ -51,7 +52,14 @@ async function main(): Promise<void> {
   const { config } = await createConfigLoader(configPath())();
   const m = messages(config.language);
 
-  const opts = parseArgs(process.argv.slice(2), m);
+  const argv = process.argv.slice(2);
+  // upgrade 是子命令而非 diff 参数，拦截在仓库检测之前（不要求在 git 仓库内）
+  if (argv[0] === "upgrade") {
+    await upgrade(argv[1], m);
+    return;
+  }
+
+  const opts = parseArgs(argv, m);
 
   const root = await findRepoRoot(process.cwd());
   if (!root) {
@@ -63,6 +71,10 @@ async function main(): Promise<void> {
   const url = `http://127.0.0.1:${server.port}`;
   console.log(m.cli.started(url));
   console.log(m.cli.repo(root));
+  // 被动更新提示：读缓存命中才打印，后台刷新缓存；fire-and-forget，绝不阻塞启动
+  if (config.updateCheck && !process.env.RENVIEW_DISABLE_UPDATE_CHECK) {
+    void checkForUpdate(pkg.version, m);
+  }
   if (opts.open) openBrowser(url);
 }
 

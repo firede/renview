@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# renview 安装脚本
+#   curl -fsSL https://renview.6636.tech/install | bash
+#
+# 选项:
+#   -v, --version <版本>   安装指定版本（也可用环境变量 RENVIEW_VERSION）
+#   -b, --binary <路径>    直接安装本地二进制，跳过下载（冒烟/测试用）
+#       --no-modify-path   不改动 shell rc 文件
+#   -h, --help             显示帮助
+#
+# 环境变量:
+#   RENVIEW_REGISTRY       npm registry 镜像（默认 https://registry.npmjs.org，
+#                          国内可设 https://registry.npmmirror.com）
+set -euo pipefail
+
+APP="renview"
+INSTALL_DIR="$HOME/.renview/bin"
+REGISTRY="${RENVIEW_REGISTRY:-https://registry.npmjs.org}"
+REGISTRY="${REGISTRY%/}"
+
+VERSION="${RENVIEW_VERSION:-}"
+BINARY=""
+MODIFY_PATH=1
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -v|--version) VERSION="${2:-}"; [ -n "$VERSION" ] || { echo "error: --version 需要一个参数" >&2; exit 1; }; shift 2 ;;
+    -b|--binary)  BINARY="${2:-}";  [ -n "$BINARY" ]  || { echo "error: --binary 需要一个参数" >&2; exit 1; };  shift 2 ;;
+    --no-modify-path) MODIFY_PATH=0; shift ;;
+    -h|--help)
+      sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0 ;;
+    *) echo "error: 未知参数 $1（--help 查看用法）" >&2; exit 1 ;;
+  esac
+done
+
+info()  { printf '\033[0;32m%s\033[0m\n' "$*"; }
+warn()  { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
+error() { printf '\033[0;31merror: %s\033[0m\n' "$*" >&2; exit 1; }
+# 输出被重定向时退化为纯文本
+if [ ! -t 1 ]; then
+  info()  { printf '%s\n' "$*"; }
+  warn()  { printf '%s\n' "$*" >&2; }
+  error() { printf 'error: %s\n' "$*" >&2; exit 1; }
+fi
+
+command -v curl >/dev/null 2>&1 || error "需要 curl"
+command -v tar  >/dev/null 2>&1 || error "需要 tar"
+
+detect_target() {
+  local os arch
+  case "$(uname -s)" in
+    Darwin) os="darwin" ;;
+    Linux) os="linux" ;;
+    MINGW*|MSYS*|CYGWIN*) os="windows" ;;
+    *) error "不支持的操作系统: $(uname -s)" ;;
+  esac
+  case "$(uname -m)" in
+    x86_64|amd64) arch="x64" ;;
+    arm64|aarch64) arch="arm64" ;;
+    *) error "不支持的架构: $(uname -m)" ;;
+  esac
+  # Apple Silicon 在 Rosetta 终端里 uname 报 x64，改投 arm64 二进制
+  if [ "$os-$arch" = "darwin-x64" ] && [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]; then
+    arch="arm64"
+  fi
+  if [ "$os" = "windows" ] && [ "$arch" != "x64" ]; then
+    error "Windows arm64 暂未支持，请在 WSL 内安装"
+  fi
+  if [ "$os" = "linux" ]; then
+    if [ -f /etc/alpine-release ] || ldd --version 2>&1 | grep -qi musl; then
+      error "musl 系发行版（如 Alpine）暂未支持"
+    fi
+  fi
+  printf '%s-%s' "$os" "$arch"
+}
+
+resolve_version() {
+  if [ -n "$VERSION" ]; then printf '%s' "$VERSION"; return; fi
+  local meta v
+  meta="$(curl -fsSL "$REGISTRY/renview/latest")" || error "无法从 $REGISTRY 查询最新版本"
+  v="$(printf '%s' "$meta" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')"
+  [ -n "$v" ] || error "无法解析 registry 返回的版本号"
+  printf '%s' "$v"
+}
+
+install_binary() {
+  local src="$1"
+  mkdir -p "$INSTALL_DIR"
+  # 复制而非移动：-b 本地直装不应吞掉源文件（如 dist/ 构建产物）
+  cp -f "$src" "$INSTALL_DIR/$BIN_NAME"
+  chmod 755 "$INSTALL_DIR/$BIN_NAME"
+  info "✓ renview $VERSION 已安装到 $INSTALL_DIR/$BIN_NAME"
+}
+
+setup_path() {
+  [ "$MODIFY_PATH" = "1" ] || return 0
+  case ":$PATH:" in *":$INSTALL_DIR:"*) return 0 ;; esac
+  local line='export PATH="'"$INSTALL_DIR"':$PATH"'
+  local candidates=()
+  case "$(basename "${SHELL:-sh}")" in
+    fish) candidates=("$HOME/.config/fish/config.fish"); line="fish_add_path $INSTALL_DIR" ;;
+    zsh)  candidates=("$HOME/.zshrc" "$HOME/.zshenv") ;;
+    bash) candidates=("$HOME/.bashrc" "$HOME/.bash_profile") ;;
+    *)    candidates=("$HOME/.profile") ;;
+  esac
+  local rc
+  for rc in "${candidates[@]}"; do
+    if [ -f "$rc" ]; then
+      if grep -Fqx "$line" "$rc" 2>/dev/null; then
+        info "✓ ${rc} 已包含 PATH 配置，无需改动"
+      else
+        printf '\n# renview\n%s\n' "$line" >> "$rc"
+        info "✓ 已把 $INSTALL_DIR 写入 ${rc}（重开终端或 source ${rc} 生效）"
+      fi
+      return 0
+    fi
+  done
+  warn "未找到 shell rc 文件，请手动把 $INSTALL_DIR 加入 PATH："
+  warn "  export PATH=\"$INSTALL_DIR:\$PATH\""
+}
+
+TARGET="$(detect_target)"
+case "$TARGET" in windows-*) BIN_NAME="renview.exe" ;; *) BIN_NAME="renview" ;; esac
+
+if [ -n "$BINARY" ]; then
+  [ -f "$BINARY" ] || error "本地二进制不存在: $BINARY"
+  VERSION="$("$BINARY" --version 2>/dev/null || echo unknown)"
+  install_binary "$BINARY"
+else
+  VERSION="$(resolve_version)"
+  if [ -x "$INSTALL_DIR/$BIN_NAME" ] && [ "$("$INSTALL_DIR/$BIN_NAME" --version 2>/dev/null || true)" = "$VERSION" ]; then
+    info "renview $VERSION 已是最新，无需安装"
+  else
+    PKG="renview-$TARGET"
+    META="$(curl -fsSL "$REGISTRY/$PKG/$VERSION")" \
+      || error "$REGISTRY 上没有 ${PKG}@${VERSION}（支持 darwin/linux × x64/arm64、windows x64）"
+    URL="$(printf '%s' "$META" | sed -n 's/.*"tarball":"\([^"]*\)".*/\1/p')"
+    INTEGRITY="$(printf '%s' "$META" | sed -n 's/.*"integrity":"\([^"]*\)".*/\1/p')"
+    [ -n "$URL" ] || error "无法解析 $PKG@$VERSION 的下载地址"
+
+    TMP="$(mktemp -d "${TMPDIR:-/tmp}/renview-install.XXXXXX")"
+    trap 'rm -rf "$TMP"' EXIT
+
+    info "下载 $PKG@$VERSION"
+    curl -fsSL "$URL" -o "$TMP/renview.tgz" || error "下载失败: $URL"
+
+    # registry 元数据自带 sha512 integrity（经 HTTPS 取回），校验下载的 tarball
+    if [ -n "$INTEGRITY" ] && command -v openssl >/dev/null 2>&1; then
+      ACTUAL="sha512-$(openssl dgst -sha512 -binary "$TMP/renview.tgz" | openssl base64 -A)"
+      [ "$ACTUAL" = "$INTEGRITY" ] || error "$PKG@$VERSION 完整性校验失败"
+      info "✓ 完整性校验通过（sha512）"
+    else
+      warn "跳过完整性校验（openssl 不可用或 registry 元数据缺失）"
+    fi
+
+    tar -xzf "$TMP/renview.tgz" -C "$TMP" || error "解压失败"
+    install_binary "$TMP/package/bin/$BIN_NAME"
+  fi
+fi
+
+setup_path
+
+echo
+info "renview $VERSION 安装完成。在任意 git 仓库里运行 renview 开始审阅。"
