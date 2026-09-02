@@ -226,8 +226,7 @@ async function buildFileEntry(
     ]);
     entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
     if (profile.simplify) {
-      // 实现摘要注释行已撤回（位置语义与行流重复，见 product.md）；
-      // insertBodyNotes 与测试保留，delta 语义版本验证成立时在同一入口复活
+      // 实现摘要注释行已撤回（见 .agents/archived.md），insertBodyNotes 保留待 delta 语义版本
       entry.simplified = buildSimplifiedRows(
         f,
         oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,

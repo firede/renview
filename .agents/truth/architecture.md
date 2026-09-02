@@ -28,7 +28,6 @@
 - 查看器按文件懒加载（打开时 parse + simplify），不做全仓预计算与索引。
 - 投影与简化共用同一棵 CST（parseSide / analyzeParsed / simplifyTree），每侧源码只 parse 一次；声明收集管线扩展用途：diff 侧栏徽章 + 查看器文件大纲（outlineOf）。
 - 成员级折叠摘要：diff 折叠行携带新旧行号区间，全部落在同一可提取成员的类型级声明（profile 的 typeDeclMembers hook）内时，摘要 = 声明名 + 涉及成员列表，关联不到或跨声明混合则回落通用行数摘要。
-- 实现摘要数据流（休眠）：bodySummary 条目带新侧行号，insertBodyNotes 可将摘要插为 SRow note 行；形态撤回后 server 不接线，函数与测试保留待 delta 语义版本。
 - 折叠过宽风险用 scripts/corpus-check.ts 在真实语料（zod/serde/pydantic 最近 N 个提交）回归验证：统计折叠率 + 可疑折叠检测（折叠行对差异片段切词 + 类型/工程关键字白名单，数字不豁免、宁可误报）。
 - 已知局限：tree-sitter-typescript 0.23.2 无法解析 zod v4 部分新语法（语料实测 9/44 文件走解析失败降级），grammar 升级为候选改进。
 - 配置流向：server 每请求重读配置文件（按原始文本缓存，内容变化才重新解析并输出警告）→ /api/config → 前端 bootstrap 时应用、focus 时重拉；不做全量推送与文件 watch。
