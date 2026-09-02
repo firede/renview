@@ -4,6 +4,8 @@ import type { ChangeKind, FileEntry, FileStatus } from "../../src/analysis/types
 import { BrowseView, type JumpTarget } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { useStrings } from "./i18n";
+import { IconPanelLeft } from "./icons";
+import { Sidebar, SIDEBAR_DEFAULT_WIDTH } from "./Sidebar";
 import { SimplifiedView } from "./SimplifiedView";
 
 interface DiffPayload {
@@ -63,6 +65,8 @@ export function App() {
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"review" | "browse">("review");
   const [jump, setJump] = useState<JumpTarget | null>(null);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
 
   // 从 diff 跳转查看器：打开该文件完整简化视图并定位到首个变更行（hunk 外上下文由查看器承接）
   const openInViewer = (path: string) => {
@@ -158,6 +162,18 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, hasSimplified, showRaw]);
 
+  // B 键切换侧栏显隐（变更/浏览两模式共用；输入框聚焦时不生效）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "b" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      setSidebarHidden((v) => !v);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!payload) return <div className="center-note">{s.loading}</div>;
   if (!payload.ok && payload.unreachable) {
     return <div className="center-note gone">{s.serverGoneTitle}</div>;
@@ -194,53 +210,69 @@ export function App() {
             </button>
           </>
         )}
+        <button
+          className={`icon-btn${sidebarHidden ? "" : " active"}`}
+          title={`${s.toggleSidebar} · ${s.shortcutB}`}
+          aria-label={s.toggleSidebar}
+          onClick={() => setSidebarHidden((v) => !v)}
+        >
+          <IconPanelLeft />
+        </button>
       </header>
       {mode === "browse" ? (
-        <BrowseView jump={jump} onJumpDone={() => setJump(null)} />
+        <BrowseView
+          jump={jump}
+          onJumpDone={() => setJump(null)}
+          sidebarHidden={sidebarHidden}
+          sidebarWidth={sidebarWidth}
+          onSidebarWidthChange={setSidebarWidth}
+        />
       ) : files.length === 0 ? (
         <div className="center-note">{s.noChanges}</div>
       ) : (
         <div className="body">
-          <aside className="sidebar">
-            {items.map(({ file: f, entry }, i) => {
-              const stat = fileStats(f);
-              const sum = entry?.projection?.summary;
-              return (
-                <button
-                  key={`${f.oldPath}→${f.newPath}`}
-                  className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                  onClick={() => {
-                    setSelected(i);
-                    setRawOverride(null);
-                  }}
-                >
-                  <span className="file-path" title={f.newPath}>
-                    {splitPath(f.newPath).dir && (
-                      <span className="file-dir">{splitPath(f.newPath).dir}</span>
-                    )}
-                    <span className="file-base">{splitPath(f.newPath).base}</span>
-                  </span>
-                  <span className="file-meta">
-                    <span className={`status status-${f.type}`}>
-                      {s.statusLabel[f.type as FileStatus] ?? f.type}
+          {!sidebarHidden && (
+            <Sidebar width={sidebarWidth} onWidthChange={setSidebarWidth}>
+              {items.map(({ file: f, entry }, i) => {
+                const stat = fileStats(f);
+                const sum = entry?.projection?.summary;
+                return (
+                  <button
+                    key={`${f.oldPath}→${f.newPath}`}
+                    className={`file-item ${i === safeSelected ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelected(i);
+                      setRawOverride(null);
+                    }}
+                  >
+                    <span className="file-path" title={f.newPath}>
+                      {splitPath(f.newPath).dir && (
+                        <span className="file-dir">{splitPath(f.newPath).dir}</span>
+                      )}
+                      <span className="file-base">{splitPath(f.newPath).base}</span>
                     </span>
-                    <em className="add">+{stat.adds}</em>
-                    <em className="del">−{stat.dels}</em>
-                    {sum && (
-                      <span className="chips">
-                        {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
-                          <span key={k} className={`chip ${cls}`}>
-                            {s.summaryChips[k]}
-                            {sum[k]}
-                          </span>
-                        ))}
+                    <span className="file-meta">
+                      <span className={`status status-${f.type}`}>
+                        {s.statusLabel[f.type as FileStatus] ?? f.type}
                       </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </aside>
+                      <em className="add">+{stat.adds}</em>
+                      <em className="del">−{stat.dels}</em>
+                      {sum && (
+                        <span className="chips">
+                          {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
+                            <span key={k} className={`chip ${cls}`}>
+                              {s.summaryChips[k]}
+                              {sum[k]}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </Sidebar>
+          )}
           <main className="content">
             {selectedFile && (
               <>

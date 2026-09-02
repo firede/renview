@@ -5,6 +5,7 @@ import { DecoratedLine } from "./decor";
 import { FileTree } from "./FileTree";
 import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 import { useStrings } from "./i18n";
+import { Sidebar } from "./Sidebar";
 
 interface FilesPayload {
   ok: boolean;
@@ -35,9 +36,15 @@ function splitPath(p: string): { dir: string; base: string } {
 export function BrowseView({
   jump,
   onJumpDone,
+  sidebarHidden,
+  sidebarWidth,
+  onSidebarWidthChange,
 }: {
   jump: JumpTarget | null;
   onJumpDone: () => void;
+  sidebarHidden: boolean;
+  sidebarWidth: number;
+  onSidebarWidthChange: (width: number) => void;
 }) {
   const s = useStrings();
   const [files, setFiles] = useState<string[] | null>(null);
@@ -161,39 +168,41 @@ export function BrowseView({
 
   return (
     <div className="body">
-      <aside className="sidebar">
-        <div className="sidebar-filter">
-          <input
-            className="filter-input"
-            placeholder={s.filterFiles}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-        {filter.trim() ? (
-          // 过滤时退回平铺列表（匹配结果本就稀疏）
-          <>
-            {visible.map((f) => {
-              const { dir, base } = splitPath(f);
-              return (
-                <button
-                  key={f}
-                  className={`file-item ${f === path ? "selected" : ""}`}
-                  onClick={() => setPath(f)}
-                >
-                  <span className="file-path" title={f}>
-                    {dir && <span className="file-dir">{dir}</span>}
-                    <span className="file-base">{base}</span>
-                  </span>
-                </button>
-              );
-            })}
-            {files && visible.length === 0 && <div className="dim pad note">{s.noMatchingFiles}</div>}
-          </>
-        ) : (
-          files && <FileTree paths={files} selected={path} onSelect={setPath} />
-        )}
-      </aside>
+      {!sidebarHidden && (
+        <Sidebar width={sidebarWidth} onWidthChange={onSidebarWidthChange}>
+          <div className="sidebar-filter">
+            <input
+              className="filter-input"
+              placeholder={s.filterFiles}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          </div>
+          {filter.trim() ? (
+            // 过滤时退回平铺列表（匹配结果本就稀疏）
+            <>
+              {visible.map((f) => {
+                const { dir, base } = splitPath(f);
+                return (
+                  <button
+                    key={f}
+                    className={`file-item ${f === path ? "selected" : ""}`}
+                    onClick={() => setPath(f)}
+                  >
+                    <span className="file-path" title={f}>
+                      {dir && <span className="file-dir">{dir}</span>}
+                      <span className="file-base">{base}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              {files && visible.length === 0 && <div className="dim pad note">{s.noMatchingFiles}</div>}
+            </>
+          ) : (
+            files && <FileTree paths={files} selected={path} onSelect={setPath} />
+          )}
+        </Sidebar>
+      )}
       <main className="content">
         {!path && <div className="center-note">{s.selectFileToBrowse}</div>}
         {path && (

@@ -33,6 +33,8 @@ export const en: Strings = {
   fellBack: (reason) => `Fell back to raw diff (${reason})`,
   foldedLines: (n) => `${n} ${n === 1 ? "line" : "lines"} folded`,
   shortcutS: "Shortcut: S",
+  shortcutB: "Shortcut: B",
+  toggleSidebar: "Sidebar",
   simplified: "Simplified",
   rawDiff: "Raw diff",
   unified: "Unified",

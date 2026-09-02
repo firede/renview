@@ -34,6 +34,8 @@ export const zhCN: Strings = {
   fellBack: (reason) => `已退回原始 diff（${reason}）`,
   foldedLines: (n) => `已折叠 ${n} 行`,
   shortcutS: "快捷键 S",
+  shortcutB: "快捷键 B",
+  toggleSidebar: "侧栏",
   simplified: "简化",
   rawDiff: "原始 diff",
   unified: "单列",

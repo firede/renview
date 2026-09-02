@@ -47,6 +47,10 @@ export interface Strings {
   foldedLines: (n: number) => string;
   /** 简化/原始切换按钮的快捷键提示（App 与查看器共用） */
   shortcutS: string;
+  /** 侧栏显隐切换按钮的快捷键提示 */
+  shortcutB: string;
+  /** 侧栏显隐切换按钮的无障碍标注 */
+  toggleSidebar: string;
   /** 简化视图分段按钮（App 与查看器共用） */
   simplified: string;
   /** 原始 diff 分段按钮 */

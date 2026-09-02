@@ -752,3 +752,32 @@ body {
   background: var(--toolbar-projected-bg);
   border-bottom-color: var(--accent-faint);
 }
+
+/* 侧栏宽度拖拽手柄（双击复位默认宽度） */
+.side-resizer {
+  flex: none;
+  width: 5px;
+  cursor: col-resize;
+}
+
+.side-resizer:hover {
+  background: var(--accent-faint);
+}
+
+/* 拖拽期间全局禁用文本选择并固定光标 */
+body.col-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/* 图标按钮：仅图形（title/aria-label 承担语义），只用于语义通用的控件 */
+button.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 6px;
+}
+
+button.icon-btn svg {
+  display: block;
+}
