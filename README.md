@@ -12,6 +12,8 @@ npm install -g renview                                # bun / pnpm / yarn 全局
 
 安装到 `~/.renview/bin` 并自动配置 PATH（`--no-modify-path` 跳过）。支持平台：macOS（arm64/x64）、Linux（x64/arm64，glibc）、Windows x64；musl（Alpine）与 Windows arm64 暂未支持。安装脚本经 npm registry 分发并校验 sha512 完整性，可用 `RENVIEW_REGISTRY` 环境变量切换 registry 镜像（如 `https://registry.npmmirror.com`）。
 
+注意：浏览器手动下载 [GitHub Releases](https://github.com/firede/renview/releases) 的 tar.gz 会带 macOS quarantine 属性，未签名二进制首次运行需在「系统设置 → 隐私与安全性」放行（或 `xattr -d com.apple.quarantine renview`）；安装脚本与 npm 渠道无此问题。
+
 升级：
 
 ```bash
