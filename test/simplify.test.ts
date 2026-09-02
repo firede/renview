@@ -60,6 +60,25 @@ describe("rust 简化器", () => {
     const out = await simplify(rustProfile, RUST_IN);
     expect(out.join("\n")).toBe(RUST_EXPECTED);
   });
+
+  test("跨行链只删 ? 本身，行对齐不破坏", async () => {
+    const src = `let v = foo
+    .bar()
+    .baz()?;
+`;
+    const out = await simplify(rustProfile, src);
+    expect(out).toEqual(["let v = foo", "    .bar()", "    .baz();", ""]);
+  });
+
+  test("机制调用嵌套链全部擦除（a.clone().unwrap() → a）", async () => {
+    const out = await simplify(rustProfile, `let w = a.clone().unwrap();\n`);
+    expect(out).toEqual(["let w = a;", ""]);
+  });
+
+  test("引用擦除：&x → x、&mut x → x", async () => {
+    const out = await simplify(rustProfile, `let p = &x;\nlet q = &mut y;\n`);
+    expect(out).toEqual(["let p = x;", "let q = y;", ""]);
+  });
 });
 
 describe("ts 简化器", () => {
@@ -94,6 +113,26 @@ const y = baz!.qux satisfies Q;
 `;
     const out = await simplify(typescriptProfile, src);
     expect(out).toEqual(["type F;", "const x = foo();", "const y = baz.qux;", ""]);
+  });
+
+  test("跨行链式调用只删 ! 本身：每行内容保留、行对齐不破坏", async () => {
+    const src = `const root = tag
+  .trim()
+  .split(/x/, 1)[0]!
+  .replace(/y/g, "-")
+  .split("-", 1)[0]!
+  .toLowerCase();
+`;
+    const out = await simplify(typescriptProfile, src);
+    expect(out).toEqual([
+      "const root = tag",
+      "  .trim()",
+      "  .split(/x/, 1)[0]",
+      '  .replace(/y/g, "-")',
+      '  .split("-", 1)[0]',
+      "  .toLowerCase();",
+      "",
+    ]);
   });
 });
 

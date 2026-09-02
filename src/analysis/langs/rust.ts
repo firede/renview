@@ -155,10 +155,11 @@ const MECH_CALLS = new Set(["unwrap", "clone", "into", "to_string", "to_owned"])
 export function rustSimplify(node: Node, source: string, ops: SimplifyOp[]): boolean | void {
   switch (node.type) {
     case "try_expression": {
-      // expr? → expr（错误传播机制）
-      const inner = node.namedChildren[0];
-      if (inner) ops.push(replaceNode(node, source.slice(inner.startIndex, inner.endIndex)));
-      return true;
+      // expr? → expr：只删 `?` 本身（expr 可能是跨行链式调用，整条 replaceNode 会破坏 1:1 行对齐）；
+      // return false 让 a?.b()? 里嵌套的内层 try 也被擦除
+      const q = node.children.find((c) => c.type === "?" && !c.isNamed);
+      if (q) ops.push(del(q));
+      return false;
     }
     case "call_expression": {
       const fnNode = node.childForFieldName("function");
@@ -166,8 +167,9 @@ export function rustSimplify(node: Node, source: string, ops: SimplifyOp[]): boo
       if (fnNode?.type === "field_expression" && args && args.namedChildren.length === 0) {
         const value = fnNode.childForFieldName("value");
         if (value && MECH_CALLS.has(fnNode.childForFieldName("field")?.text ?? "")) {
-          ops.push(replaceNode(node, source.slice(value.startIndex, value.endIndex)));
-          return true;
+          // 只删 `.unwrap()` 尾巴，value 本身继续走简化（a.clone().unwrap() → a）
+          ops.push(delSpan(value.endIndex, node.endIndex));
+          return false;
         }
       }
       return false;
@@ -194,9 +196,13 @@ export function rustSimplify(node: Node, source: string, ops: SimplifyOp[]): boo
       return false;
     case "reference_expression":
     case "reference_pattern": {
+      // &expr / &mut expr → expr：删 `&` 与 mut 段，不动 expr 本身（可能跨行）
+      const amp = node.children.find((c) => c.type === "&" && !c.isNamed);
+      if (amp) ops.push(del(amp));
       const inner = node.namedChildren.find((c) => c.type !== "mutable_specifier");
-      if (inner) ops.push(replaceNode(node, source.slice(inner.startIndex, inner.endIndex)));
-      return true;
+      const mut = node.children.find((c) => c.type === "mutable_specifier");
+      if (mut && inner) ops.push(delSpan(mut.startIndex, inner.startIndex));
+      return false;
     }
     case "integer_literal":
     case "float_literal": {

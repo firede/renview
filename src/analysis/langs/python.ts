@@ -1,6 +1,6 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
-import { del, delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
+import { del, delSpan, delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
 import { nameList, type DeclarationInfo, type FoldKind, type LanguageProfile } from "./types";
 
 /** Python profile：声明收集 + 类型/机制擦除（标注、self、cast、TYPE_CHECKING）+ 顶层块折叠 */
@@ -168,18 +168,15 @@ export function pySimplify(node: Node, source: string, ops: SimplifyOp[]): boole
       return false;
     }
     case "call": {
-      // typing.cast(T, x) → x（类型断言机制）
+      // typing.cast(T, x) → x：删首尾两段而非整条替换（x 可能跨行），且 x 内部继续走简化
       const fn = node.childForFieldName("function");
       if (fn?.type === "identifier" && fn.text === "cast") {
         const args = node.childForFieldName("arguments")?.namedChildren ?? [];
         if (args.length === 2) {
           const v = args[1]!;
-          ops.push({
-            start: node.startIndex,
-            end: node.endIndex,
-            replacement: source.slice(v.startIndex, v.endIndex),
-          });
-          return true;
+          ops.push(delSpan(node.startIndex, v.startIndex));
+          ops.push(delSpan(v.endIndex, node.endIndex));
+          return false;
         }
       }
       return false;

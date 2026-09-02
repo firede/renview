@@ -11,7 +11,11 @@ export interface SimplifyOp {
   /** 字节偏移，[start, end) */
   start: number;
   end: number;
-  /** 省略为删除；给出为替换 */
+  /**
+   * 省略为删除；给出为替换。
+   * replacement 不应含换行：跨行 op 的替换文本只落起始行（后续行纯删除），
+   * 含换行会把多行内容压进首行、破坏输出与原文的 1:1 行对齐；跨行擦除改用逐 token 删除 op。
+   */
   replacement?: string;
 }
 

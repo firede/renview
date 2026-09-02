@@ -268,6 +268,16 @@ x = cast(str, get_value())
     expect(out[2]).toBe("");
     expect(out[4]).toBe("x = get_value()");
   });
+
+  test("cast 只删首尾两段，跨行实参内部保留", async () => {
+    const src = `z = cast(str, foo(
+    a,
+    b,
+))
+`;
+    const out = await simplify(pythonProfile, src);
+    expect(out).toEqual(["z = foo(", "    a,", "    b,", ")", ""]);
+  });
 });
 
 describe("python 声明收集与折叠", () => {

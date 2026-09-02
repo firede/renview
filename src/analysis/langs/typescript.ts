@@ -188,9 +188,11 @@ export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
       return false;
     }
     case "non_null_expression": {
-      const expr = node.namedChildren[0];
-      if (expr) ops.push(replaceNode(node, source.slice(expr.startIndex, expr.endIndex)));
-      return true;
+      // 只删 `!` 本身：链式调用可能跨行，整条 replaceNode 会把多行文本压进首行（破坏 1:1 行对齐）；
+      // return false 让 a!.b! 里嵌套的内层 non_null 也被擦除
+      const bang = node.children.find((c) => c.type === "!" && !c.isNamed);
+      if (bang) ops.push(del(bang));
+      return false;
     }
     case "optional_parameter":
     case "property_signature":
