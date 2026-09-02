@@ -14,7 +14,11 @@
     "gen:assets": "bun run scripts/gen-assets.ts",
     "build": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run scripts/build.ts",
     "test": "bun run sync:wasm && bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-push": "bun run test && bun run typecheck"
   },
   "dependencies": {
     "parse-diff": "0.12.0",
@@ -35,6 +39,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5",
     "bun-types": "^1",
+    "simple-git-hooks": "^2.14.0",
     "tree-sitter-cli": "0.25.10",
     "typescript": "^5",
     "vite": "^7"

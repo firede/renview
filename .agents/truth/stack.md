@@ -10,6 +10,7 @@
 - wasm 必须 `with { type: "file" }` 嵌入并按字节加载（绕开 bun --compile 的 wasm 路径 bug）。
 - 避免任何 V8 API 原生依赖（nodegit、node-pty、ast-grep napi 等），运行时依赖保持纯 JS / WASM。
 - 语言 wasm：tree-sitter-gdscript 无官方 wasm 包，sync-wasm 经 docker emscripten 从 grammar 源码自建（wasm/gdscript.wasm 存在则跳过）；其余语言用 npm 自带 wasm。
+- pre-push 质量门用 simple-git-hooks（prepare 脚本自动安装，跑 bun run test + typecheck）：把「全绿才准 push」从约定固化为机制；选它因 package.json 单字段声明零配置，不引入 husky 的目录体系。
 - 分发制品宿主：npm registry 是二进制 CDN 与唯一版本源——5 个无作用域平台包 renview-<target>（os/cpu 过滤）+ 壳包 renview（optionalDependencies 钉版 + postinstall 硬链接，registry 下载兜底），GitHub Releases 只挂 tar.gz+checksums 作人类可读镜像；选 npm 而非 GitHub 作下载源因国内可达性远好于 GitHub，且 registry 元数据自带 sha512 integrity 可免费校验。
 - npm 发布认证用 Trusted Publishing OIDC（release.yml 配 id-token: write），不持有 NPM_TOKEN——classic token 已被 npm 废除，granular write token 强制 90 天轮换。
 - CI（release.yml）锁定 Bun 1.4.0（对齐本地开发版本），冒烟矩阵 macos-14 / macos-15-intel / ubuntu-24.04 / ubuntu-24.04-arm / windows-latest 跑真实二进制 --version 对拍 tag 版本——macos-13 镜像已退役，Intel mac 仅剩 macos-15-intel。
