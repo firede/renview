@@ -55,8 +55,10 @@ export function BrowseView({
   const [showSource, setShowSource] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scrollTo, setScrollTo] = useState<number | null>(jump?.line ?? null);
-  /** 跳转目标的源码行范围（用于闪烁提示）；[start, end]，1-based */
+  /** 一次性闪烁的源码行范围（视觉引导，1.7s 后消退）；[start, end]，1-based */
   const [flash, setFlash] = useState<[number, number] | null>(null);
+  /** 持久定位提示的源码行范围：行号加粗常驻，点击代码区或切换文件取消 */
+  const [located, setLocated] = useState<[number, number] | null>(null);
 
   const loadFiles = useCallback(async () => {
     try {
@@ -110,10 +112,13 @@ export function BrowseView({
     if (data && scrollTo != null) {
       const anchor = viewAnchor(data, scrollTo, showSource);
       if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "center" });
-      flashRange([scrollTo, scrollTo]);
+      locateRange([scrollTo, scrollTo]);
       setScrollTo(null);
     }
   }, [data, scrollTo, showSource]);
+
+  // 切换文件（数据更换）时清除持久定位
+  useEffect(() => setLocated(null), [data]);
 
   /** 大纲/跳转定位：源码行号 → 当前模式的元素 id */
   function viewAnchor(d: ViewerFile, ln: number, sourceMode: boolean): string | null {
@@ -122,18 +127,19 @@ export function BrowseView({
     return idx == null ? null : `R${idx}`;
   }
 
-  /** 闪烁提示一段源码行范围（跳转目标的视觉反馈） */
-  function flashRange(range: [number, number]) {
+  /** 定位一段源码行范围：一次性闪烁 + 行号加粗常驻（点击代码区取消） */
+  function locateRange(range: [number, number]) {
+    setLocated(range);
     setFlash(range);
     setTimeout(() => setFlash((cur) => (cur === range ? null : cur)), 1700);
   }
 
-  /** 大纲点击：滚动到声明并闪烁其行范围 */
+  /** 大纲点击：滚动到声明并定位其行范围 */
   const jumpToRange = (range: [number, number]) => {
     if (!data) return;
     const anchor = viewAnchor(data, range[0], showSource);
     if (anchor) document.getElementById(anchor)?.scrollIntoView();
-    flashRange(range);
+    locateRange(range);
   };
 
   const visible = useMemo(() => {
@@ -254,7 +260,8 @@ export function BrowseView({
               <div className="dim pad note">{s.notTextViewable}</div>
             )}
             {data && data.source != null && !showSource && data.view ? (
-              <div className="sview">
+              // 点击代码区任意处取消持久定位提示
+              <div className="sview" onClick={() => setLocated(null)}>
                 {data.view.map((r, i) =>
                   r.kind === "fold" ? (
                     <ViewFoldRow
@@ -263,12 +270,15 @@ export function BrowseView({
                       index={i}
                       lang={lang}
                       flash={flash != null && r.srcRange[1] >= flash[0] && r.srcRange[0] <= flash[1]}
+                      located={
+                        located != null && r.srcRange[1] >= located[0] && r.srcRange[0] <= located[1]
+                      }
                     />
                   ) : (
                     <div
                       key={i}
                       id={`R${i}`}
-                      className={`srow ctx${flash && r.src >= flash[0] && r.src <= flash[1] ? " flash" : ""}`}
+                      className={`srow ctx${flash && r.src >= flash[0] && r.src <= flash[1] ? " flash" : ""}${located && r.src >= located[0] && r.src <= located[1] ? " located" : ""}`}
                     >
                       <span className="gutter">{r.src}</span>
                       <pre className="scode">
@@ -283,12 +293,12 @@ export function BrowseView({
                 )}
               </div>
             ) : data && data.source != null ? (
-              <div className="sview">
+              <div className="sview" onClick={() => setLocated(null)}>
                 {lines.map((t, i) => (
                   <div
                     key={i}
                     id={`L${i + 1}`}
-                    className={`srow ctx${flash && i + 1 >= flash[0] && i + 1 <= flash[1] ? " flash" : ""}`}
+                    className={`srow ctx${flash && i + 1 >= flash[0] && i + 1 <= flash[1] ? " flash" : ""}${located && i + 1 >= located[0] && i + 1 <= located[1] ? " located" : ""}`}
                   >
                     <span className="gutter">{i + 1}</span>
                     <pre className="scode">
@@ -311,11 +321,14 @@ function ViewFoldRow({
   index,
   lang,
   flash,
+  located,
 }: {
   row: Extract<ViewRow, { kind: "fold" }>;
   index: number;
   lang: string | null;
   flash: boolean;
+  /** 持久定位提示：折叠头 gutter 留空无行号，提示落在摘要文本上 */
+  located: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // 展开时才高亮原文（惰性）；原文是连续源码切片，脱离上下文高亮可能有轻微断色
@@ -323,7 +336,7 @@ function ViewFoldRow({
   return (
     <div className="vfold">
       <button
-        className={`vfold-head${flash ? " flash" : ""}`}
+        className={`vfold-head${flash ? " flash" : ""}${located ? " located" : ""}`}
         id={`R${index}`}
         onClick={() => setOpen(!open)}
       >

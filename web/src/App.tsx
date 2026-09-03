@@ -115,7 +115,7 @@ function findRawAnchor(file: FileData, jump: LineJump): string | null {
   return (best ?? prev)?.id ?? null;
 }
 
-/** 原始 diff 视图：带行锚定与单元跳转（滚动定位，无闪烁——原始视图是审计回退，不加增强层效果） */
+/** 原始 diff 视图：带行锚定与单元跳转（滚动 + 行号加粗常驻；不加闪烁动画——tr 上的背景动画与 td 底色冲突） */
 function RawDiff({
   file,
   viewType,
@@ -127,23 +127,40 @@ function RawDiff({
   tokens: HunkTokens | null;
   jump: LineJump | null;
 }) {
+  /** 持久定位的行锚 id（点击代码区或切换文件取消） */
+  const [locatedId, setLocatedId] = useState<string | null>(null);
+
+  // 切换文件时清除持久定位
+  useEffect(() => setLocatedId(null), [file]);
+
   useEffect(() => {
     if (!jump) return;
     const id = findRawAnchor(file, jump);
-    if (id) document.getElementById(id)?.scrollIntoView({ block: "center" });
+    if (!id) return;
+    document.getElementById(id)?.scrollIntoView({ block: "center" });
+    setLocatedId(id);
   }, [jump, file, viewType]);
+
   return (
-    <Diff
-      key={`${file.oldPath}→${file.newPath}`}
-      diffType={file.type}
-      hunks={file.hunks}
-      viewType={viewType}
-      tokens={tokens ?? undefined}
-      renderToken={renderDiffToken}
-      generateAnchorID={rawAnchorId}
-    >
-      {(hunks) => hunks.map((h) => <Hunk key={h.content} hunk={h} />)}
-    </Diff>
+    // 点击代码区任意处取消持久定位提示
+    <div onClick={() => setLocatedId(null)}>
+      <Diff
+        key={`${file.oldPath}→${file.newPath}`}
+        diffType={file.type}
+        hunks={file.hunks}
+        viewType={viewType}
+        tokens={tokens ?? undefined}
+        renderToken={renderDiffToken}
+        generateAnchorID={rawAnchorId}
+        generateLineClassName={({ changes, defaultGenerate }) => {
+          const base = defaultGenerate();
+          const hit = changes.some((c) => c && rawAnchorId(c) === locatedId);
+          return hit ? `${base} located`.trim() : base;
+        }}
+      >
+        {(hunks) => hunks.map((h) => <Hunk key={h.content} hunk={h} />)}
+      </Diff>
+    </div>
   );
 }
 

@@ -44,11 +44,13 @@ function FoldRow({
   lang,
   id,
   flash,
+  located,
 }: {
   row: Extract<SRow, { kind: "fold" }>;
   lang: string | null;
   id: string;
   flash: boolean;
+  located: boolean;
 }) {
   const s = useStrings();
   const [open, setOpen] = useState(false);
@@ -58,7 +60,11 @@ function FoldRow({
   return (
     <>
       {/* 与查看器块折叠同一形态：整行可点、gutter 留空、箭头 + 注释色摘要 */}
-      <button id={id} className={`vfold-head${flash ? " flash" : ""}`} onClick={() => setOpen(!open)}>
+      <button
+        id={id}
+        className={`vfold-head${flash ? " flash" : ""}${located ? " located" : ""}`}
+        onClick={() => setOpen(!open)}
+      >
         <span className="gutter" />
         <span className="gutter" />
         <span className="vfold-summary">
@@ -101,15 +107,21 @@ export function SimplifiedView({
   jump?: LineJump | null;
 }) {
   const s = useStrings();
-  /** 跳转目标的闪烁提示（行下标，一次后消退） */
+  /** 一次性闪烁（视觉引导，1.7s 后消退） */
   const [flashIdx, setFlashIdx] = useState<number | null>(null);
+  /** 持久定位提示：行号加粗常驻，点击代码区或切换文件取消 */
+  const [locatedIdx, setLocatedIdx] = useState<number | null>(null);
 
-  // 变更单元导航：滚动到目标行并闪烁提示
+  // 切换文件（数据更换）时清除持久定位
+  useEffect(() => setLocatedIdx(null), [data]);
+
+  // 变更单元导航：滚动到目标行，闪烁一次 + 行号加粗常驻
   useEffect(() => {
     if (!jump) return;
     const idx = findRowIndex(data.rows, jump);
     if (idx == null) return;
     document.getElementById(`srow-${idx}`)?.scrollIntoView({ block: "center" });
+    setLocatedIdx(idx);
     setFlashIdx(idx);
     const t = setTimeout(() => setFlashIdx((cur) => (cur === idx ? null : cur)), 1700);
     return () => clearTimeout(t);
@@ -150,10 +162,20 @@ export function SimplifiedView({
   }
   let vi = 0;
   return (
-    <div className="sview">
+    // 点击代码区任意处取消持久定位提示
+    <div className="sview" onClick={() => setLocatedIdx(null)}>
       {data.rows.map((r, i) => {
         if (r.kind === "fold")
-          return <FoldRow key={i} row={r} lang={lang} id={`srow-${i}`} flash={flashIdx === i} />;
+          return (
+            <FoldRow
+              key={i}
+              row={r}
+              lang={lang}
+              id={`srow-${i}`}
+              flash={flashIdx === i}
+              located={locatedIdx === i}
+            />
+          );
         // 实现摘要注释行：注释色降权、不可交互，不参与高亮索引
         if (r.kind === "note") {
           return (
@@ -167,7 +189,11 @@ export function SimplifiedView({
         const lineTokens = tokens?.[vi++] ?? null;
         const wd = r.pair != null ? pairDiffs.get(r.pair) : undefined;
         return (
-          <div key={i} id={`srow-${i}`} className={`srow ${r.kind}${flashIdx === i ? " flash" : ""}`}>
+          <div
+            key={i}
+            id={`srow-${i}`}
+            className={`srow ${r.kind}${flashIdx === i ? " flash" : ""}${locatedIdx === i ? " located" : ""}`}
+          >
             <span className="gutter">{r.oldLn ?? ""}</span>
             <span className="gutter">{r.newLn ?? ""}</span>
             <pre className="scode">

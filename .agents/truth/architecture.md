@@ -32,7 +32,7 @@
 - 已知局限：tree-sitter-typescript 0.23.2 无法解析 zod v4 部分新语法（语料实测 9/44 文件走解析失败降级），grammar 升级为候选改进。
 - 配置流向：server 每请求重读配置文件（按原始文本缓存，内容变化才重新解析并输出警告）→ /api/config → 前端 bootstrap 时应用、focus 时重拉；不做全量推送与文件 watch。
 - 主题实现：CSS 颜色全量语义 token 化（:root 深色 / [data-theme="light"] 亮色整块覆写）；JS 将 auto 经 matchMedia 解析为具体主题写 <html data-theme> 并监听系统切换，index.html 内联脚本首帧前预设避免闪烁；shiki 双主题（github-dark-default / github-light-default）均懒加载，主题切换时前端按当前主题重算 token。
-- diff 行锚定：react-diff-view 的 generateAnchorID 产出行号 id（`rvn-` 新侧 / `rvo-` 旧侧，双列模式落在对应侧单元格）；简化视图行自带 `srow-N` id——变更单元点击在两种视图都能 getElementById 定位（简化视图另有闪烁提示，原始视图只滚动）。
+- diff 行锚定：react-diff-view 的 generateAnchorID 产出行号 id（`rvn-` 新侧 / `rvo-` 旧侧，双列模式落在对应侧单元格）；简化视图行自带 `srow-N` id——变更单元点击在两种视图都能 getElementById 定位。定位提示 = 一次性闪烁（.flash 背景动画）+ 行号加粗常驻（.located，点击代码区/切文件取消）；原始视图经 generateLineClassName 给 tr 加 located（tr 背景动画与 td 底色冲突，故无闪烁）。
 - 字体/字号经 CSS token（--font-mono / --font-size-code）覆写生效；行高取字号恒定 5/3 倍（加法模型在大字号下会拥挤），行号字号 = 字号 − 1、行号栏宽随行号字号联动，阅读区几何整体等比缩放，保住简化/原始 diff 切换无位移的不变量。
 - 文案目录分两侧：核心 src/i18n.ts（Locale 类型、解析链、Messages 接口）+ src/locales/{zh-CN,en}.ts；前端 web/src/i18n.ts + web/src/locales/ 各持一份（两侧文案基本不相交，沿用 UiConfig 形状双份声明的既有做法），语言文件按 BCP 47 标签命名。
 - locale 以显式参数贯穿分析层（collect / foldSummary / nameList / analyzeParsed / outlineOf / buildViewRows），不用模块级全局态——数据流显式、测试互不污染，与"字节偏移唯一事实来源"同原则。

@@ -783,6 +783,18 @@ body.row-resizing {
   animation: flash-range 1.6s ease-out;
 }
 
+/* 行定位的持久提示：目标行行号提亮加粗（点击代码区或切换文件取消）；一次性闪烁由 .flash 承担 */
+.srow.located .gutter,
+.diff-line.located .diff-gutter {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+/* 折叠头 gutter 留空无行号，持久定位提示落在摘要文本上 */
+.vfold-head.located {
+  color: var(--fg);
+}
+
 /* 跳转定位时避开 sticky 文件工具条（否则目标行被盖住） */
 .srow,
 .vfold-head,
