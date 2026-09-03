@@ -18,10 +18,22 @@ export interface BodySummaryItem {
   changedLines: number;
 }
 
+/** 领域模型（数据形状）变更的成员信息：只留业务词汇，不含类型细节 */
+export interface DomainMembers {
+  /** 新侧成员全量（业务词汇，供总览展示） */
+  members: string[];
+  /** 相对旧侧新增的成员 */
+  added: string[];
+  /** 相对旧侧删除的成员 */
+  removed: string[];
+}
+
 export interface ChangeUnit {
   id: string;
   kind: DeclKind;
   name: string;
+  /** 外层容器名（如所属类、命名空间），跨文件同名实体的展示消歧用 */
+  container: string;
   change: ChangeKind;
   /** 新版签名（removed 时无） */
   signature?: string;
@@ -32,6 +44,8 @@ export interface ChangeUnit {
   oldTypeText?: string;
   /** body 变更的结构化摘要 */
   bodySummary?: BodySummaryItem[];
+  /** 数据形状变更的成员信息（kind 为 type 且 profile 能提取成员时有值） */
+  domain?: DomainMembers;
   oldRange?: [number, number];
   newRange?: [number, number];
 }

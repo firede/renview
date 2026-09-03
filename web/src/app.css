@@ -705,6 +705,35 @@ body {
 .chg-added { color: var(--add); }
 .chg-removed { color: var(--del); }
 
+/* 单元行内的数据形状成员增删（无新增区域、无新增交互，就近呈现） */
+.unit-item {
+  flex-wrap: wrap;
+  row-gap: 1px;
+}
+
+/* 带 delta 的行是紧组：组内收紧、组后多留 2px，与下一行拉开亲疏 */
+.unit-item:has(.unit-delta) {
+  padding-bottom: 4px;
+}
+
+.unit-delta {
+  /* 另起第二行：首行名字不再被挤；与名字左对齐（14px glyph + 6px 间隙） */
+  flex: 1 1 calc(100% - 20px);
+  margin-left: 20px;
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.unit-delta .d-added { color: var(--add); margin-right: 6px; }
+.unit-delta .d-removed { color: var(--del); text-decoration: line-through; margin-right: 6px; }
+.unit-delta .d-more { color: var(--fg-dim); }
+
 /* 折叠行（查看器块折叠与 diff 类型/格式折叠共用）：整行可点、gutter 留空，折叠态注释色降权；展开即审视，内容带完整高亮 */
 .vfold-head {
   display: flex;

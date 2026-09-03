@@ -234,11 +234,12 @@ function pyFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
 
 /** diff 折叠组的成员定位：仅纯数据类（普通类含方法，方法体内的折叠行会被错误归属到类成员） */
 function pyTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
-  if (node.type === "type_alias_statement") {
-    return { name: node.childForFieldName("left")?.text ?? "?", members: [] };
+  const inner = unwrapDecorated(node);
+  if (inner.type === "type_alias_statement") {
+    return { name: inner.childForFieldName("left")?.text ?? "?", members: [] };
   }
-  if (node.type !== "class_definition" || !isDataOnlyClass(node)) return null;
-  const members = (node.childForFieldName("body")?.namedChildren ?? [])
+  if (inner.type !== "class_definition" || !isDataOnlyClass(inner)) return null;
+  const members = (inner.childForFieldName("body")?.namedChildren ?? [])
     .map((c) => unwrapExprStmt(c))
     .filter((c) => c.type === "assignment")
     .map((c) => {
@@ -246,7 +247,7 @@ function pyTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
       return name ? { name, range: nodeRowRange(c) } : null;
     })
     .filter((x): x is { name: string; range: [number, number] } => x != null);
-  return { name: nameOf(node, locale), members };
+  return { name: nameOf(inner, locale), members };
 }
 
 export const pythonProfile: LanguageProfile = {

@@ -37,6 +37,8 @@ export interface Strings {
   degradeLabel: Record<DiffDegradeReason, string>;
   /** 变更分类徽章 */
   summaryChips: Record<ChangeKind, string>;
+  /** 数据形状变更的行内徽章（成员增减时替代底层语法分类，避免跨语言标签不一致） */
+  domainShape: string;
   /** 在查看器中打开按钮 */
   openInViewer: string;
   /** 已退回原始 diff 的提示（括号内含原因） */

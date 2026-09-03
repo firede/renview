@@ -28,6 +28,7 @@ export const en: Strings = {
     added: "Added",
     removed: "Removed",
   },
+  domainShape: "Shape",
   openInViewer: "Open in viewer",
   fellBack: (reason) => `Fell back to raw diff (${reason})`,
   foldedLines: (n) => `${n} ${n === 1 ? "line" : "lines"} folded`,

@@ -94,6 +94,17 @@ const CHANGE_ORDER: Record<ChangeKind, number> = {
   "type-only": 4,
 };
 
+/**
+ * 审阅排序（先看契约再看实现）：
+ * 成员增减的形状信号（带 domain）先于普通实现，纯类型细节（无 domain 的 type-only）仍在末尾。
+ * added/removed 的实体生命周期顺序不变（它们本来就在 body 之前）。
+ */
+function unitRank(u: ChangeUnit): number {
+  if (u.change !== "body" && u.change !== "type-only") return CHANGE_ORDER[u.change];
+  if (u.domain) return 2.5;
+  return CHANGE_ORDER[u.change];
+}
+
 /** 一侧已解析的源码（投影与简化共用，每侧源码只 parse 一次） */
 export interface ParsedSide {
   tree: Tree;
@@ -136,14 +147,16 @@ export function analyzeParsed(
     const touched = (o && touchedBy(o.node, oldLines)) || (n && touchedBy(n.node, newLines));
     if (!touched) continue;
 
-    const unit = classify(o, n, oldSource, newSource, newLines, oldLines, locale);
+    const unit = classify(profile, o, n, oldSource, newSource, newLines, oldLines, locale);
     if (!unit) continue; // 触碰但无实质变化
     units.push(unit);
   }
 
-  // 类整体的 body 变更若已被成员单元完全覆盖（方法改动），去掉重复的类单元
+  // 类整体的 body 变更若已被成员单元完全覆盖（方法改动），去掉重复的类单元；
+  // 但数据形状类（带 domain，如 Python 纯数据类）保留——类级单元正是领域总览的入口
   const deduped = units.filter((cu) => {
     if (cu.kind !== "class" || cu.change !== "body") return true;
+    if (cu.domain) return true;
     const [s, e] = cu.newRange ?? cu.oldRange!;
     const lines = cu.newRange ? newLines : oldLines;
     for (const ln of lines) {
@@ -176,6 +189,7 @@ export function analyzeParsed(
       name: commentOnly
         ? messages(locale).analysis.commentChanges
         : messages(locale).analysis.outsideDeclarations,
+      container: "",
       change: "body",
       oldRange: strayOld ?? undefined,
       newRange: strayNew ?? undefined,
@@ -183,7 +197,7 @@ export function analyzeParsed(
   }
 
   deduped.sort((a, b) => {
-    const d = CHANGE_ORDER[a.change] - CHANGE_ORDER[b.change];
+    const d = unitRank(a) - unitRank(b);
     if (d !== 0) return d;
     return (a.newRange?.[0] ?? a.oldRange?.[0] ?? 0) - (b.newRange?.[0] ?? b.oldRange?.[0] ?? 0);
   });
@@ -280,7 +294,45 @@ export function outlineOf(
   }));
 }
 
+/**
+ * 领域成员挂载（数据形状变更的行内信号源）：
+ * 只处理数据形状候选（kind 为 type，或纯数据 class），且只在"成员集合"发生变化时挂载——
+ * 实体增删（added/removed，有无成员都挂）、成员增减（added/removed 非空才挂）。
+ * 纯类型细节变更（number→string，成员无增减）不挂：它已在折叠摘要里就近呈现，再聚一次是重复。
+ * 成员提取复用各语言现成的 typeDeclMembers hook（新语言无此 hook 时自然缺席，不阻塞）。
+ */
+function attachDomain(
+  profile: LanguageProfile,
+  u: ChangeUnit,
+  o: DeclarationInfo | null,
+  n: DeclarationInfo | null,
+  locale: Locale,
+): void {
+  if (u.kind !== "type" && u.kind !== "class") return;
+  const hook = profile.typeDeclMembers;
+  if (!hook) return;
+  const oldInfo = o ? hook(o.node, locale) : null;
+  const newInfo = n ? hook(n.node, locale) : null;
+  if (!oldInfo && !newInfo) return;
+  const oldMembers = oldInfo?.members.map((m) => m.name) ?? [];
+  const newMembers = newInfo?.members.map((m) => m.name) ?? [];
+  const oldSet = new Set(oldMembers);
+  const newSet = new Set(newMembers);
+  const added = newMembers.filter((m) => !oldSet.has(m));
+  const removed = oldMembers.filter((m) => !newSet.has(m));
+  // 实体增删必留；成员集合不变的细节变更不留
+  if (u.change !== "added" && u.change !== "removed" && added.length === 0 && removed.length === 0) {
+    return;
+  }
+  u.domain = {
+    members: newMembers.length > 0 ? newMembers : oldMembers,
+    added,
+    removed,
+  };
+}
+
 function classify(
+  profile: LanguageProfile,
   o: DeclarationInfo | null,
   n: DeclarationInfo | null,
   oldSource: string | null,
@@ -289,30 +341,38 @@ function classify(
   oldLines: Set<number>,
   locale: Locale,
 ): ChangeUnit | null {
+  const ref = n ?? o;
   const base = {
     id: `${o ? pairKey(o) : pairKey(n!)}:${n?.node.startPosition.row ?? o?.node.startPosition.row ?? 0}`,
-    kind: (n ?? o)!.kind,
-    name: (n ?? o)!.name,
+    kind: ref!.kind,
+    name: ref!.name,
+    container: ref!.container,
     oldRange: o ? rangeOf(o) : undefined,
     newRange: n ? rangeOf(n) : undefined,
   };
 
   if (o && !n) {
-    return { ...base, change: "removed", oldSignature: sigText(oldSource!, o) };
+    const removed: ChangeUnit = { ...base, change: "removed", oldSignature: sigText(oldSource!, o) };
+    attachDomain(profile, removed, o, null, locale);
+    return removed;
   }
   if (!o && n) {
-    return { ...base, change: "added", signature: sigText(newSource!, n) };
+    const added: ChangeUnit = { ...base, change: "added", signature: sigText(newSource!, n) };
+    attachDomain(profile, added, null, n, locale);
+    return added;
   }
   if (!o || !n || oldSource == null || newSource == null) return null;
 
   if (o.typeLevel || n.typeLevel) {
     if (fullText(oldSource, o) === fullText(newSource, n)) return null;
-    return {
+    const u: ChangeUnit = {
       ...base,
       change: "type-only",
       typeText: truncate(n.node.text, locale),
       oldTypeText: truncate(o.node.text, locale),
     };
+    attachDomain(profile, u, o, n, locale);
+    return u;
   }
 
   const os = sigText(oldSource, o);
@@ -329,7 +389,10 @@ function classify(
       newSource.slice(n.bodyNode.startIndex, n.bodyNode.endIndex),
     );
     if (ob === nb) return null;
-    return { ...base, change: "body", bodySummary: summarizeBody(n.bodyNode, newLines) };
+    const u: ChangeUnit = { ...base, change: "body", bodySummary: summarizeBody(n.bodyNode, newLines) };
+    // 非数据类（如含方法的 class）的 body 变更不是数据形状变更，不进领域总览
+    attachDomain(profile, u, o, n, locale);
+    return u;
   }
 
   // 无 body 的非类型级单元（变量、枚举等）：整体比较

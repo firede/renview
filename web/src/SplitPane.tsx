@@ -6,7 +6,7 @@ const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 560;
 
 /** 上下分栏的默认/边界比例 */
-const SPLIT_DEFAULT_PCT = 55;
+const SPLIT_DEFAULT_PCT = 65;
 const SPLIT_MIN_PCT = 15;
 const SPLIT_MAX_PCT = 85;
 

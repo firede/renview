@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { pythonProfile } from "../src/analysis/langs/python";
 import { typescriptProfile } from "../src/analysis/langs/typescript";
 import { analyzeFile, insertBodyNotes } from "../src/analysis/project";
 import type { SRow } from "../src/analysis/simplify";
@@ -147,11 +148,91 @@ describe("analyzeFile", () => {
   });
 });
 
+describe("领域模型成员（domain）", () => {
+  test("类型加成员：members 全量、added 定位新增", async () => {
+    const next = BASE.replace("  y: number;\n}", "  y: number;\n  z?: number;\n}");
+    const p = await analyzeFile(typescriptProfile, BASE, next, lines(), lines(4), "zh-CN");
+    const u = p.units.find((x) => x.name === "Point")!;
+    expect(u.change).toBe("type-only");
+    expect(u.domain?.members).toEqual(["x", "y", "z"]);
+    expect(u.domain?.added).toEqual(["z"]);
+    expect(u.domain?.removed).toEqual([]);
+  });
+
+  test("类型删成员：removed 定位删除", async () => {
+    const next = BASE.replace("  y: number;\n}", "}");
+    const p = await analyzeFile(typescriptProfile, BASE, next, lines(3), lines(), "zh-CN");
+    const u = p.units.find((x) => x.name === "Point")!;
+    expect(u.domain?.members).toContain("x");
+    expect(u.domain?.removed).toEqual(["y"]);
+    expect(u.domain?.added).toEqual([]);
+  });
+
+  test("新增接口：members 即全量且全为 added", async () => {
+    const src = `export interface Order {\n  id: string;\n  amount: number;\n}\n`;
+    const p = await analyzeFile(typescriptProfile, null, src, lines(), lines(1, 2, 3, 4), "zh-CN");
+    const u = p.units.find((x) => x.name === "Order")!;
+    expect(u.change).toBe("added");
+    expect(u.domain?.members).toEqual(["id", "amount"]);
+    expect(u.domain?.added).toEqual(["id", "amount"]);
+  });
+
+  test("纯类型细节变更（成员无增减）：不挂 domain，不进形状信号", async () => {
+    const next = BASE.replace("  x: number;\n", "  x: string;\n");
+    const p = await analyzeFile(typescriptProfile, BASE, next, lines(), lines(2), "zh-CN");
+    const u = p.units.find((x) => x.name === "Point")!;
+    expect(u.change).toBe("type-only");
+    expect(u.domain).toBeUndefined();
+  });
+
+  test("排序：成员增减的形状信号先于普通实现，纯类型细节仍在末尾", async () => {
+    const next = BASE.replace("  y: number;\n}", "  y: number;\n  z?: number;\n}").replace(
+      "return `hi ${name}`;",
+      "return `hello ${name}!`;",
+    );
+    const p = await analyzeFile(typescriptProfile, BASE, next, lines(11), lines(4, 11), "zh-CN");
+    expect(p.units.map((u) => u.name)).toEqual(["Point", "greet"]);
+    // 纯细节变更无 domain，排在实现之后
+    const detail = BASE.replace("  x: number;\n", "  x: string;\n").replace(
+      "return `hi ${name}`;",
+      "return `hello ${name}!`;",
+    );
+    const p2 = await analyzeFile(typescriptProfile, BASE, detail, lines(11), lines(2, 11), "zh-CN");
+    expect(p2.units.map((u) => u.name)).toEqual(["greet", "Point"]);
+  });
+
+  test("函数变更不带 domain（含方法的普通类也不带）", async () => {
+    const next = BASE.replace("return `hi ${name}`;", "return `hello ${name}!`;");
+    const p = await analyzeFile(typescriptProfile, BASE, next, lines(11), lines(11), "zh-CN");
+    expect(p.units[0]!.domain).toBeUndefined();
+    const cls = `export class Foo {\n  bar(): number {\n    return 1;\n  }\n}\n`;
+    const p2 = await analyzeFile(
+      typescriptProfile,
+      cls,
+      cls.replace("return 1;", "return 2;"),
+      lines(3),
+      lines(3),
+      "zh-CN",
+    );
+    expect(p2.units[0]!.domain).toBeUndefined();
+  });
+
+  test("Python 纯数据类加字段：类级单元带 domain（成员增删）", async () => {
+    const old = `@dataclass\nclass Item:\n  sku: str\n`;
+    const next = `@dataclass\nclass Item:\n  sku: str\n  qty: int = 0\n`;
+    const p = await analyzeFile(pythonProfile, old, next, lines(), lines(4), "zh-CN");
+    const u = p.units.find((x) => x.name === "Item")!;
+    expect(u.domain?.members).toEqual(["sku", "qty"]);
+    expect(u.domain?.added).toEqual(["qty"]);
+  });
+});
+
 describe("insertBodyNotes：实现摘要注释行", () => {
   const unit = (items: Array<[number, string]>, range: [number, number] = [1, 8]): ChangeUnit => ({
     id: "f:0",
     kind: "function",
     name: "price",
+    container: "",
     change: "body",
     newRange: range,
     bodySummary: items.map(([newLn, preview]) => ({
@@ -237,6 +318,7 @@ describe("insertBodyNotes：实现摘要注释行", () => {
       id: "s:0",
       kind: "function",
       name: "s",
+      container: "",
       change: "signature",
       newRange: [1, 3],
       signature: "function s()",

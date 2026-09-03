@@ -29,6 +29,7 @@ export const zhCN: Strings = {
     added: "新增",
     removed: "删除",
   },
+  domainShape: "结构",
   openInViewer: "在查看器中打开",
   fellBack: (reason) => `已退回原始 diff（${reason}）`,
   foldedLines: (n) => `已折叠 ${n} 行`,
