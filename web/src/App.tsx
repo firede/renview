@@ -23,7 +23,7 @@ import {
   IconUnified,
   StatusIcon,
 } from "./icons";
-import { Sidebar, SideSections, initialSidebarWidth, persistSidebarWidth } from "./Sidebar";
+import { SideSections, SplitPane } from "./SplitPane";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
 import { UnitList } from "./UnitList";
 
@@ -174,14 +174,8 @@ export function App() {
   const [mode, setMode] = useState<"review" | "browse">("review");
   const [jump, setJump] = useState<JumpTarget | null>(null);
   const [sidebarHidden, setSidebarHidden] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
   const [unitJump, setUnitJump] = useState<LineJump | null>(null);
-
-  // 侧栏宽度会话内记忆（sessionStorage）
-  useEffect(() => {
-    persistSidebarWidth(sidebarWidth);
-  }, [sidebarWidth]);
 
   // 从 diff 跳转查看器：打开该文件完整简化视图并定位到首个变更行（hunk 外上下文由查看器承接）
   const openInViewer = (path: string) => {
@@ -350,160 +344,156 @@ export function App() {
           jump={jump}
           onJumpDone={() => setJump(null)}
           sidebarHidden={sidebarHidden}
-          sidebarWidth={sidebarWidth}
-          onSidebarWidthChange={setSidebarWidth}
         />
       ) : files.length === 0 ? (
         <div className="center-note">{s.noChanges}</div>
       ) : (
-        <div className="body">
-          {!sidebarHidden && (
-            <Sidebar width={sidebarWidth} onWidthChange={setSidebarWidth}>
-              <SideSections
-                storageKey="review"
-                top={{
-                  title: s.sectionFiles,
-                  body: items.map(({ file: f, entry }, i) => {
-                    const stat = fileStats(f);
-                    const sum = entry?.projection?.summary;
-                    return (
-                      <button
-                        key={`${f.oldPath}→${f.newPath}`}
-                        className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                        onClick={() => {
-                          setSelected(i);
-                          setRawOverride(null);
-                          setUnitJump(null);
-                        }}
-                      >
-                        <span className="file-path" title={f.newPath}>
-                          {splitPath(f.newPath).dir && (
-                            <span className="file-dir">{splitPath(f.newPath).dir}</span>
-                          )}
-                          <span className="file-base">{splitPath(f.newPath).base}</span>
-                        </span>
-                        <span className="file-meta">
-                          <span
-                            className={`status status-${f.type}`}
-                            title={s.statusLabel[f.type as FileStatus] ?? f.type}
-                          >
-                            <StatusIcon status={f.type as FileStatus} />
-                          </span>
-                          <em className="add">+{stat.adds}</em>
-                          <em className="del">−{stat.dels}</em>
-                          {sum && (
-                            <span className="chips">
-                              {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
-                                <span key={k} className={`chip ${cls}`}>
-                                  {s.summaryChips[k]}
-                                  {sum[k]}
-                                </span>
-                              ))}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  }),
-                }}
-                bottom={{
-                  title: s.sectionUnits,
-                  body: (
-                    <UnitList
-                      units={selectedEntry?.projection?.units ?? null}
-                      onJump={jumpToUnit}
-                    />
-                  ),
-                }}
-              />
-            </Sidebar>
-          )}
-          <main className="content">
-            {selectedFile && (
-              <>
-                <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
-                  <span className="file-title">{selectedFile.newPath}</span>
-                  {selectedFile.newPath !== "/dev/null" && (
+        <SplitPane
+          hidden={sidebarHidden}
+          side={
+            <SideSections
+              storageKey="review"
+              top={{
+                title: s.sectionFiles,
+                body: items.map(({ file: f, entry }, i) => {
+                  const stat = fileStats(f);
+                  const sum = entry?.projection?.summary;
+                  return (
                     <button
-                      className="icon-btn"
-                      title={s.openInViewer}
-                      aria-label={s.openInViewer}
-                      onClick={() => openInViewer(selectedFile.newPath)}
+                      key={`${f.oldPath}→${f.newPath}`}
+                      className={`file-item ${i === safeSelected ? "selected" : ""}`}
+                      onClick={() => {
+                        setSelected(i);
+                        setRawOverride(null);
+                        setUnitJump(null);
+                      }}
                     >
-                      <IconOpenExternal />
-                    </button>
-                  )}
-                  {selectedEntry?.degradedReason &&
-                    selectedEntry.degradedReason !== "no-profile" && (
-                      <span className="dim">
-                        {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
+                      <span className="file-path" title={f.newPath}>
+                        {splitPath(f.newPath).dir && (
+                          <span className="file-dir">{splitPath(f.newPath).dir}</span>
+                        )}
+                        <span className="file-base">{splitPath(f.newPath).base}</span>
                       </span>
-                    )}
-                  {!showRaw && selectedEntry?.simplified && selectedEntry.simplified.stats.folded > 0 && (
-                    <span className="dim">{s.foldedLines(selectedEntry.simplified.stats.folded)}</span>
-                  )}
-                  <span className="spacer" />
-                  {hasSimplified && (
-                    <span className="seg">
-                      <button
-                        title={s.shortcutS}
-                        className={!showRaw ? "active" : ""}
-                        onClick={() => setRawOverride(false)}
-                      >
-                        {s.simplified}
-                      </button>
-                      <button
-                        title={s.shortcutS}
-                        className={showRaw ? "active" : ""}
-                        onClick={() => setRawOverride(true)}
-                      >
-                        {s.rawDiff}
-                      </button>
-                    </span>
-                  )}
-                  {showRaw && (
-                    <span className="seg">
-                      <button
-                        className={`icon-btn${viewType === "unified" ? " active" : ""}`}
-                        title={s.unified}
-                        aria-label={s.unified}
-                        onClick={() => setViewType("unified")}
-                      >
-                        <IconUnified />
-                      </button>
-                      <button
-                        className={`icon-btn${viewType === "split" ? " active" : ""}`}
-                        title={s.split}
-                        aria-label={s.split}
-                        onClick={() => setViewType("split")}
-                      >
-                        <IconSplit />
-                      </button>
-                    </span>
-                  )}
-                </div>
-                {!showRaw && selectedEntry?.simplified ? (
-                  <SimplifiedView
-                    data={selectedEntry.simplified}
-                    lang={shikiLangForPath(
-                      selectedFile.newPath !== "/dev/null"
-                        ? selectedFile.newPath
-                        : selectedFile.oldPath,
-                    )}
-                    jump={unitJump}
+                      <span className="file-meta">
+                        <span
+                          className={`status status-${f.type}`}
+                          title={s.statusLabel[f.type as FileStatus] ?? f.type}
+                        >
+                          <StatusIcon status={f.type as FileStatus} />
+                        </span>
+                        <em className="add">+{stat.adds}</em>
+                        <em className="del">−{stat.dels}</em>
+                        {sum && (
+                          <span className="chips">
+                            {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
+                              <span key={k} className={`chip ${cls}`}>
+                                {s.summaryChips[k]}
+                                {sum[k]}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                }),
+              }}
+              bottom={{
+                title: s.sectionUnits,
+                body: (
+                  <UnitList
+                    units={selectedEntry?.projection?.units ?? null}
+                    onJump={jumpToUnit}
                   />
-                ) : (
-                  <RawDiff
-                    file={selectedFile}
-                    viewType={viewType}
-                    tokens={diffTokens}
-                    jump={unitJump}
-                  />
+                ),
+              }}
+            />
+          }
+        >
+          {selectedFile && (
+            <>
+              <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
+                <span className="file-title">{selectedFile.newPath}</span>
+                {selectedFile.newPath !== "/dev/null" && (
+                  <button
+                    className="icon-btn"
+                    title={s.openInViewer}
+                    aria-label={s.openInViewer}
+                    onClick={() => openInViewer(selectedFile.newPath)}
+                  >
+                    <IconOpenExternal />
+                  </button>
                 )}
-              </>
-            )}
-          </main>
-        </div>
+                {selectedEntry?.degradedReason &&
+                  selectedEntry.degradedReason !== "no-profile" && (
+                    <span className="dim">
+                      {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
+                    </span>
+                  )}
+                {!showRaw && selectedEntry?.simplified && selectedEntry.simplified.stats.folded > 0 && (
+                  <span className="dim">{s.foldedLines(selectedEntry.simplified.stats.folded)}</span>
+                )}
+                <span className="spacer" />
+                {hasSimplified && (
+                  <span className="seg">
+                    <button
+                      title={s.shortcutS}
+                      className={!showRaw ? "active" : ""}
+                      onClick={() => setRawOverride(false)}
+                    >
+                      {s.simplified}
+                    </button>
+                    <button
+                      title={s.shortcutS}
+                      className={showRaw ? "active" : ""}
+                      onClick={() => setRawOverride(true)}
+                    >
+                      {s.rawDiff}
+                    </button>
+                  </span>
+                )}
+                {showRaw && (
+                  <span className="seg">
+                    <button
+                      className={`icon-btn${viewType === "unified" ? " active" : ""}`}
+                      title={s.unified}
+                      aria-label={s.unified}
+                      onClick={() => setViewType("unified")}
+                    >
+                      <IconUnified />
+                    </button>
+                    <button
+                      className={`icon-btn${viewType === "split" ? " active" : ""}`}
+                      title={s.split}
+                      aria-label={s.split}
+                      onClick={() => setViewType("split")}
+                    >
+                      <IconSplit />
+                    </button>
+                  </span>
+                )}
+              </div>
+              {!showRaw && selectedEntry?.simplified ? (
+                <SimplifiedView
+                  data={selectedEntry.simplified}
+                  lang={shikiLangForPath(
+                    selectedFile.newPath !== "/dev/null"
+                      ? selectedFile.newPath
+                      : selectedFile.oldPath,
+                  )}
+                  jump={unitJump}
+                />
+              ) : (
+                <RawDiff
+                  file={selectedFile}
+                  viewType={viewType}
+                  tokens={diffTokens}
+                  jump={unitJump}
+                />
+              )}
+            </>
+          )}
+        </SplitPane>
       )}
     </div>
   );

@@ -26,6 +26,7 @@
     "react": "^19",
     "react-diff-view": "^3",
     "react-dom": "^19",
+    "react-resizable-panels": "^4.12.3",
     "shiki": "^4.4.3",
     "smol-toml": "^1.8.0",
     "tree-sitter-gdscript": "6.1.0",

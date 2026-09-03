@@ -189,20 +189,17 @@ body {
   min-height: 0;
 }
 
+/* 侧栏：SplitPane 的 Panel 内层 div（宽度由 react-resizable-panels 管理） */
 .sidebar {
-  width: 300px;
-  flex: none;
-  /* 上下分栏各自管理滚动，侧栏自身不滚动 */
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
   border-right: 1px solid var(--border);
 }
 
 /* 侧栏上下分栏：上主列表下辅助列表，中间手柄拖拽调比例 */
 .side-sections {
-  display: flex;
-  flex-direction: column;
   flex: 1;
   min-height: 0;
 }
@@ -211,6 +208,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 /* 分栏标题：常驻小字降权，不参与滚动 */
@@ -229,40 +227,9 @@ body {
   overflow-y: auto;
 }
 
-/* 分栏拖拽手柄：分隔线画在下栏顶边上，手柄负边距骑跨（视觉无接缝），hover 中线提亮；双击复位默认比例 */
-.side-vsplit {
-  flex: none;
-  height: 9px;
-  margin: -4px 0 -5px;
-  cursor: row-resize;
-  position: relative;
-  z-index: 2;
-}
-
-.side-vsplit::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: transparent;
-}
-
-.side-vsplit:hover::after {
-  background: var(--accent);
-}
-
+/* 下栏顶边承担分隔线（手柄骑跨其上） */
 .side-section.grow {
-  flex: 1;
-  min-height: 0;
   border-top: 1px solid var(--border);
-}
-
-/* 纵向拖拽期间全局禁用文本选择并固定光标 */
-body.row-resizing {
-  user-select: none;
-  cursor: row-resize;
 }
 
 .file-item {
@@ -909,11 +876,11 @@ body.row-resizing {
   border-bottom-color: var(--accent-faint);
 }
 
-/* 侧栏宽度拖拽手柄：负边距骑跨侧栏右边框（视觉无接缝），hover 时中线提亮；双击复位默认宽度 */
+/* 拖拽手柄：负边距骑跨分隔线（净占 0 宽/高，视觉无接缝），hover 时中线提亮；双击复位。
+   光标与拖拽态由 react-resizable-panels 管理（data-separator 属性可追加样式钩子） */
 .side-resizer {
-  flex: none;
   width: 9px;
-  margin-left: -5px;
+  margin: 0 -4px 0 -5px;
   cursor: col-resize;
   position: relative;
   z-index: 2;
@@ -929,14 +896,29 @@ body.row-resizing {
   background: transparent;
 }
 
-.side-resizer:hover::after {
-  background: var(--accent);
+.side-vsplit {
+  height: 9px;
+  margin: -4px 0 -5px;
+  cursor: row-resize;
+  position: relative;
+  z-index: 2;
 }
 
-/* 拖拽期间全局禁用文本选择并固定光标 */
-body.col-resizing {
-  user-select: none;
-  cursor: col-resize;
+.side-vsplit::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: transparent;
+}
+
+.side-resizer:hover::after,
+.side-vsplit:hover::after,
+.side-resizer[data-separator="active"]::after,
+.side-vsplit[data-separator="active"]::after {
+  background: var(--accent);
 }
 
 /* 图标按钮：仅图形（title/aria-label 承担语义），只用于语义通用的控件 */

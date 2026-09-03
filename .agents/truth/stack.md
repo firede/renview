@@ -18,6 +18,7 @@
 - UI 组件库：hover 披露（tooltip 定位与焦点管理）用 headless 的 base-ui（与纯 CSS 相容），不引入 shadcn/ui（绑定 tailwind 样式体系，与"样式纯 CSS"冲突）；其余轻量交互自研（base-ui 本无现成 tree 组件）。
 - 图标零依赖：内联 SVG 组件集（web/src/icons.tsx，24 视窗路径与 lucide 兼容），不引入图标包——所需图标十余个，引包的依赖与体积不抵收益；图标化只覆盖语义通用的控件（刷新/打开查看器/单列双列/侧栏开关/文件状态），产品特定概念（简化/原始/变更/浏览）保留文字（无通用图形，硬造图标反而增加解码负担）。
 - 代码字体：系统栈（ui-monospace → "SF Mono" → Menlo → Consolas → Liberation Mono → monospace），不内置字体资产；全站收敛到唯一 token `--font-mono` 并元素级声明（UA 的 pre 样式会压过继承值，代码区声明必须落在元素上）；用户经配置文件 `font_family` 覆写该 token（用户字体拼在系统栈前，未安装自然回落）；若 dogfood 中跨设备渲染不一致影响审阅，再评估内置 OFL 等宽字体。
+- 分栏布局（侧栏宽度、侧栏上下比例）用 headless 的 react-resizable-panels 承载拖拽与调整交互；headless 无样式绑定，与"样式纯 CSS"相容。
 - TOML 解析用 smol-toml：纯 JS 无原生依赖、可打进单文件二进制；不自写 TOML 解析器（手写 parser 容易在注释/引号/转义边角出错）。
 - i18n 不引入 react-i18next / ICU 类库：文案量小（每侧几十条）、插值用模板函数、英文单复数内联分支即可；自研微型目录零依赖，对单文件二进制与前端 bundle 都最省心。
 - 官网（www/）用 Astro + @astrojs/cloudflare，为发布/安装管线提供稳定域名；独立 npm 包、各持 lockfile，官网依赖树不进主项目。

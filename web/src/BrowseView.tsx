@@ -6,7 +6,7 @@ import { FileTree } from "./FileTree";
 import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 import { useStrings } from "./i18n";
 import { OutlinePanel } from "./Outline";
-import { Sidebar, SideSections } from "./Sidebar";
+import { SideSections, SplitPane } from "./SplitPane";
 
 interface FilesPayload {
   ok: boolean;
@@ -38,14 +38,10 @@ export function BrowseView({
   jump,
   onJumpDone,
   sidebarHidden,
-  sidebarWidth,
-  onSidebarWidthChange,
 }: {
   jump: JumpTarget | null;
   onJumpDone: () => void;
   sidebarHidden: boolean;
-  sidebarWidth: number;
-  onSidebarWidthChange: (width: number) => void;
 }) {
   const s = useStrings();
   const [files, setFiles] = useState<string[] | null>(null);
@@ -174,62 +170,61 @@ export function BrowseView({
   }, [hasSimplified]);
 
   return (
-    <div className="body">
-      {!sidebarHidden && (
-        <Sidebar width={sidebarWidth} onWidthChange={onSidebarWidthChange}>
-          <SideSections
-            storageKey="browse"
-            top={{
-              title: s.sectionFiles,
-              body: (
-                <>
-                  <div className="sidebar-filter">
-                    <input
-                      className="filter-input"
-                      placeholder={s.filterFiles}
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                    />
-                  </div>
-                  {filter.trim() ? (
-                    // 过滤时退回平铺列表（匹配结果本就稀疏）
-                    <>
-                      {visible.map((f) => {
-                        const { dir, base } = splitPath(f);
-                        return (
-                          <button
-                            key={f}
-                            className={`file-item ${f === path ? "selected" : ""}`}
-                            onClick={() => setPath(f)}
-                          >
-                            <span className="file-path" title={f}>
-                              {dir && <span className="file-dir">{dir}</span>}
-                              <span className="file-base">{base}</span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                      {files && visible.length === 0 && (
-                        <div className="dim pad note">{s.noMatchingFiles}</div>
-                      )}
-                    </>
-                  ) : (
-                    files && <FileTree paths={files} selected={path} onSelect={setPath} />
-                  )}
-                </>
-              ),
-            }}
-            bottom={{
-              title: s.sectionOutline,
-              body: <OutlinePanel outline={data?.outline ?? []} onJump={jumpToRange} />,
-            }}
-          />
-        </Sidebar>
-      )}
-      <main className="content">
-        {!path && <div className="center-note">{s.selectFileToBrowse}</div>}
-        {path && (
-          <>
+    <SplitPane
+      hidden={sidebarHidden}
+      side={
+        <SideSections
+          storageKey="browse"
+          top={{
+            title: s.sectionFiles,
+            body: (
+              <>
+                <div className="sidebar-filter">
+                  <input
+                    className="filter-input"
+                    placeholder={s.filterFiles}
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  />
+                </div>
+                {filter.trim() ? (
+                  // 过滤时退回平铺列表（匹配结果本就稀疏）
+                  <>
+                    {visible.map((f) => {
+                      const { dir, base } = splitPath(f);
+                      return (
+                        <button
+                          key={f}
+                          className={`file-item ${f === path ? "selected" : ""}`}
+                          onClick={() => setPath(f)}
+                        >
+                          <span className="file-path" title={f}>
+                            {dir && <span className="file-dir">{dir}</span>}
+                            <span className="file-base">{base}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {files && visible.length === 0 && (
+                      <div className="dim pad note">{s.noMatchingFiles}</div>
+                    )}
+                  </>
+                ) : (
+                  files && <FileTree paths={files} selected={path} onSelect={setPath} />
+                )}
+              </>
+            ),
+          }}
+          bottom={{
+            title: s.sectionOutline,
+            body: <OutlinePanel outline={data?.outline ?? []} onJump={jumpToRange} />,
+          }}
+        />
+      }
+    >
+      {!path && <div className="center-note">{s.selectFileToBrowse}</div>}
+      {path && (
+        <>
             <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
               <span className="file-title">{path}</span>
               {loading && <span className="dim">{s.loading}</span>}
@@ -309,9 +304,8 @@ export function BrowseView({
               </div>
             ) : null}
           </>
-        )}
-      </main>
-    </div>
+      )}
+    </SplitPane>
   );
 }
 
