@@ -1,6 +1,6 @@
 {
   "name": "renview",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "帮助人类降低认知负担的代码审核工具",
   "license": "MIT",
   "type": "module",
