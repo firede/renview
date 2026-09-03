@@ -787,6 +787,7 @@ body.row-resizing {
 .tree-row {
   display: flex;
   align-items: center;
+  gap: 4px;
   width: 100%;
   padding: 2px 8px;
   background: transparent;
@@ -803,11 +804,28 @@ body.row-resizing {
   background: var(--bg-raised);
 }
 
-.tree-dir {
+/* chevron 定宽槽：目录有箭头、文件留空，同级名字起点一致 */
+.tree-chevron {
+  flex: none;
+  width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--fg-dim);
 }
 
-.tree-dir:hover {
+.tree-icon {
+  flex: none;
+  color: var(--fg-dim);
+  opacity: 0.9;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-dir {
   color: var(--fg);
 }
 

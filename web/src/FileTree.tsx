@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { IconChevron, IconFile, IconFolder } from "./icons";
 
 /** 目录树数据模型：由文件路径列表构建 */
 
@@ -159,13 +160,17 @@ function TreeLevel({
       {nodes.map((n) =>
         n.kind === "dir" ? (
           <div key={n.path}>
+            {/* 行结构三列对齐：chevron 定宽槽（文件留空）+ 文件夹/文件图标 + 名字——同级目录与文件视觉对齐 */}
             <button
               className="tree-row tree-dir"
-              style={{ paddingLeft: 8 + depth * 14 }}
+              style={{ paddingLeft: 8 + depth * 12 }}
               onClick={() => onToggle(n.path)}
             >
-              <span className="fold-arrow">{open.has(n.path) ? "▾" : "▸"}</span>
-              {n.name}/
+              <span className="tree-chevron">
+                <IconChevron open={open.has(n.path)} width={12} height={12} />
+              </span>
+              <IconFolder className="tree-icon" width={14} height={14} />
+              <span className="tree-name">{n.name}</span>
             </button>
             {open.has(n.path) && (
               <TreeLevel
@@ -182,11 +187,13 @@ function TreeLevel({
           <button
             key={n.path}
             className={`tree-row tree-file${n.path === selected ? " selected" : ""}`}
-            style={{ paddingLeft: 8 + depth * 14 + 14 }}
+            style={{ paddingLeft: 8 + depth * 12 }}
             title={n.path}
             onClick={() => onSelect(n.path)}
           >
-            {n.name}
+            <span className="tree-chevron" />
+            <IconFile className="tree-icon" width={14} height={14} />
+            <span className="tree-name">{n.name}</span>
           </button>
         ),
       )}
