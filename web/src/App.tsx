@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { parseDiff, Diff, Hunk, type FileData, type ViewType } from "react-diff-view";
-import type { ChangeKind, FileEntry, FileStatus } from "../../src/analysis/types";
+import {
+  parseDiff,
+  Diff,
+  Hunk,
+  isDelete,
+  isInsert,
+  isNormal,
+  type ChangeData,
+  type FileData,
+  type HunkTokens,
+  type ViewType,
+} from "react-diff-view";
+import type { ChangeKind, ChangeUnit, FileEntry, FileStatus } from "../../src/analysis/types";
 import { BrowseView, type JumpTarget } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { useStrings } from "./i18n";
 import { IconPanelLeft } from "./icons";
-import { Sidebar, SIDEBAR_DEFAULT_WIDTH } from "./Sidebar";
-import { SimplifiedView } from "./SimplifiedView";
+import { Sidebar, SideSections, SIDEBAR_DEFAULT_WIDTH } from "./Sidebar";
+import { SimplifiedView, type LineJump } from "./SimplifiedView";
+import { UnitList } from "./UnitList";
 
 interface DiffPayload {
   ok: boolean;
@@ -56,6 +68,78 @@ function fileStats(f: FileData): { adds: number; dels: number } {
   return { adds, dels };
 }
 
+/** 原始 diff 的行锚 id：新增/上下文行挂新侧行号，删除行挂旧侧行号（双列模式下 id 落在对应侧单元格，统一可用 getElementById 定位） */
+function rawAnchorId(c: ChangeData): string | undefined {
+  if (isInsert(c)) return `rvn-${c.lineNumber}`;
+  if (isDelete(c)) return `rvo-${c.lineNumber}`;
+  if (isNormal(c)) return `rvn-${c.newLineNumber}`;
+  return undefined;
+}
+
+/** 跳转目标行 → 原始 diff 行锚：该侧首个不早于目标的渲染行；目标晚于所有行时落最后一行 */
+function findRawAnchor(file: FileData, jump: LineJump): string | null {
+  const preferNew = jump.newLn != null;
+  const target = jump.newLn ?? jump.oldLn;
+  if (target == null) return null;
+  let best: { ln: number; id: string } | null = null;
+  let prev: { ln: number; id: string } | null = null;
+  for (const h of file.hunks) {
+    for (const c of h.changes) {
+      const ln = preferNew
+        ? isInsert(c)
+          ? c.lineNumber
+          : isNormal(c)
+            ? c.newLineNumber
+            : null
+        : isDelete(c)
+          ? c.lineNumber
+          : isNormal(c)
+            ? c.oldLineNumber
+            : null;
+      if (ln == null) continue;
+      const id = rawAnchorId(c)!;
+      if (ln >= target) {
+        if (!best || ln < best.ln) best = { ln, id };
+      } else if (!prev || ln > prev.ln) {
+        prev = { ln, id };
+      }
+    }
+  }
+  return (best ?? prev)?.id ?? null;
+}
+
+/** 原始 diff 视图：带行锚定与单元跳转（滚动定位，无闪烁——原始视图是审计回退，不加增强层效果） */
+function RawDiff({
+  file,
+  viewType,
+  tokens,
+  jump,
+}: {
+  file: FileData;
+  viewType: ViewType;
+  tokens: HunkTokens | null;
+  jump: LineJump | null;
+}) {
+  useEffect(() => {
+    if (!jump) return;
+    const id = findRawAnchor(file, jump);
+    if (id) document.getElementById(id)?.scrollIntoView({ block: "center" });
+  }, [jump, file, viewType]);
+  return (
+    <Diff
+      key={`${file.oldPath}→${file.newPath}`}
+      diffType={file.type}
+      hunks={file.hunks}
+      viewType={viewType}
+      tokens={tokens ?? undefined}
+      renderToken={renderDiffToken}
+      generateAnchorID={rawAnchorId}
+    >
+      {(hunks) => hunks.map((h) => <Hunk key={h.content} hunk={h} />)}
+    </Diff>
+  );
+}
+
 export function App() {
   const s = useStrings();
   const [payload, setPayload] = useState<DiffPayload | null>(null);
@@ -67,11 +151,18 @@ export function App() {
   const [jump, setJump] = useState<JumpTarget | null>(null);
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
+  const [unitJump, setUnitJump] = useState<LineJump | null>(null);
 
   // 从 diff 跳转查看器：打开该文件完整简化视图并定位到首个变更行（hunk 外上下文由查看器承接）
   const openInViewer = (path: string) => {
     setJump({ path, line: viewerLineOf(selectedEntry) });
     setMode("browse");
+  };
+
+  // 变更单元导航：定位到单元起始行（新侧优先，removed 单元落旧侧）；nonce 保证重复点击同一单元也触发
+  const jumpToUnit = (u: ChangeUnit) => {
+    setUnitJump({ nonce: Date.now(), newLn: u.newRange?.[0], oldLn: u.oldRange?.[0] });
   };
 
   const load = useCallback(async () => {
@@ -233,44 +324,59 @@ export function App() {
         <div className="body">
           {!sidebarHidden && (
             <Sidebar width={sidebarWidth} onWidthChange={setSidebarWidth}>
-              {items.map(({ file: f, entry }, i) => {
-                const stat = fileStats(f);
-                const sum = entry?.projection?.summary;
-                return (
-                  <button
-                    key={`${f.oldPath}→${f.newPath}`}
-                    className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                    onClick={() => {
-                      setSelected(i);
-                      setRawOverride(null);
-                    }}
-                  >
-                    <span className="file-path" title={f.newPath}>
-                      {splitPath(f.newPath).dir && (
-                        <span className="file-dir">{splitPath(f.newPath).dir}</span>
-                      )}
-                      <span className="file-base">{splitPath(f.newPath).base}</span>
-                    </span>
-                    <span className="file-meta">
-                      <span className={`status status-${f.type}`}>
-                        {s.statusLabel[f.type as FileStatus] ?? f.type}
-                      </span>
-                      <em className="add">+{stat.adds}</em>
-                      <em className="del">−{stat.dels}</em>
-                      {sum && (
-                        <span className="chips">
-                          {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
-                            <span key={k} className={`chip ${cls}`}>
-                              {s.summaryChips[k]}
-                              {sum[k]}
-                            </span>
-                          ))}
+              <SideSections
+                top={{
+                  title: s.sectionFiles,
+                  body: items.map(({ file: f, entry }, i) => {
+                    const stat = fileStats(f);
+                    const sum = entry?.projection?.summary;
+                    return (
+                      <button
+                        key={`${f.oldPath}→${f.newPath}`}
+                        className={`file-item ${i === safeSelected ? "selected" : ""}`}
+                        onClick={() => {
+                          setSelected(i);
+                          setRawOverride(null);
+                          setUnitJump(null);
+                        }}
+                      >
+                        <span className="file-path" title={f.newPath}>
+                          {splitPath(f.newPath).dir && (
+                            <span className="file-dir">{splitPath(f.newPath).dir}</span>
+                          )}
+                          <span className="file-base">{splitPath(f.newPath).base}</span>
                         </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
+                        <span className="file-meta">
+                          <span className={`status status-${f.type}`}>
+                            {s.statusLabel[f.type as FileStatus] ?? f.type}
+                          </span>
+                          <em className="add">+{stat.adds}</em>
+                          <em className="del">−{stat.dels}</em>
+                          {sum && (
+                            <span className="chips">
+                              {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
+                                <span key={k} className={`chip ${cls}`}>
+                                  {s.summaryChips[k]}
+                                  {sum[k]}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  }),
+                }}
+                bottom={{
+                  title: s.sectionUnits,
+                  body: (
+                    <UnitList
+                      units={selectedEntry?.projection?.units ?? null}
+                      onJump={jumpToUnit}
+                    />
+                  ),
+                }}
+              />
             </Sidebar>
           )}
           <main className="content">
@@ -336,18 +442,15 @@ export function App() {
                         ? selectedFile.newPath
                         : selectedFile.oldPath,
                     )}
+                    jump={unitJump}
                   />
                 ) : (
-                  <Diff
-                    key={`${selectedFile.oldPath}→${selectedFile.newPath}`}
-                    diffType={selectedFile.type}
-                    hunks={selectedFile.hunks}
+                  <RawDiff
+                    file={selectedFile}
                     viewType={viewType}
                     tokens={diffTokens}
-                    renderToken={renderDiffToken}
-                  >
-                    {(hunks) => hunks.map((h) => <Hunk key={h.content} hunk={h} />)}
-                  </Diff>
+                    jump={unitJump}
+                  />
                 )}
               </>
             )}

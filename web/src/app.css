@@ -192,8 +192,65 @@ body {
 .sidebar {
   width: 300px;
   flex: none;
-  overflow-y: auto;
+  /* 上下分栏各自管理滚动，侧栏自身不滚动 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-right: 1px solid var(--border);
+}
+
+/* 侧栏上下分栏：上主列表下辅助列表，中间手柄拖拽调比例 */
+.side-sections {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.side-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side-section.grow {
+  flex: 1;
+}
+
+/* 分栏标题：常驻小字降权，不参与滚动 */
+.side-head {
+  flex: none;
+  padding: 4px 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--fg-dim);
+  user-select: none;
+}
+
+.side-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 分栏拖拽手柄：兼作两栏分隔线（双击复位默认比例） */
+.side-vsplit {
+  flex: none;
+  height: 5px;
+  margin: -2px 0;
+  border-top: 1px solid var(--border);
+  cursor: row-resize;
+  z-index: 1;
+}
+
+.side-vsplit:hover {
+  background: var(--accent-faint);
+}
+
+/* 纵向拖拽期间全局禁用文本选择并固定光标 */
+body.row-resizing {
+  user-select: none;
+  cursor: row-resize;
 }
 
 .file-item {
@@ -580,32 +637,95 @@ body {
   font-size: 12px;
 }
 
-.outline {
+/* 侧栏大纲：层级列表（类型级声明降权，与投影语义一致） */
+.outline-tree {
+  padding: 2px 0 8px;
+}
+
+.outline-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.outline-item {
+  width: 100%;
+  padding: 2px 12px;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: none;
   color: var(--fg);
-  padding: 0 8px;
-  font-size: 11px;
-  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: left;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.outline-item:hover {
-  border-color: var(--fg-dim);
+.outline-row:hover {
+  background: var(--bg-raised);
 }
 
-.outline-item.type-level {
+.outline-row.type-level {
   color: var(--fg-dim);
 }
+
+.outline-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+/* 声明类别徽章：单字符 glyph，降权不抢名字 */
+.kind-glyph {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* 变更单元列表 */
+.unit-list {
+  padding: 2px 0 8px;
+}
+
+.unit-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 12px;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.unit-item:hover {
+  background: var(--bg-raised);
+}
+
+.unit-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+/* 变更分类标注（与文件列表徽章同一配色，纯文字无描边） */
+.chg {
+  flex: none;
+  font-size: 11px;
+}
+
+.chg-signature { color: var(--sig); }
+.chg-body { color: var(--body-chg); }
+.chg-type-only { color: var(--fg-dim); }
+.chg-added { color: var(--add); }
+.chg-removed { color: var(--del); }
 
 /* 折叠行（查看器块折叠与 diff 类型/格式折叠共用）：整行可点、gutter 留空，折叠态注释色降权；展开即审视，内容带完整高亮 */
 .vfold-head {
@@ -637,12 +757,6 @@ body {
   tab-size: 4;
 }
 
-/* 大纲限高滚动（避免长文件的大纲占满屏幕） */
-.outline {
-  max-height: 84px;
-  overflow-y: auto;
-}
-
 /* 跳转目标的范围提示（闪烁一次后消退） */
 @keyframes flash-range {
   from {
@@ -660,7 +774,8 @@ body {
 
 /* 跳转定位时避开 sticky 文件工具条（否则目标行被盖住） */
 .srow,
-.vfold-head {
+.vfold-head,
+.diff-line {
   scroll-margin-top: 48px;
 }
 

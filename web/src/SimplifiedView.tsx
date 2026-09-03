@@ -1,11 +1,55 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SRow, SimplifiedViewData } from "../../src/analysis/types";
 import { DecoratedLine } from "./decor";
 import { TokenSpans, useHighlightedLines } from "./highlight";
 import { useStrings } from "./i18n";
 import { wordDiffRanges, type WordDiff } from "./worddiff";
 
-function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: string | null }) {
+/** 行跳转请求（变更单元点击导航）：nonce 保证连续点同一单元也触发；newLn 优先，removed 单元只有 oldLn */
+export interface LineJump {
+  nonce: number;
+  newLn?: number;
+  oldLn?: number;
+}
+
+/** 行的定位行号：可见行取对应侧行号，折叠行取折叠段首行 */
+function lineOf(r: SRow, side: "new" | "old"): number | null {
+  if (r.kind === "ctx" || r.kind === "del" || r.kind === "add") {
+    return (side === "new" ? r.newLn : r.oldLn) ?? null;
+  }
+  if (r.kind === "fold") {
+    const lns = side === "new" ? r.newLns : r.oldLns;
+    return lns && lns.length > 0 ? Math.min(...lns) : null;
+  }
+  return null;
+}
+
+/** 跳转目标行 → 行下标：首个不早于目标的行；目标晚于所有行时落最后一行 */
+function findRowIndex(rows: SRow[], jump: LineJump): number | null {
+  const side = jump.newLn != null ? "new" : "old";
+  const target = jump.newLn ?? jump.oldLn;
+  if (target == null) return null;
+  let fallback: number | null = null;
+  for (let i = 0; i < rows.length; i++) {
+    const ln = lineOf(rows[i]!, side);
+    if (ln == null) continue;
+    if (ln >= target) return i;
+    fallback = i;
+  }
+  return fallback;
+}
+
+function FoldRow({
+  row,
+  lang,
+  id,
+  flash,
+}: {
+  row: Extract<SRow, { kind: "fold" }>;
+  lang: string | null;
+  id: string;
+  flash: boolean;
+}) {
   const s = useStrings();
   const [open, setOpen] = useState(false);
   // 展开即审视：折叠的原始行带完整语法高亮（新旧两侧分别高亮）
@@ -14,7 +58,7 @@ function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: st
   return (
     <>
       {/* 与查看器块折叠同一形态：整行可点、gutter 留空、箭头 + 注释色摘要 */}
-      <button className="vfold-head" onClick={() => setOpen(!open)}>
+      <button id={id} className={`vfold-head${flash ? " flash" : ""}`} onClick={() => setOpen(!open)}>
         <span className="gutter" />
         <span className="gutter" />
         <span className="vfold-summary">
@@ -47,8 +91,29 @@ function FoldRow({ row, lang }: { row: Extract<SRow, { kind: "fold" }>; lang: st
   );
 }
 
-export function SimplifiedView({ data, lang }: { data: SimplifiedViewData; lang: string | null }) {
+export function SimplifiedView({
+  data,
+  lang,
+  jump,
+}: {
+  data: SimplifiedViewData;
+  lang: string | null;
+  jump?: LineJump | null;
+}) {
   const s = useStrings();
+  /** 跳转目标的闪烁提示（行下标，一次后消退） */
+  const [flashIdx, setFlashIdx] = useState<number | null>(null);
+
+  // 变更单元导航：滚动到目标行并闪烁提示
+  useEffect(() => {
+    if (!jump) return;
+    const idx = findRowIndex(data.rows, jump);
+    if (idx == null) return;
+    document.getElementById(`srow-${idx}`)?.scrollIntoView({ block: "center" });
+    setFlashIdx(idx);
+    const t = setTimeout(() => setFlashIdx((cur) => (cur === idx ? null : cur)), 1700);
+    return () => clearTimeout(t);
+  }, [jump, data]);
   // 高亮文本 = 代码行（fold/note 行不参与）按序拼接；token 按下标回填。跨 hunk 拼接仅影响颜色连续性。
   const visibleRows = useMemo(
     () =>
@@ -87,11 +152,12 @@ export function SimplifiedView({ data, lang }: { data: SimplifiedViewData; lang:
   return (
     <div className="sview">
       {data.rows.map((r, i) => {
-        if (r.kind === "fold") return <FoldRow key={i} row={r} lang={lang} />;
+        if (r.kind === "fold")
+          return <FoldRow key={i} row={r} lang={lang} id={`srow-${i}`} flash={flashIdx === i} />;
         // 实现摘要注释行：注释色降权、不可交互，不参与高亮索引
         if (r.kind === "note") {
           return (
-            <div key={i} className="srow note">
+            <div key={i} id={`srow-${i}`} className="srow note">
               <span className="gutter" />
               <span className="gutter" />
               <pre className="scode note-text">{r.text}</pre>
@@ -101,7 +167,7 @@ export function SimplifiedView({ data, lang }: { data: SimplifiedViewData; lang:
         const lineTokens = tokens?.[vi++] ?? null;
         const wd = r.pair != null ? pairDiffs.get(r.pair) : undefined;
         return (
-          <div key={i} className={`srow ${r.kind}`}>
+          <div key={i} id={`srow-${i}`} className={`srow ${r.kind}${flashIdx === i ? " flash" : ""}`}>
             <span className="gutter">{r.oldLn ?? ""}</span>
             <span className="gutter">{r.newLn ?? ""}</span>
             <pre className="scode">

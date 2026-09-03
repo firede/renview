@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { ChangeKind, FileEntry, FileStatus, ViewerFile } from "../../src/analysis/types";
+import type { ChangeKind, DeclKind, FileEntry, FileStatus, ViewerFile } from "../../src/analysis/types";
 import { en } from "./locales/en";
 import { zhCN } from "./locales/zh-CN";
 
@@ -51,6 +51,18 @@ export interface Strings {
   shortcutB: string;
   /** 侧栏显隐切换按钮的无障碍标注 */
   toggleSidebar: string;
+  /** 侧栏分栏标题：文件列表（变更与浏览模式共用） */
+  sectionFiles: string;
+  /** 侧栏分栏标题：当前文件的变更单元列表 */
+  sectionUnits: string;
+  /** 侧栏分栏标题：当前文件大纲 */
+  sectionOutline: string;
+  /** 变更单元列表空态（无投影或无声明级变更） */
+  noUnits: string;
+  /** 大纲空态 */
+  noOutline: string;
+  /** 声明类别标注（单元/大纲行的 glyph 提示） */
+  declKind: Record<DeclKind, string>;
   /** 简化视图分段按钮（App 与查看器共用） */
   simplified: string;
   /** 原始 diff 分段按钮 */
