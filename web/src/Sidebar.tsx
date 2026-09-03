@@ -23,7 +23,10 @@ export function Sidebar({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // 合成事件（测试/脚本派发）的 pointerId 可能无效，捕获失败不阻断拖拽
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
     drag.current = { startX: e.clientX, startWidth: width };
     document.body.classList.add("col-resizing");
   };
@@ -72,7 +75,10 @@ export function SideSections({ top, bottom }: { top: SideSection; bottom: SideSe
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // 合成事件（测试/脚本派发）的 pointerId 可能无效，捕获失败不阻断拖拽
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
     dragging.current = true;
     document.body.classList.add("row-resizing");
   };
