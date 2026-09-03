@@ -172,6 +172,7 @@ export function BrowseView({
       {!sidebarHidden && (
         <Sidebar width={sidebarWidth} onWidthChange={onSidebarWidthChange}>
           <SideSections
+            storageKey="browse"
             top={{
               title: s.sectionFiles,
               body: (

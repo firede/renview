@@ -23,7 +23,7 @@ import {
   IconUnified,
   StatusIcon,
 } from "./icons";
-import { Sidebar, SideSections, SIDEBAR_DEFAULT_WIDTH } from "./Sidebar";
+import { Sidebar, SideSections, initialSidebarWidth, persistSidebarWidth } from "./Sidebar";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
 import { UnitList } from "./UnitList";
 
@@ -157,9 +157,14 @@ export function App() {
   const [mode, setMode] = useState<"review" | "browse">("review");
   const [jump, setJump] = useState<JumpTarget | null>(null);
   const [sidebarHidden, setSidebarHidden] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
   const [unitJump, setUnitJump] = useState<LineJump | null>(null);
+
+  // 侧栏宽度会话内记忆（sessionStorage）
+  useEffect(() => {
+    persistSidebarWidth(sidebarWidth);
+  }, [sidebarWidth]);
 
   // 从 diff 跳转查看器：打开该文件完整简化视图并定位到首个变更行（hunk 外上下文由查看器承接）
   const openInViewer = (path: string) => {
@@ -282,6 +287,14 @@ export function App() {
     <div className="layout">
       <header className="topbar">
         <span className="brand">renview</span>
+        <button
+          className={`icon-btn${sidebarHidden ? "" : " active"}`}
+          title={`${s.toggleSidebar} · ${s.shortcutB}`}
+          aria-label={s.toggleSidebar}
+          onClick={() => setSidebarHidden((v) => !v)}
+        >
+          <IconPanelLeft />
+        </button>
         <span className="seg">
           <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
             {s.modeChanges}
@@ -314,14 +327,6 @@ export function App() {
             </button>
           </>
         )}
-        <button
-          className={`icon-btn${sidebarHidden ? "" : " active"}`}
-          title={`${s.toggleSidebar} · ${s.shortcutB}`}
-          aria-label={s.toggleSidebar}
-          onClick={() => setSidebarHidden((v) => !v)}
-        >
-          <IconPanelLeft />
-        </button>
       </header>
       {mode === "browse" ? (
         <BrowseView
@@ -338,6 +343,7 @@ export function App() {
           {!sidebarHidden && (
             <Sidebar width={sidebarWidth} onWidthChange={setSidebarWidth}>
               <SideSections
+                storageKey="review"
                 top={{
                   title: s.sectionFiles,
                   body: items.map(({ file: f, entry }, i) => {

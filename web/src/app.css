@@ -171,9 +171,9 @@ body {
   white-space: nowrap;
 }
 
+/* 顶栏 toggle 的选中态：与切换器活跃选项同级的弱提示（不用强调色，避免抢眼） */
 .topbar button.active {
-  background: var(--accent-bg);
-  border-color: var(--accent);
+  background: var(--bg-active);
 }
 
 @media (max-width: 820px) {
@@ -213,10 +213,6 @@ body {
   min-height: 0;
 }
 
-.side-section.grow {
-  flex: 1;
-}
-
 /* 分栏标题：常驻小字降权，不参与滚动 */
 .side-head {
   flex: none;
@@ -233,18 +229,34 @@ body {
   overflow-y: auto;
 }
 
-/* 分栏拖拽手柄：兼作两栏分隔线（双击复位默认比例） */
+/* 分栏拖拽手柄：分隔线画在下栏顶边上，手柄负边距骑跨（视觉无接缝），hover 中线提亮；双击复位默认比例 */
 .side-vsplit {
   flex: none;
-  height: 5px;
-  margin: -2px 0;
-  border-top: 1px solid var(--border);
+  height: 9px;
+  margin: -4px 0 -5px;
   cursor: row-resize;
-  z-index: 1;
+  position: relative;
+  z-index: 2;
 }
 
-.side-vsplit:hover {
-  background: var(--accent-faint);
+.side-vsplit::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: transparent;
+}
+
+.side-vsplit:hover::after {
+  background: var(--accent);
+}
+
+.side-section.grow {
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--border);
 }
 
 /* 纵向拖拽期间全局禁用文本选择并固定光标 */
@@ -442,8 +454,7 @@ body.row-resizing {
 }
 
 .file-toolbar button.active {
-  background: var(--accent-bg);
-  border-color: var(--accent);
+  background: var(--bg-active);
 }
 
 .dim {
@@ -886,15 +897,28 @@ body.row-resizing {
   border-bottom-color: var(--accent-faint);
 }
 
-/* 侧栏宽度拖拽手柄（双击复位默认宽度） */
+/* 侧栏宽度拖拽手柄：负边距骑跨侧栏右边框（视觉无接缝），hover 时中线提亮；双击复位默认宽度 */
 .side-resizer {
   flex: none;
-  width: 5px;
+  width: 9px;
+  margin-left: -5px;
   cursor: col-resize;
+  position: relative;
+  z-index: 2;
 }
 
-.side-resizer:hover {
-  background: var(--accent-faint);
+.side-resizer::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: transparent;
+}
+
+.side-resizer:hover::after {
+  background: var(--accent);
 }
 
 /* 拖拽期间全局禁用文本选择并固定光标 */
