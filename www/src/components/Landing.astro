@@ -1,0 +1,565 @@
+---
+import type { Lang } from "../lib/copy";
+import { cn, en, INSTALL_CMD, SITE } from "../lib/copy";
+import Demo from "./Demo.astro";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = lang === "cn" ? cn : en;
+const otherLang = lang === "cn" ? "en" : "cn";
+const canonical = `${SITE}/${lang}/`;
+const ogImage = `${SITE}/demo/simplified-dark.png`;
+---
+
+<!doctype html>
+<html lang={t.htmlLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{t.title}</title>
+    <meta name="description" content={t.description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="zh-CN" href={`${SITE}/cn/`} />
+    <link rel="alternate" hreflang="en" href={`${SITE}/en/`} />
+    <link rel="alternate" hreflang="x-default" href={`${SITE}/`} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={t.title} />
+    <meta property="og:description" content={t.description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href={`/${lang}/`}>
+        <img src="/favicon.svg" alt="" width="20" height="20" />
+        <span>renview</span>
+      </a>
+      <nav>
+        <a href="#demo">{t.nav.demo}</a>
+        <a href="#why">{t.nav.why}</a>
+        <a href="#usage">{t.nav.usage}</a>
+        <a href="#install">{t.nav.install}</a>
+      </nav>
+      <div class="top-right">
+        <a class="lang-switch" href={t.langSwitch.href} data-set-lang={otherLang} title={t.langSwitch.note}>{t.langSwitch.label}</a>
+        <a class="github" href="https://github.com/firede/renview">GitHub</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">{t.hero.eyebrow}</p>
+        <h1>{t.hero.h1}</h1>
+        <p class="sub">{t.hero.sub}</p>
+        <div class="cmd-box">
+          <code><span class="prompt">$ </span>{INSTALL_CMD}</code>
+          <button class="copy-btn" data-done={t.copied}>{t.copy}</button>
+        </div>
+      </section>
+
+      <section id="demo" class="demo">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-toggle" role="group">
+              <button class="active" data-view="simplified">{t.demo.simplified}</button>
+              <button data-view="raw">{t.demo.raw}</button>
+            </div>
+          </div>
+          <div class="demo-body">
+            <Demo lang={lang} />
+          </div>
+        </div>
+      </section>
+
+      <section id="why" class="why">
+        <h2>{t.why.title}</h2>
+        <ol>
+          {t.why.items.map((item, i) => (
+            <li>
+              <span class="num">{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <h3>{item.h}</h3>
+                <p>{item.p}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section class="facts">
+        <h2>{t.facts.title}</h2>
+        <ul>
+          {t.facts.items.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+
+      <section id="usage" class="usage">
+        <h2>{t.usage.title}</h2>
+        <div class="usage-box">
+          {t.usage.rows.map((row) => (
+            <div class="usage-row">
+              <code>{row.cmd}</code>
+              <span>{row.note}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="install" class="install">
+        <h2>{t.install.title}</h2>
+        <div class="cmd-box">
+          <code><span class="prompt">$ </span>{INSTALL_CMD}</code>
+          <button class="copy-btn" data-done={t.copied}>{t.copy}</button>
+        </div>
+        <p class="meta">{t.install.platforms}</p>
+        {t.install.mirror && <p class="meta">{t.install.mirror}</p>}
+      </section>
+    </main>
+
+    <footer>
+      <p>{t.footer.tagline}</p>
+      <nav>
+        <a href="https://github.com/firede/renview">{t.footer.github}</a>
+        <a href={t.langSwitch.href} data-set-lang={otherLang}>{t.langSwitch.label}</a>
+      </nav>
+    </footer>
+
+    <script is:inline>
+      (() => {
+        // 演示视图切换
+        const shots = document.querySelectorAll(".demo-shot");
+        document.querySelectorAll(".demo-toggle button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll(".demo-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
+            shots.forEach((el) => {
+              el.hidden = el.dataset.view !== btn.dataset.view;
+            });
+          });
+        });
+        // 复制安装命令（去掉提示符 $）
+        document.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const code = btn.parentElement?.querySelector("code");
+            if (!code) return;
+            const cmd = (code.textContent || "").replace(/^\$\s*/, "");
+            try {
+              await navigator.clipboard.writeText(cmd);
+              const old = btn.textContent;
+              btn.textContent = btn.dataset.done || old;
+              btn.classList.add("ok");
+              setTimeout(() => {
+                btn.textContent = old;
+                btn.classList.remove("ok");
+              }, 1200);
+            } catch {}
+          });
+        });
+        // 主动选择语言时记住偏好
+        document.querySelectorAll("[data-set-lang]").forEach((a) => {
+          a.addEventListener("click", () => {
+            try {
+              localStorage.setItem("renview-www-lang", a.dataset.setLang);
+            } catch {}
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --bg-raised: #161b22;
+    --bg-active: #21262d;
+    --border: #30363d;
+    --border-subtle: #21262d;
+    --fg: #c9d1d9;
+    --fg-dim: #8b949e;
+    --fg-strong: #e6edf3;
+    --accent: #58a6ff;
+    --add: #7ee2a8;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #ffffff;
+      --bg-raised: #f6f8fa;
+      --bg-active: #eaeef2;
+      --border: #d1d9e0;
+      --border-subtle: #eaeef2;
+      --fg: #1f2328;
+      --fg-dim: #59636e;
+      --fg-strong: #0a0c10;
+      --accent: #0969da;
+      --add: #1a7f37;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font:
+      15px/1.7 -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      "PingFang SC",
+      "Hiragino Sans GB",
+      "Microsoft YaHei",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--fg-strong);
+    margin: 0;
+  }
+  code {
+    font-family: var(--mono);
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 18px 24px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--fg-strong);
+    font-weight: 650;
+    font-size: 16px;
+  }
+  .brand:hover {
+    text-decoration: none;
+  }
+  .brand img {
+    border-radius: 5px;
+    display: block;
+  }
+  .top nav {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+  }
+  .top nav a {
+    color: var(--fg-dim);
+    font-size: 14px;
+  }
+  .top nav a:hover {
+    color: var(--fg);
+    text-decoration: none;
+  }
+  .top-right {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .lang-switch {
+    color: var(--fg-dim);
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 10px;
+  }
+  .lang-switch:hover {
+    color: var(--fg);
+    border-color: var(--fg-dim);
+    text-decoration: none;
+  }
+  .github {
+    font-size: 14px;
+  }
+
+  main {
+    max-width: 768px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  section {
+    padding: 88px 0 8px;
+  }
+  section h2 {
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+  }
+
+  /* hero */
+  .hero {
+    text-align: center;
+    padding: 96px 0 24px;
+  }
+  .eyebrow {
+    color: var(--accent);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    margin: 0 0 18px;
+  }
+  :root[lang="en"] .eyebrow {
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: clamp(34px, 6vw, 54px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  .hero .sub {
+    color: var(--fg-dim);
+    font-size: 16px;
+    max-width: 620px;
+    margin: 0 auto 36px;
+  }
+
+  /* 命令框 */
+  .cmd-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px 12px 18px;
+    font-size: 14px;
+    max-width: 100%;
+  }
+  .cmd-box code {
+    white-space: nowrap;
+    overflow-x: auto;
+    color: var(--fg-strong);
+  }
+  .prompt {
+    color: var(--fg-dim);
+    user-select: none;
+  }
+  .copy-btn {
+    background: var(--bg-active);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover {
+    border-color: var(--fg-dim);
+  }
+  .copy-btn.ok {
+    color: var(--add);
+    border-color: var(--add);
+  }
+
+  /* 演示 */
+  .demo-frame {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg-raised);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+    max-width: 1180px;
+    margin-left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw - 48px);
+  }
+  .demo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .demo-toggle {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .demo-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--fg-dim);
+    font-size: 13px;
+    padding: 3px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .demo-toggle button.active {
+    background: var(--bg-active);
+    color: var(--fg-strong);
+  }
+  .demo-body {
+    background: var(--bg);
+  }
+  .demo-shot {
+    display: block;
+  }
+  .demo-shot[hidden] {
+    display: none;
+  }
+
+  /* 不同点 */
+  .why ol {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+  .why li {
+    display: flex;
+    gap: 24px;
+  }
+  .why .num {
+    font-family: var(--mono);
+    color: var(--fg-dim);
+    font-size: 13px;
+    padding-top: 5px;
+    flex-shrink: 0;
+  }
+  .why h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+  .why p {
+    color: var(--fg-dim);
+    margin: 0;
+    max-width: 640px;
+  }
+
+  /* 事实 */
+  .facts ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .facts li {
+    color: var(--fg-dim);
+    padding-left: 18px;
+    position: relative;
+    font-size: 14px;
+  }
+  .facts li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 8px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+  }
+
+  /* 用法 */
+  .usage-box {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-raised);
+    padding: 6px 18px;
+    margin-top: 10px;
+  }
+  .usage-row {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 14px;
+  }
+  .usage-row:last-child {
+    border-bottom: none;
+  }
+  .usage-row code {
+    color: var(--fg-strong);
+    flex-shrink: 0;
+    min-width: 220px;
+  }
+  .usage-row span {
+    color: var(--fg-dim);
+    font-size: 13px;
+  }
+
+  /* 安装 */
+  .install .cmd-box {
+    margin: 10px 0 18px;
+  }
+  .install .meta {
+    color: var(--fg-dim);
+    font-size: 13px;
+    margin: 6px 0;
+  }
+
+  footer {
+    max-width: 768px;
+    margin: 0 auto;
+    padding: 72px 24px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    color: var(--fg-dim);
+    font-size: 13px;
+  }
+  footer nav {
+    display: flex;
+    gap: 18px;
+  }
+  footer nav a {
+    color: var(--fg-dim);
+  }
+  footer nav a:hover {
+    color: var(--fg);
+  }
+
+  @media (max-width: 720px) {
+    .top nav {
+      display: none;
+    }
+    section {
+      padding-top: 56px;
+    }
+    .hero {
+      padding-top: 64px;
+    }
+    .usage-row {
+      flex-direction: column;
+      gap: 2px;
+    }
+    .why li {
+      gap: 14px;
+    }
+  }
+</style>

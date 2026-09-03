@@ -1,4 +1,5 @@
 ---
+// / 是跳转页：记住的选择 > 浏览器语言，跳到 /cn 或 /en
 ---
 
 <!doctype html>
@@ -6,30 +7,59 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="generator" content={Astro.generator} />
+    <meta name="robots" content="noindex" />
+    <link rel="alternate" hreflang="zh-CN" href="https://renview.6636.tech/cn/" />
+    <link rel="alternate" hreflang="en" href="https://renview.6636.tech/en/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>renview</title>
   </head>
   <body>
-    <main>
-      <h1>renview</h1>
-      <p>Code review for agent-driven development.</p>
-    </main>
+    <script is:inline>
+      try {
+        var saved = localStorage.getItem("renview-www-lang");
+        var lang =
+          saved === "cn" || saved === "en"
+            ? saved
+            : (navigator.language || "en").toLowerCase().indexOf("zh") === 0
+              ? "cn"
+              : "en";
+        location.replace("/" + lang + "/");
+      } catch (e) {
+        location.replace("/en/");
+      }
+    </script>
+    <noscript>
+      <p><a href="/cn/">中文</a> · <a href="/en/">English</a></p>
+    </noscript>
   </body>
 </html>
 
-<style>
-  :global(html) {
-    color-scheme: light dark;
+<style is:global>
+  html {
+    color-scheme: dark;
   }
-  :global(body) {
-    display: grid;
-    place-items: center;
+  body {
+    background: #0d1117;
+    color: #8b949e;
     min-height: 100svh;
     margin: 0;
-    font-family: system-ui, sans-serif;
+    display: grid;
+    place-items: center;
+    font:
+      15px -apple-system,
+      "PingFang SC",
+      sans-serif;
   }
-  main {
-    text-align: center;
+  @media (prefers-color-scheme: light) {
+    html {
+      color-scheme: light;
+    }
+    body {
+      background: #ffffff;
+      color: #59636e;
+    }
+  }
+  a {
+    color: #58a6ff;
   }
 </style>

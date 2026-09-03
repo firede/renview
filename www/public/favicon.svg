@@ -1,1 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1a1d23"/><path d="M7 11h18" stroke="#f0716a" stroke-width="3" stroke-linecap="round"/><path d="M16 16.5v9M7 21h18" stroke="#7ee0a3" stroke-width="3" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .tile { fill: #0d1117; stroke: #0d1117; }
+    .ln { stroke: #c9d1d9; }
+    .dot { stroke: #58a6ff; }
+    @media (prefers-color-scheme: light) {
+      .tile { fill: #ffffff; stroke: #d1d9e0; }
+      .ln { stroke: #1f2328; }
+      .dot { stroke: #0969da; }
+    }
+  </style>
+  <rect class="tile" x="0.5" y="0.5" width="31" height="31" rx="7"/>
+  <path class="ln" d="M7 9h12" stroke-width="3" stroke-linecap="round"/>
+  <path class="ln" d="M7 16h6" stroke-width="3" stroke-linecap="round"/>
+  <path class="dot" d="M16 16h9" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.5 4"/>
+  <path class="ln" d="M7 23h15" stroke-width="3" stroke-linecap="round"/>
+</svg>

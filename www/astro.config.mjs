@@ -4,5 +4,6 @@ import cloudflare from "@astrojs/cloudflare";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://renview.6636.tech",
   adapter: cloudflare(),
 });

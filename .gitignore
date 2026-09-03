@@ -9,3 +9,4 @@ test/fixture-repo/
 .corpus/
 .wasm-build/
 *.log
+.playwright-cli/
