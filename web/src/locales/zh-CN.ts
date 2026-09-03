@@ -9,7 +9,6 @@ export const zhCN: Strings = {
   modeBrowse: "浏览",
   fileCount: (n) => `${n} 个文件`,
   refresh: "刷新",
-  refreshing: "刷新中…",
   noChanges: "没有检测到变更",
   statusLabel: {
     add: "新增",

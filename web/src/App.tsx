@@ -15,7 +15,14 @@ import type { ChangeKind, ChangeUnit, FileEntry, FileStatus } from "../../src/an
 import { BrowseView, type JumpTarget } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { useStrings } from "./i18n";
-import { IconPanelLeft } from "./icons";
+import {
+  IconOpenExternal,
+  IconPanelLeft,
+  IconRefresh,
+  IconSplit,
+  IconUnified,
+  StatusIcon,
+} from "./icons";
 import { Sidebar, SideSections, SIDEBAR_DEFAULT_WIDTH } from "./Sidebar";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
 import { UnitList } from "./UnitList";
@@ -296,8 +303,14 @@ export function App() {
               {s.fileCount(files.length)} <em className="add">+{totals.adds}</em>{" "}
               <em className="del">−{totals.dels}</em>
             </span>
-            <button onClick={() => void load()} disabled={refreshing}>
-              {refreshing ? s.refreshing : s.refresh}
+            <button
+              className={`icon-btn${refreshing ? " spinning" : ""}`}
+              title={s.refresh}
+              aria-label={s.refresh}
+              onClick={() => void load()}
+              disabled={refreshing}
+            >
+              <IconRefresh />
             </button>
           </>
         )}
@@ -347,8 +360,11 @@ export function App() {
                           <span className="file-base">{splitPath(f.newPath).base}</span>
                         </span>
                         <span className="file-meta">
-                          <span className={`status status-${f.type}`}>
-                            {s.statusLabel[f.type as FileStatus] ?? f.type}
+                          <span
+                            className={`status status-${f.type}`}
+                            title={s.statusLabel[f.type as FileStatus] ?? f.type}
+                          >
+                            <StatusIcon status={f.type as FileStatus} />
                           </span>
                           <em className="add">+{stat.adds}</em>
                           <em className="del">−{stat.dels}</em>
@@ -385,8 +401,13 @@ export function App() {
                 <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
                   <span className="file-title">{selectedFile.newPath}</span>
                   {selectedFile.newPath !== "/dev/null" && (
-                    <button onClick={() => openInViewer(selectedFile.newPath)}>
-                      {s.openInViewer}
+                    <button
+                      className="icon-btn"
+                      title={s.openInViewer}
+                      aria-label={s.openInViewer}
+                      onClick={() => openInViewer(selectedFile.newPath)}
+                    >
+                      <IconOpenExternal />
                     </button>
                   )}
                   {selectedEntry?.degradedReason &&
@@ -420,16 +441,20 @@ export function App() {
                   {showRaw && (
                     <span className="seg">
                       <button
-                        className={viewType === "unified" ? "active" : ""}
+                        className={`icon-btn${viewType === "unified" ? " active" : ""}`}
+                        title={s.unified}
+                        aria-label={s.unified}
                         onClick={() => setViewType("unified")}
                       >
-                        {s.unified}
+                        <IconUnified />
                       </button>
                       <button
-                        className={viewType === "split" ? "active" : ""}
+                        className={`icon-btn${viewType === "split" ? " active" : ""}`}
+                        title={s.split}
+                        aria-label={s.split}
                         onClick={() => setViewType("split")}
                       >
-                        {s.split}
+                        <IconSplit />
                       </button>
                     </span>
                   )}

@@ -27,10 +27,8 @@ export interface Strings {
   modeBrowse: string;
   /** 顶栏变更文件总数 */
   fileCount: (n: number) => string;
-  /** 刷新按钮 */
+  /** 刷新按钮（图标按钮的 title / aria-label） */
   refresh: string;
-  /** 刷新进行中的按钮文案 */
-  refreshing: string;
   /** 无变更时的整页占位 */
   noChanges: string;
   /** 侧栏文件状态徽章 */

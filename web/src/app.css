@@ -305,10 +305,10 @@ body.row-resizing {
   color: var(--fg-dim);
 }
 
+/* 文件状态图标位：图形承担状态语义（title 给全称），不再加描边徽章 */
 .status {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
 }
 
@@ -895,4 +895,20 @@ button.icon-btn {
 
 button.icon-btn svg {
   display: block;
+}
+
+/* seg 内的图标按钮与文字按钮同高（16 图标 + 8 垂直内边距 = 12 字号 × 20 行高 + 4） */
+.seg button.icon-btn {
+  padding: 4px 8px;
+}
+
+/* 刷新进行中的旋转反馈（替代"刷新中…"文案） */
+@keyframes rv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button.icon-btn.spinning svg {
+  animation: rv-spin 0.9s linear infinite;
 }

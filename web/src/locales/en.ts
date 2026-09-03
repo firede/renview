@@ -9,7 +9,6 @@ export const en: Strings = {
   modeBrowse: "Browse",
   fileCount: (n) => `${n} ${n === 1 ? "file" : "files"}`,
   refresh: "Refresh",
-  refreshing: "Refreshing…",
   noChanges: "No changes detected",
   statusLabel: {
     add: "Added",
