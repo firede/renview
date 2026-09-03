@@ -65,6 +65,7 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
       <section id="demo" class="demo">
         <div class="demo-frame">
           <div class="demo-bar">
+            <span class="demo-brand">renview</span>
             <div class="demo-toggle" role="group">
               <button class="active" data-view="simplified">{t.demo.simplified}</button>
               <button data-view="raw">{t.demo.raw}</button>
@@ -125,7 +126,6 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
       <p>{t.footer.tagline}</p>
       <nav>
         <a href="https://github.com/firede/renview">{t.footer.github}</a>
-        <a href={t.langSwitch.href} data-set-lang={otherLang}>{t.langSwitch.label}</a>
       </nav>
     </footer>
 
@@ -392,9 +392,15 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
   .demo-bar {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     padding: 10px 14px;
     border-bottom: 1px solid var(--border-subtle);
+  }
+  .demo-brand {
+    font-weight: 650;
+    font-size: 13.5px;
+    color: var(--fg-strong);
+    user-select: none;
   }
   .demo-toggle {
     display: flex;

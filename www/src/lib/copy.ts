@@ -38,13 +38,13 @@ export interface Copy {
 
 export const cn: Copy = {
   htmlLang: "zh-CN",
-  title: "renview — 把判断力留给抽象",
-  description: "为 agent 主导开发而生的代码审阅工具，把 diff 呈现在值得判断的层面。",
+  title: "renview — 把注意力留给抽象",
+  description: "agent 时代的代码审阅工具，把 diff 呈现在值得判断的层面。",
   nav: { demo: "演示", why: "不同", usage: "用法", install: "安装" },
   langSwitch: { label: "EN", href: "/en/", note: "English 版本" },
   hero: {
-    eyebrow: "为 agent 主导开发而生",
-    h1: "把判断力留给抽象。",
+    eyebrow: "agent 时代的代码审阅",
+    h1: "把注意力留给抽象。",
     sub: "你审的是实现是否贴合业务建模、是不是你想要的。代码级的对错交给 agent。",
   },
   demo: {
