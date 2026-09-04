@@ -1,0 +1,4 @@
+# www 演示变更集：商店域（定价 / 订单通知 / 赠品）。
+# 约定：`*.base.<ext>` 与同名文件成对表示修改；仅有 .base 表示删除；仅普通文件表示新增。
+featured = "src/pricing.rs"
+order = ["src/pricing.rs", "src/notify.go", "src/gift.ts"]
