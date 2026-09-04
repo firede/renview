@@ -73,9 +73,8 @@ bun run scripts/pack.ts          # 组装 dist/npm/（6 个 npm 包）与 dist/r
 npm version patch                # 或 minor / major
 git push --follow-tags
 
-# 体验（示例变更仓库：math.ts / main.rs 已修改，util.ts 未跟踪）
-bun run scripts/gen-fixture.ts
-(cd test/fixture-repo && bun run ../../src/cli.ts)
+# 体验（以本仓库最近 5 个提交为样本，换成任意真实仓库与区间皆可）
+bun run dev HEAD~5
 ```
 
 ## 决策记录
