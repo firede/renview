@@ -13,10 +13,6 @@ export interface Copy {
     h1: string;
     sub: string;
   };
-  demo: {
-    simplified: string;
-    raw: string;
-  };
   why: {
     title: string;
     items: [{ h: string; p: string }, { h: string; p: string }, { h: string; p: string }];
@@ -46,10 +42,6 @@ export const cn: Copy = {
     eyebrow: "agent 时代的代码审阅",
     h1: "把注意力留给抽象。",
     sub: "你审的是实现是否贴合业务建模、是不是你想要的。代码级的对错交给 agent。",
-  },
-  demo: {
-    simplified: "简化",
-    raw: "原始 diff",
   },
   why: {
     title: "和传统 review 工具的不同",
@@ -107,10 +99,6 @@ export const en: Copy = {
     eyebrow: "Built for agent-driven development",
     h1: "Judge the abstraction.",
     sub: "Does the implementation match the business model, and is it what you asked for? That judgment is yours. Code-level correctness belongs to the agent.",
-  },
-  demo: {
-    simplified: "Simplified",
-    raw: "Raw diff",
   },
   why: {
     title: "How it differs from classic review tools",

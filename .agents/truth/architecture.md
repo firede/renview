@@ -41,3 +41,4 @@
 - 更新检测数据流：npm registry 的 renview/latest 为唯一版本源；被动提示读 config 目录 update-check.json（上次结果先行提示，后台刷新供下次启动使用），fire-and-forget 任何失败静默；upgrade 按 process.execPath 分流——~/.renview/bin 下重跑官网安装脚本，pm 全局目录调对应包管理器，其余渠道（开发构建 / dist 直跑）拒绝。
 - 安装脚本 www/public/install 静态托管于官网（renview.6636.tech/install，随 main 推送由 Cloudflare 部署）：从 npm registry 解析 latest 版本与平台包 tarball，校验 dist.integrity（sha512）后落 ~/.renview/bin 并幂等写 PATH；RENVIEW_REGISTRY 可换镜像。
 - 策展样例集中于 samples/<变更集>/（`*.base.<ext>` 成对表修改、仅 base 表删除、仅普通文件表新增，`changeset.toml` 记 featured/order）：跨场景复用的样例才进 samples，单测样例保持内联自包含；样例须业务语义合理、简化效果明显。
+- www 演示区禁止手写产物：Demo.astro 渲染 www/src/lib/demo-data.gen.ts——由 scripts/gen-demo.ts 从 samples 跑真实管线生成（行装饰几何与产品共用 web/src/lineDecor.ts），因 www 独立部署够不到仓库根而提交入库；新鲜度由 samples 测试的重生成比对兜底（无 CI 可挂）。

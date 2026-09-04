@@ -67,6 +67,7 @@ bun run typecheck
 bun run build                    # 交叉编译全平台单文件二进制到 dist/
 bun run scripts/build.ts --host  # 仅编译本机平台
 bun run scripts/pack.ts          # 组装 dist/npm/（6 个 npm 包）与 dist/release/（tarball + checksums）
+bun run gen:demo                 # 重新生成 www 演示数据（samples/demo → www/src/lib/demo-data.gen.ts；新鲜度由 samples 测试锁定）
 
 # 发版（tag 触发 release.yml：构建 → 5 平台冒烟 → npm Trusted Publishing + GitHub Release）
 # npm version 会自动改 package.json + 提交 + 打 v 前缀 tag；tag 提交必须在 main 祖先链上，否则 CI 拒绝
