@@ -514,7 +514,7 @@ body {
   color: var(--add-text);
 }
 
-/* 行内擦除披露：删除点为零宽 tick（净宽 0，不产生水平位移），替换段带虚线下划线；hover 浮层还原原文 */
+/* 行内擦除披露：删除点为零宽竖虚线 tick（::after 绘制，净宽 0 不产生水平位移），替换段带虚线下划线（同一 1.5px 粗细）；hover 浮层还原原文 */
 .erasure-mark {
   position: relative;
   display: inline-block;
@@ -530,16 +530,16 @@ body {
 .erasure-mark::after {
   content: "";
   position: absolute;
-  left: 1px;
-  right: 1px;
-  bottom: 0.05em;
-  border-bottom: 2px dotted var(--fg-dim);
-  opacity: 0.5;
+  left: 50%;
+  top: 0.1em;
+  bottom: 0.1em;
+  border-left: 1.5px dotted var(--fg-dim);
 }
 
+/* hover/聚焦提亮与横向下划线一致（fg-dim → fg） */
 .erasure-mark:hover::after,
 .erasure-mark:focus-visible::after {
-  opacity: 1;
+  border-left-color: var(--fg);
 }
 
 /* 焦点态反馈由浮层承担，轮廓收敛为细线 */
@@ -553,7 +553,7 @@ body {
 
 .erasure-repl,
 .erasure-adj {
-  border-bottom: 1px dotted var(--fg-dim);
+  border-bottom: 1.5px dotted var(--fg-dim);
   cursor: help;
 }
 

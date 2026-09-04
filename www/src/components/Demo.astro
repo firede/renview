@@ -397,13 +397,12 @@ const minMainH = `${Math.ceil(maxRows * 21.5 + 50)}px`;
   .rv-add .rv-o {
     color: var(--rv-add-text);
   }
+  /* 词级差异高亮无圆角：一段差异会因 token 着色切成多个相邻 span，圆角会暴露分段边界（与产品 app.css 同理） */
   .rv-wd {
     background: var(--rv-del-word);
-    border-radius: 3px;
   }
   .rv-wa {
     background: var(--rv-add-word);
-    border-radius: 3px;
   }
 
   /* 语法高亮：shiki 双主题色经生成期预算为 css var */
