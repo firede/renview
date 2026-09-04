@@ -14,17 +14,27 @@ export type { LineDecor } from "./lineDecor";
 function ErasureTip({
   original,
   className,
+  offsetCh,
   children,
 }: {
   original: string;
   className: string;
+  /** 零宽 tick 的间隙居中偏移（ch）；transform 移动视觉与命中区，tooltip 锚点随动 */
+  offsetCh?: number;
   children?: ReactNode;
 }) {
   const s = useStrings();
   return (
     <Tooltip.Root>
       <Tooltip.Trigger
-        render={<span className={className} tabIndex={0} aria-label={s.erasureHint} />}
+        render={
+          <span
+            className={className}
+            tabIndex={0}
+            aria-label={s.erasureHint}
+            style={offsetCh ? { transform: `translateX(${offsetCh}ch)` } : undefined}
+          />
+        }
       >
         {children}
       </Tooltip.Trigger>
@@ -82,7 +92,12 @@ export function DecoratedLine({
       i++;
     }
     nodes.push(
-      <ErasureTip key={key++} original={era.original} className={`erasure-${era.kind}`}>
+      <ErasureTip
+        key={key++}
+        original={era.original}
+        className={`erasure-${era.kind}`}
+        offsetCh={era.kind === "mark" ? era.offsetCh : undefined}
+      >
         {inner}
       </ErasureTip>,
     );

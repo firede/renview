@@ -7,6 +7,7 @@ export interface DemoSeg {
   hl?: "a" | "d";
   e?: string;
   em?: "repl" | "adj" | "mark";
+  mo?: number;
 }
 
 export interface DemoRowLine {
@@ -358,7 +359,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": "-> f64",
-                "em": "mark"
+                "em": "mark",
+                "mo": -0.5
               },
               {
                 "t": "{",
@@ -803,7 +805,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": "-> Result<Decimal, PricingError>",
-                "em": "mark"
+                "em": "mark",
+                "mo": -0.5
               },
               {
                 "t": "{",
@@ -2651,7 +2654,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": "error",
-                "em": "mark"
+                "em": "mark",
+                "mo": -0.5
               },
               {
                 "t": "{",
@@ -3312,7 +3316,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": ": number",
-                "em": "mark"
+                "em": "mark",
+                "mo": 0.5
               },
               {
                 "t": " {",
@@ -3903,7 +3908,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": "-> f64",
-                "em": "mark"
+                "em": "mark",
+                "mo": -0.5
               },
               {
                 "t": "{",
@@ -4348,7 +4354,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": "-> Result<Decimal, PricingError>",
-                "em": "mark"
+                "em": "mark",
+                "mo": -0.5
               },
               {
                 "t": "{",
@@ -6196,7 +6203,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": "error",
-                "em": "mark"
+                "em": "mark",
+                "mo": -0.5
               },
               {
                 "t": "{",
@@ -6857,7 +6865,8 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "",
                 "e": ": number",
-                "em": "mark"
+                "em": "mark",
+                "mo": 0.5
               },
               {
                 "t": " {",

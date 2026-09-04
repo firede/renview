@@ -566,6 +566,9 @@ body {
 }
 
 .erasure-pop {
+  /* z-index 只对定位元素生效：缺了 position 时浮层会输给 sticky 文件工具条（z-index 1），
+     首行的向上浮层会被整条盖住（曾致"hover 无内容"） */
+  position: relative;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: 6px;

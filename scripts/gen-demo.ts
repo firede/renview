@@ -45,6 +45,8 @@ interface DemoSeg {
   e?: string;
   /** 擦除形态：替换段 / 锚定删除点 / 零宽 tick */
   em?: "repl" | "adj" | "mark";
+  /** 零宽 tick 的间隙居中偏移（ch），仅 mark */
+  mo?: number;
 }
 
 interface DemoRowLine {
@@ -169,6 +171,7 @@ function toDemoSegs(
     if (seg.erasure) {
       out.e = seg.erasure.original;
       out.em = seg.erasure.kind;
+      if (seg.erasure.offsetCh) out.mo = seg.erasure.offsetCh;
     }
     return out;
   });
@@ -341,6 +344,7 @@ export interface DemoSeg {
   hl?: "a" | "d";
   e?: string;
   em?: "repl" | "adj" | "mark";
+  mo?: number;
 }
 
 export interface DemoRowLine {

@@ -40,10 +40,16 @@ function segsHtml(segs: DemoSeg[]): string {
         .filter(Boolean)
         .join(" ");
       if (!cls) return esc(seg.t);
+      const style = [
+        seg.dc ? `--dc:${seg.dc};--lc:${seg.lc ?? seg.dc}` : "",
+        seg.mo ? `transform:translateX(${seg.mo}ch)` : "",
+      ]
+        .filter(Boolean)
+        .join(";");
       const attrs = [
         `class="${cls}"`,
         seg.e != null ? `data-e="${esc(seg.e)}"` : "",
-        seg.dc ? `style="--dc:${seg.dc};--lc:${seg.lc ?? seg.dc}"` : "",
+        style ? `style="${style}"` : "",
       ]
         .filter(Boolean)
         .join(" ");

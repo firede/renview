@@ -27,7 +27,7 @@ export interface DecorSeg {
   /** 词级差异高亮 */
   hl?: "wadd" | "wdel";
   /** 该段被擦除标记覆盖（替换段 / 锚定删除点 / 零宽 tick），hover 还原 original */
-  erasure?: { original: string; kind: "repl" | "adj" | "mark" };
+  erasure?: { original: string; kind: "repl" | "adj" | "mark"; offsetCh?: number };
 }
 
 export function decorateLine(text: string, tokens: HToken[] | null, decor?: LineDecor): DecorSeg[] {
@@ -100,6 +100,16 @@ export function decorateLine(text: string, tokens: HToken[] | null, decor?: Line
   let cursor = 0;
   const IDENT_BEFORE = /[\p{L}\p{N}_$]+$/u;
   const IDENT_AFTER = /^[\p{L}\p{N}_$]+/u;
+  // 零宽 tick 居中到相邻空白间隙中央：各语言的擦除落点偏左（TS）偏右（Go/Rust）不一，
+  // 居中避免 tick 在视觉上贴连任一 token（返回 0 时省略，保持输出紧凑）
+  const gapCenterOffset = (c: number): number | undefined => {
+    let l = c;
+    while (l > 0 && text[l - 1] === " ") l--;
+    let r = c;
+    while (r < len && text[r] === " ") r++;
+    const off = (r - c - (c - l)) / 2;
+    return off === 0 ? undefined : off;
+  };
   for (const e of erases) {
     if (e.start < cursor) continue; // 防御重叠（正常不会发生）
     if (e.start !== e.end) {
@@ -123,7 +133,10 @@ export function decorateLine(text: string, tokens: HToken[] | null, decor?: Line
       cursor = c + after.length;
     } else {
       emitRange(cursor, c);
-      segs.push({ text: "", erasure: { original: e.original, kind: "mark" } });
+      segs.push({
+        text: "",
+        erasure: { original: e.original, kind: "mark", offsetCh: gapCenterOffset(c) },
+      });
       cursor = c;
     }
   }
