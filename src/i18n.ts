@@ -113,7 +113,5 @@ export interface Messages {
     typeSpecJoiner: string;
     /** diff 折叠组的成员级摘要（定位到类型声明时）；members 为 null 时只给声明名 */
     foldedTypeMembers: (decl: string, members: string | null) => string;
-    /** body 变更单元的实现摘要注释行（决策点/调用枚举） */
-    bodyNote: (parts: string[], total: number, hasMore: boolean) => string;
   };
 }

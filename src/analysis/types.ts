@@ -8,16 +8,6 @@ export type { ViewRow } from "./view";
 export type ChangeKind = "signature" | "body" | "type-only" | "added" | "removed";
 export type DeclKind = "function" | "class" | "type" | "variable" | "other";
 
-export interface BodySummaryItem {
-  /** tree-sitter 节点类型，如 if_statement */
-  kind: string;
-  /** 首行预览（截断） */
-  preview: string;
-  /** 该语句在新侧的起始行号（1-based），供取简化文本 */
-  newLn: number;
-  changedLines: number;
-}
-
 /** 领域模型（数据形状）变更的成员信息：只留业务词汇，不含类型细节 */
 export interface DomainMembers {
   /** 新侧成员全量（业务词汇，供总览展示） */
@@ -42,8 +32,6 @@ export interface ChangeUnit {
   /** 类型级单元的新旧全文（已截断） */
   typeText?: string;
   oldTypeText?: string;
-  /** body 变更的结构化摘要 */
-  bodySummary?: BodySummaryItem[];
   /** 数据形状变更的成员信息（kind 为 type 且 profile 能提取成员时有值） */
   domain?: DomainMembers;
   oldRange?: [number, number];

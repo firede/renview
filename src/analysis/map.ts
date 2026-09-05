@@ -42,12 +42,3 @@ export function touchedBy(node: Node, lines: Set<number>): boolean {
   for (const ln of lines) if (ln >= start && ln <= end) return true;
   return false;
 }
-
-/** 计算 lines 中落在 [startRow, endRow]（0-based 闭区间）内的数量 */
-export function countLinesIn(node: Node, lines: Set<number>): number {
-  const start = node.startPosition.row + 1;
-  const end = node.endPosition.row + 1;
-  let n = 0;
-  for (const ln of lines) if (ln >= start && ln <= end) n++;
-  return n;
-}

@@ -142,7 +142,7 @@ export function SimplifiedView({
   const pairDiffs = useMemo(() => {
     const byId = new Map<number, { del?: string; add?: string }>();
     for (const r of data.rows) {
-      if (r.kind === "fold" || r.kind === "note" || r.pair == null) continue;
+      if (r.kind === "fold" || r.pair == null) continue;
       const e = byId.get(r.pair) ?? {};
       e[r.kind === "del" ? "del" : "add"] = r.text;
       byId.set(r.pair, e);
@@ -176,16 +176,6 @@ export function SimplifiedView({
               located={locatedIdx === i}
             />
           );
-        // 实现摘要注释行：注释色降权、不可交互，不参与高亮索引
-        if (r.kind === "note") {
-          return (
-            <div key={i} id={`srow-${i}`} className="srow note">
-              <span className="gutter" />
-              <span className="gutter" />
-              <pre className="scode note-text">{r.text}</pre>
-            </div>
-          );
-        }
         const lineTokens = tokens?.[vi++] ?? null;
         const wd = r.pair != null ? pairDiffs.get(r.pair) : undefined;
         return (

@@ -251,7 +251,6 @@ function simplifiedRows(a: AnalyzedEntry, tk: FileTokens, s: Strings): DemoRow[]
   const out: DemoRow[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]!;
-    if (r.kind === "note") continue; // 实现摘要注释行已撤回（见 .agents/archived.md），防御性跳过
     if (r.kind === "fold") {
       out.push({
         k: "fold",

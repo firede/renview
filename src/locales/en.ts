@@ -81,7 +81,5 @@ Examples:
     typeSpecJoiner: "; ",
     foldedTypeMembers: (decl, members) =>
       members ? `${decl}: ${members} (type/format changes)` : `${decl} (type/format changes)`,
-    bodyNote: (parts, total, hasMore) =>
-      `Body changes: ${parts.join("; ")}${hasMore ? ` (${total} total)` : ""}`,
   },
 };

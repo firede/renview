@@ -214,7 +214,6 @@ async function buildFileEntry(
     await withParsedSides(profile, oldSource, newSource, (oldSide, newSide) => {
       entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
       if (profile.simplify) {
-        // 实现摘要注释行已撤回（见 .agents/archived.md），insertBodyNotes 保留待 delta 语义版本
         entry.simplified = buildSimplifiedRows(
           f,
           oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
