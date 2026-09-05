@@ -1,9 +1,7 @@
 # 弃案与撤回记录
 
 被否决或已撤回的方案及理由。**不需要每次通读**；提出新方向/新能力之前先查这里，避免重提弃案。
-生效的现状决策只看 `.agents/truth/`（product / architecture / stack）。
-
-格式：一条一句话，结论 + 理由 + 出处（commit）；按原 truth 类别分组；条目只增不删（这里是历史上下文，truth 里删掉的结论都该在这能找到）。
+当前产品取舍见 `.agents/truth/product.md`；删除的实现记录由 git 历史保留，无需搬运到这里。
 
 ## product
 

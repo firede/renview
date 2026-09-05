@@ -64,7 +64,7 @@ update_check = false
 ```bash
 bun install
 bun run dev                      # 同步 wasm + 构建前端 + watch 启动 CLI
-bun test                         # 分析层测试
+bun run test                     # 同步 wasm 并运行全部测试
 bun run typecheck
 bun run build                    # 交叉编译全平台单文件二进制到 dist/
 bun run scripts/build.ts --host  # 仅编译本机平台
@@ -82,4 +82,4 @@ bun run dev HEAD~5
 
 ## 决策记录
 
-业务与技术决策以一句话条目记录在 `.agents/truth/`（product / architecture / stack）。
+重要且无法从代码直接读出的产品取舍见 [产品决策](.agents/truth/product.md)；实现与验证以代码、测试和提交为准。
