@@ -3,7 +3,7 @@ import parseDiff from "parse-diff";
 import { foldDescriber } from "./analysis/foldescribe";
 import { profileForPath } from "./analysis/langs";
 import { changedLinesOf, type ParsedFile } from "./analysis/map";
-import { analyzeParsed, outlineOf, parseSide } from "./analysis/project";
+import { analyzeParsed, outlineOf, withParsedSides } from "./analysis/project";
 import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
 import { buildViewRows } from "./analysis/view";
 import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
@@ -169,13 +169,14 @@ async function handleFile(
     return Response.json({ ok: true, file });
   }
   try {
-    const side = await parseSide(profile, source);
-    file.outline = outlineOf(profile, side.tree, locale);
-    if (profile.simplify) {
-      const r = simplifyTree(side.tree, source, profile.simplify);
-      file.simplified = r.lines;
-      file.view = buildViewRows(profile, side.tree, source, r.lines, locale, r.erasures);
-    }
+    await withParsedSides(profile, null, source, (_, side) => {
+      file.outline = outlineOf(profile, side!.tree, locale);
+      if (profile.simplify) {
+        const r = simplifyTree(side!.tree, source, profile.simplify);
+        file.simplified = r.lines;
+        file.view = buildViewRows(profile, side!.tree, source, r.lines, locale, r.erasures);
+      }
+    });
   } catch {
     file.degradedReason = "parse-error";
   }
@@ -220,20 +221,18 @@ async function buildFileEntry(
     }
     const { oldLines, newLines } = changedLinesOf(f);
     // 每侧只 parse 一次：投影与简化共用同一棵 CST
-    const [oldSide, newSide] = await Promise.all([
-      oldSource != null ? parseSide(profile, oldSource) : null,
-      newSource != null ? parseSide(profile, newSource) : null,
-    ]);
-    entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
-    if (profile.simplify) {
-      // 实现摘要注释行已撤回（见 .agents/archived.md），insertBodyNotes 保留待 delta 语义版本
-      entry.simplified = buildSimplifiedRows(
-        f,
-        oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
-        newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
-        foldDescriber(profile, oldSide, newSide, locale),
-      );
-    }
+    await withParsedSides(profile, oldSource, newSource, (oldSide, newSide) => {
+      entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
+      if (profile.simplify) {
+        // 实现摘要注释行已撤回（见 .agents/archived.md），insertBodyNotes 保留待 delta 语义版本
+        entry.simplified = buildSimplifiedRows(
+          f,
+          oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
+          newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
+          foldDescriber(profile, oldSide, newSide, locale),
+        );
+      }
+    });
   } catch {
     entry.degradedReason = "parse-error";
   }

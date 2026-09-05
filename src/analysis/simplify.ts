@@ -184,7 +184,12 @@ export async function simplifySource(
   profile: { grammarFile: string; simplify: SimplifyWalker },
   source: string,
 ): Promise<SimplifyResult> {
-  return simplifyTree(await parseSource(profile.grammarFile, source), source, profile.simplify);
+  const tree = await parseSource(profile.grammarFile, source);
+  try {
+    return simplifyTree(tree, source, profile.simplify);
+  } finally {
+    tree.delete();
+  }
 }
 
 /* ---- 简化 diff 行构建 ---- */

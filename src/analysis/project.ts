@@ -111,9 +111,29 @@ export interface ParsedSide {
   source: string;
 }
 
-/** 解析一侧源码为 ParsedSide */
+/** 解析一侧源码；调用方负责 tree.delete()，通常应使用 withParsedSides 限定生命周期 */
 export async function parseSide(profile: LanguageProfile, source: string): Promise<ParsedSide> {
   return { tree: await parseSource(profile.grammarFile, source), source };
+}
+
+/** 回调只能返回脱离 CST 的数据；两侧解析、分析或简化失败时也立即释放已分配的树。 */
+export async function withParsedSides<T>(
+  profile: LanguageProfile,
+  oldSource: string | null,
+  newSource: string | null,
+  run: (oldSide: ParsedSide | null, newSide: ParsedSide | null) => T,
+): Promise<T> {
+  let oldSide: ParsedSide | null = null;
+  let newSide: ParsedSide | null = null;
+  try {
+    // 顺序取得所有权，避免 Promise.all 某侧失败时丢失另一侧已经分配的树。
+    if (oldSource != null) oldSide = await parseSide(profile, oldSource);
+    if (newSource != null) newSide = await parseSide(profile, newSource);
+    return await run(oldSide, newSide);
+  } finally {
+    oldSide?.tree.delete();
+    newSide?.tree.delete();
+  }
 }
 
 /**
@@ -272,11 +292,9 @@ export async function analyzeFile(
   newLines: Set<number>,
   locale: Locale,
 ): Promise<FileProjection> {
-  const [oldSide, newSide] = await Promise.all([
-    oldSource != null ? parseSide(profile, oldSource) : null,
-    newSource != null ? parseSide(profile, newSource) : null,
-  ]);
-  return analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
+  return withParsedSides(profile, oldSource, newSource, (oldSide, newSide) =>
+    analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale),
+  );
 }
 
 /** 查看器用：从已解析的 CST 产出文件大纲（与投影/简化同源，复用声明收集） */
