@@ -15,7 +15,7 @@ Commands:
   upgrade [version]     Upgrade to the latest (or a specific) version
 
 Options:
-  -p, --port <port>   Use a specific local port (random by default)
+  -p, --port <port>   Use a specific local port (default: 17171, increments if busy)
       --no-open       Do not open the browser automatically
   -h, --help          Show this help
   -v, --version       Show version

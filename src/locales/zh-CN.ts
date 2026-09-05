@@ -12,7 +12,7 @@ export const zhCN: Messages = {
   upgrade [版本]        升级到最新（或指定）版本
 
 选项:
-  -p, --port <端口>   指定本地服务端口（默认随机）
+  -p, --port <端口>   指定本地服务端口（默认 17171，占用时递增）
       --no-open       不自动打开浏览器
   -h, --help          显示帮助
   -v, --version       显示版本

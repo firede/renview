@@ -11,6 +11,7 @@ import { configPath, createConfigLoader, type LoadedConfig } from "./config";
 import { getReviewDiff, getSideContent, listFiles, resolveDiffArgs, resolveSides } from "./git";
 import { messages, type Locale } from "./i18n";
 import { webAssets } from "./webassets.gen";
+import { listenWithPort } from "./port";
 
 export interface ServerOptions {
   port?: number;
@@ -41,24 +42,28 @@ export async function startServer(root: string, gitArgs: string[], opts: ServerO
     return Response.json({ ok: true, path: cfgPath, config: res.config });
   }
 
-  return Bun.serve({
-    hostname: "127.0.0.1",
-    port: opts.port ?? 0,
-    async fetch(req) {
-      const url = new URL(req.url);
-      if (url.pathname === "/api/config") return handleConfig();
-      // 数据接口按当次配置解析语言（改 language 保存后聚焦即生效，无需重启）
-      if (url.pathname.startsWith("/api/")) {
-        const locale = (await getConfig()).config.language;
-        if (url.pathname === "/api/diff") return handleDiff(root, diffArgs, locale);
-        if (url.pathname === "/api/files") return handleFiles(root, locale);
-        if (url.pathname === "/api/file") {
-          return handleFile(root, url.searchParams.get("path"), locale);
-        }
-      }
-      return serveStatic(url.pathname, lastConfig.config.language);
-    },
-  });
+  return listenWithPort(
+    (port) =>
+      Bun.serve({
+        hostname: "127.0.0.1",
+        port,
+        async fetch(req) {
+          const url = new URL(req.url);
+          if (url.pathname === "/api/config") return handleConfig();
+          // 数据接口按当次配置解析语言（改 language 保存后聚焦即生效，无需重启）
+          if (url.pathname.startsWith("/api/")) {
+            const locale = (await getConfig()).config.language;
+            if (url.pathname === "/api/diff") return handleDiff(root, diffArgs, locale);
+            if (url.pathname === "/api/files") return handleFiles(root, locale);
+            if (url.pathname === "/api/file") {
+              return handleFile(root, url.searchParams.get("path"), locale);
+            }
+          }
+          return serveStatic(url.pathname, lastConfig.config.language);
+        },
+      }),
+    opts.port,
+  );
 }
 
 async function handleDiff(root: string, diffArgs: string[], locale: Locale): Promise<Response> {
