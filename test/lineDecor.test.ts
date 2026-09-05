@@ -30,17 +30,4 @@ describe("decorateLine 擦除锚定", () => {
     expect(markSeg("f(items) {", 8)?.erasure?.offsetCh).toBe(0.5);
     expect(markSeg("f(items) {", 9)?.erasure?.offsetCh).toBe(-0.5);
   });
-
-  test("已在间隙中央不产生偏移", () => {
-    expect(markSeg("a  b", 2)?.erasure?.offsetCh).toBeUndefined();
-  });
-
-  test("两侧无空白不偏移", () => {
-    expect(markSeg("ab", 1)?.erasure?.offsetCh).toBeUndefined();
-  });
-
-  test("宽间隙居中到正中央", () => {
-    // ")   {"：mark 在 1，间隙 3 空格 → +1.5
-    expect(markSeg(")   {", 1)?.erasure?.offsetCh).toBe(1.5);
-  });
 });

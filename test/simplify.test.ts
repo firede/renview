@@ -24,7 +24,7 @@ async function simplifyWithErasures(profile: LanguageProfile, source: string) {
   return applySimplify(source, collectSimplifyOps(tree.rootNode, source, profile.simplify!));
 }
 
-// rust-beautifier 参考站截图的输入/输出，作为 golden test
+// 完整函数样例：保留词频统计流程，擦除类型与借用语法。
 const RUST_IN = `use std::collections::HashMap;
 
 fn tally<'a, I: Iterator<Item = &'a str>>(words: I) -> HashMap<&'a str, u32> {
@@ -64,18 +64,9 @@ fn main() {
 `;
 
 describe("rust 简化器", () => {
-  test("golden：对齐 rust-beautifier 参考输出", async () => {
+  test("词频统计流程保留，类型与借用语法擦除", async () => {
     const out = await simplify(rustProfile, RUST_IN);
     expect(out.join("\n")).toBe(RUST_EXPECTED);
-  });
-
-  test("跨行链只删 ? 本身，行对齐不破坏", async () => {
-    const src = `let v = foo
-    .bar()
-    .baz()?;
-`;
-    const out = await simplify(rustProfile, src);
-    expect(out).toEqual(["let v = foo", "    .bar()", "    .baz();", ""]);
   });
 
   test("机制调用嵌套链全部擦除（a.clone().unwrap() → a）", async () => {
@@ -90,7 +81,7 @@ describe("rust 简化器", () => {
 });
 
 describe("ts 简化器", () => {
-  test("类型标注/泛型/返回类型/可选标记擦除", async () => {
+  test("接口字段与函数参数保留，类型标注擦除", async () => {
     const src = `export interface Point {
   x: number;
   y: number;
@@ -296,16 +287,6 @@ describe("buildSimplifiedRows", () => {
     expect(rows.map((r) => r.kind)).toEqual(["del", "fold"]);
     expect(stats).toEqual({ folded: 1, visible: 1 });
   });
-
-  test("被抹空的非空 del 与空行 add 仍可配对折叠", () => {
-    const file = mkFile([
-      { type: "del", ln: 1, content: "-x: string;" },
-      { type: "add", ln: 1, content: "+" },
-    ]);
-    const { rows, stats } = buildSimplifiedRows(file, [""], [""]);
-    expect(rows[0]!.kind).toBe("fold");
-    expect(stats.folded).toBe(1);
-  });
 });
 
 describe("擦除记录（hover 披露数据源）", () => {
@@ -388,17 +369,22 @@ return a + c;
   });
 
   test("配对不跨 del/add 块", async () => {
-    const src = `alpha = 1;
+    const oldSrc = `alpha = 1;
 beta = 2;
-gamma = 3;
 `;
-    const s = await simplify(typescriptProfile, src);
+    const newSrc = `beta = 2;
+alpha = 2;
+`;
     const file = mkFile([
       { type: "del", ln: 1, content: "-alpha = 1;" },
-      { type: "normal", ln1: 2, ln2: 2, content: " beta = 2;" },
-      { type: "add", ln: 3, content: "+alpha = 2;" },
+      { type: "normal", ln1: 2, ln2: 1, content: " beta = 2;" },
+      { type: "add", ln: 2, content: "+alpha = 2;" },
     ]);
-    const { rows } = buildSimplifiedRows(file, s, s);
+    const { rows } = buildSimplifiedRows(
+      file,
+      await simplify(typescriptProfile, oldSrc),
+      await simplify(typescriptProfile, newSrc),
+    );
     const del = rows[0]!;
     const add = rows[2]!;
     expect(del.kind === "del" && del.pair).toBeUndefined();

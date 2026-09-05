@@ -35,12 +35,11 @@ func NewServer(addr string, opts ...Option) *Server {
     expect(out).toEqual([
       "package main",
       "",
-      "func NewServer(addr, opts ...) *Server {".replace(" *Server", ""), // result 擦除
+      "func NewServer(addr, opts ...) {",
       "\treturn &Server{addr: addr}",
       "}",
       "",
     ]);
-    expect(out[2]).toBe("func NewServer(addr, opts ...) {");
   });
 
   test("方法：接收者与结果类型擦除；带初始化的 err 判断保留", async () => {

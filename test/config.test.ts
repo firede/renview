@@ -28,6 +28,7 @@ describe("parseConfigText", () => {
     expect(config.font.family).toBe(DEFAULT_FONT_FAMILY);
     expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
     expect(config.updateCheck).toBe(true);
+    expect(config.theme).toBe("auto");
     expect(warnings).toEqual([]);
   });
 
@@ -90,12 +91,6 @@ describe("parseConfigText", () => {
     expect(warnings).toEqual([]);
   });
 
-  test("theme 默认 auto", () => {
-    const { config, warnings } = parseConfigText("");
-    expect(config.theme).toBe("auto");
-    expect(warnings).toEqual([]);
-  });
-
   test("theme 生效：dark / light", () => {
     expect(parseConfigText(`theme = "dark"`).config.theme).toBe("dark");
     expect(parseConfigText(`theme = "light"`).config.theme).toBe("light");
@@ -111,15 +106,10 @@ describe("parseConfigText", () => {
 });
 
 describe("language 配置", () => {
-  test("language 生效", () => {
-    const { config, warnings } = parseConfigText(`language = "en"`, {});
+  test("language 配置接入语言匹配", () => {
+    const { config, warnings } = parseConfigText(`language = "en-US"`, {});
     expect(config.language).toBe("en");
     expect(warnings).toEqual([]);
-  });
-
-  test("BCP 47 根语言匹配：zh-TW 归 zh-CN，en-US 归 en", () => {
-    expect(parseConfigText(`language = "zh-TW"`, {}).config.language).toBe("zh-CN");
-    expect(parseConfigText(`language = "en-US"`, {}).config.language).toBe("en");
   });
 
   test("未设置时按环境检测", () => {

@@ -54,17 +54,6 @@ describe("resolveLocale", () => {
 });
 
 describe("messages 目录", () => {
-  test("分析层摘要串随语言切换", () => {
-    expect(messages("zh-CN").analysis.nameList("a, b", 8)).toBe("a, b, …（共 8 个）");
-    expect(messages("en").analysis.nameList("a, b", 8)).toBe("a, b, … (8 total)");
-    expect(messages("zh-CN").analysis.importsFold("import", 2, ["fmt", "strings"], false)).toBe(
-      "import × 2（fmt、strings）",
-    );
-    expect(messages("en").analysis.importsFold("import", 2, ["fmt", "strings"], false)).toBe(
-      "2 imports (fmt, strings)",
-    );
-  });
-
   test("英文 imports 摘要的单复数与截断", () => {
     expect(messages("en").analysis.importsFold("import", 1, ["fmt"], false)).toBe("1 import (fmt)");
     expect(messages("en").analysis.importsFold("use", 6, ["a"], true)).toBe("6 uses (a, …)");

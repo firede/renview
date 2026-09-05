@@ -227,13 +227,13 @@ describe("工程机制擦除", () => {
     ]);
   });
 
-  test("rust：带参数的机制同名调用不擦除", async () => {
+  test("rust：带参数的同名调用与业务默认值保留", async () => {
     const src = `fn f(x: Option<i32>) -> i32 {
-    x.unwrap_or(0)
+    x.clone(1).unwrap_or(0)
 }
 `;
     const out = await simplify(rustProfile, src);
-    expect(out[1]).toBe("    x.unwrap_or(0)");
+    expect(out[1]).toBe("    x.clone(1).unwrap_or(0)");
   });
 
   test("ts：可选链擦除为普通成员访问", async () => {

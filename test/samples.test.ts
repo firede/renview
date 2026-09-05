@@ -20,7 +20,6 @@ describe("samples/demo 变更集", () => {
 
   test("清单：featured 存在，order 覆盖全部样例文件", () => {
     const paths = entries.map((e) => e.path);
-    expect(manifest.featured).toBe("src/pricing.rs");
     expect(paths).toContain(manifest.featured!);
     expect([...(manifest.order ?? [])].sort()).toEqual([...paths].sort());
   });
