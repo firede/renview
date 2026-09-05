@@ -21,11 +21,21 @@ export async function resolveDiffArgs(root: string, args: string[]): Promise<str
 }
 
 export async function getDiff(root: string, args: string[], locale: Locale): Promise<string> {
-  const r = await $`git -C ${root} diff --no-color --no-ext-diff ${args}`.quiet().nothrow();
+  const r = await $`git -c core.quotepath=false -C ${root} diff --no-color --no-ext-diff --no-textconv ${args}`.quiet().nothrow();
   if (r.exitCode !== 0) {
     throw new Error(messages(locale).api.gitDiffFailed(r.stderr.toString().trim()));
   }
   return r.text();
+}
+
+/** 原始 diff 与投影共用同一组来源；仅工作区审阅补入未跟踪文件。 */
+export async function getReviewDiff(root: string, args: string[], locale: Locale) {
+  const sides = await resolveSides(root, args);
+  const [tracked, untracked] = await Promise.all([
+    getDiff(root, args, locale),
+    sides.newSide.type === "worktree" ? getUntrackedDiff(root, extractPathspecs(args)) : "",
+  ]);
+  return { diff: tracked + untracked, sides };
 }
 
 /** 从透传参数中提取 `--` 之后的 pathspec，用于过滤 untracked 文件 */
@@ -35,29 +45,25 @@ export function extractPathspecs(args: string[]): string[] {
 }
 
 export async function listUntracked(root: string, pathspecs: string[]): Promise<string[]> {
-  const r = await $`git -C ${root} ls-files --others --exclude-standard -- ${pathspecs}`
+  const r = await $`git -C ${root} ls-files -z --others --exclude-standard -- ${pathspecs}`
     .quiet()
     .nothrow();
   if (r.exitCode !== 0) return [];
   return r
     .text()
-    .split("\n")
+    .split("\0")
     .filter((l) => l.length > 0);
 }
 
 /** 列出仓库全部文件（已跟踪 + 未跟踪，尊重 gitignore），供查看器浏览 */
 export async function listFiles(root: string, locale: Locale): Promise<string[]> {
-  const r = await $`git -C ${root} ls-files --cached --others --exclude-standard`
+  const r = await $`git -C ${root} ls-files -z --cached --others --exclude-standard`
     .quiet()
     .nothrow();
   if (r.exitCode !== 0) {
     throw new Error(messages(locale).api.gitLsFilesFailed(r.stderr.toString().trim()));
   }
-  return r
-    .text()
-    .split("\n")
-    .filter((l) => l.length > 0)
-    .sort();
+  return [...new Set(r.text().split("\0").filter(Boolean))].sort();
 }
 
 /** 为 untracked 文件合成 new-file 风格的 unified diff（git diff 本身不含 untracked） */
@@ -65,14 +71,14 @@ export async function getUntrackedDiff(root: string, pathspecs: string[]): Promi
   const files = await listUntracked(root, pathspecs);
   const parts: string[] = [];
   for (const file of files) {
-    const r = await $`git -C ${root} diff --no-index --no-color -- /dev/null ${file}`
+    const r = await $`git -c core.quotepath=false -C ${root} diff --no-index --no-color --no-ext-diff --no-textconv -- /dev/null ${file}`
       .quiet()
       .nothrow();
     // --no-index 有差异时退出码为 1，大于 1 才是真正的错误
     if (r.exitCode > 1) continue;
     const text = r.text();
     if (!text) continue;
-    parts.push(text.replace(/^diff --git .*$/m, `diff --git a/${file} b/${file}`));
+    parts.push(text);
   }
   return parts.join("");
 }
@@ -141,7 +147,7 @@ export async function resolveSides(
     };
   }
   return staged
-    ? { oldSide: { type: "rev", rev: "HEAD" }, newSide: { type: "index" } }
+    ? { oldSide: { type: "rev", rev: await defaultBase(root) }, newSide: { type: "index" } }
     : { oldSide: { type: "index" }, newSide: { type: "worktree" } };
 }
 

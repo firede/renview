@@ -9,10 +9,8 @@ import { buildViewRows } from "./analysis/view";
 import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
 import { configPath, createConfigLoader, type LoadedConfig } from "./config";
 import {
-  extractPathspecs,
-  getDiff,
+  getReviewDiff,
   getSideContent,
-  getUntrackedDiff,
   listFiles,
   resolveDiffArgs,
   resolveSides,
@@ -71,13 +69,7 @@ export async function startServer(root: string, gitArgs: string[], opts: ServerO
 
 async function handleDiff(root: string, diffArgs: string[], locale: Locale): Promise<Response> {
   try {
-    const pathspecs = extractPathspecs(diffArgs);
-    const [diff, untracked, sides] = await Promise.all([
-      getDiff(root, diffArgs, locale),
-      getUntrackedDiff(root, pathspecs),
-      resolveSides(root, diffArgs),
-    ]);
-    const fullDiff = diff + untracked;
+    const { diff: fullDiff, sides } = await getReviewDiff(root, diffArgs, locale);
     const files = await Promise.all(
       parseDiff(fullDiff).map((f) =>
         buildFileEntry(root, sides, f as unknown as ParsedFile, locale),

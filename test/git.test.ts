@@ -3,7 +3,7 @@ import { $ } from "bun";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
-import { EMPTY_TREE, extractPathspecs, resolveDiffArgs, resolveSides, type SideSpec } from "../src/git";
+import { EMPTY_TREE, getReviewDiff, getSideContent, listFiles, listUntracked, extractPathspecs, resolveDiffArgs, resolveSides, type SideSpec } from "../src/git";
 
 const tmpdirs: string[] = [];
 
@@ -163,5 +163,49 @@ describe("resolveSides", () => {
       oldSide: { type: "rev", rev: "HEAD~1" },
       newSide: { type: "worktree" },
     });
+  });
+});
+
+
+describe("审阅数据范围", () => {
+  test("工作区包含 untracked，暂存区与提交区间只包含选定范围", async () => {
+    const dir = await makeRepo(true);
+    await commitFile(dir, "tracked.ts", "const n = 1;\n", "添加源码");
+    fs.writeFileSync(join(dir, "tracked.ts"), "const n = 2;\n");
+    await $`git -C ${dir} add tracked.ts`.quiet();
+    fs.writeFileSync(join(dir, "draft.ts"), "const draft = true;\n");
+    const working = await getReviewDiff(dir, ["HEAD"], "en");
+    expect(working.diff).toContain("draft.ts");
+    const staged = await getReviewDiff(dir, ["--staged"], "en");
+    expect(staged.diff).toContain("tracked.ts");
+    expect(staged.diff).not.toContain("draft.ts");
+    const range = await getReviewDiff(dir, ["HEAD~1..HEAD"], "en");
+    expect(range.diff).toContain("+const n = 1;");
+    expect(range.diff).not.toContain("draft.ts");
+    expect(range.diff).not.toContain("+const n = 2;");
+    const filtered = await getReviewDiff(dir, ["HEAD", "--", "tracked.ts"], "en");
+    expect(filtered.diff).not.toContain("draft.ts");
+  });
+
+  test("空仓库暂存区可取得正确的空树基准", async () => {
+    const dir = await makeRepo(false);
+    fs.writeFileSync(join(dir, "first.ts"), "const n = 1;\n");
+    await $`git -C ${dir} add first.ts`.quiet();
+    const { diff, sides } = await getReviewDiff(dir, ["--staged"], "en");
+    expect(diff).toContain("first.ts");
+    expect(sides.oldSide.rev).toBe(EMPTY_TREE);
+    expect(await getSideContent(dir, sides.newSide, "first.ts")).toBe("const n = 1;\n");
+  });
+
+  test("文件列表保留中文、空格、制表符与换行路径", async () => {
+    const dir = await makeRepo(false);
+    const names = ["中文.ts", "with space.ts", "with\ttab.ts", "with\nnewline.ts"];
+    for (const name of names) fs.writeFileSync(join(dir, name), "const n = 1;\n");
+    expect(await listUntracked(dir, [])).toEqual([...names].sort());
+    expect(await listFiles(dir, "en")).toEqual([...names].sort());
+    await $`git -C ${dir} add .`.quiet();
+    expect(await listFiles(dir, "en")).toEqual([...names].sort());
+    const { diff } = await getReviewDiff(dir, ["--staged"], "en");
+    expect(diff).toContain("b/中文.ts");
   });
 });
