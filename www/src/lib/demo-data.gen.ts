@@ -3310,7 +3310,7 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               },
               {
                 "t": ")",
-                "dc": "#FFA657",
+                "dc": "#E6EDF3",
                 "lc": "#1F2328"
               },
               {
@@ -3321,7 +3321,7 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               },
               {
                 "t": " {",
-                "dc": "#FFA657",
+                "dc": "#E6EDF3",
                 "lc": "#1F2328"
               }
             ]
@@ -3337,18 +3337,28 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               },
               {
                 "t": "return",
-                "dc": "#FFA657",
+                "dc": "#FF7B72",
                 "lc": "#CF222E"
               },
               {
-                "t": " items.filter((",
+                "t": " items.",
+                "dc": "#E6EDF3",
+                "lc": "#1F2328"
+              },
+              {
+                "t": "filter",
+                "dc": "#D2A8FF",
+                "lc": "#8250DF"
+              },
+              {
+                "t": "((",
                 "dc": "#E6EDF3",
                 "lc": "#1F2328"
               },
               {
                 "t": "it",
                 "dc": "#FFA657",
-                "lc": "#8250DF"
+                "lc": "#953800"
               },
               {
                 "t": ") ",
@@ -3358,37 +3368,17 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "=>",
                 "dc": "#FF7B72",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "it",
-                "dc": "#FFA657",
                 "lc": "#CF222E"
               },
               {
-                "t": ".",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "wrapped",
-                "dc": "#FFA657",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ").",
+                "t": " it.wrapped).",
                 "dc": "#E6EDF3",
                 "lc": "#1F2328"
               },
               {
                 "t": "length",
-                "dc": "#D2A8FF",
-                "lc": "#CF222E"
+                "dc": "#79C0FF",
+                "lc": "#0550AE"
               },
               {
                 "t": " ",
@@ -3398,10 +3388,20 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "*",
                 "dc": "#FF7B72",
+                "lc": "#CF222E"
+              },
+              {
+                "t": " ",
+                "dc": "#E6EDF3",
+                "lc": "#1F2328"
+              },
+              {
+                "t": "3",
+                "dc": "#79C0FF",
                 "lc": "#0550AE"
               },
               {
-                "t": " 3;",
+                "t": ";",
                 "dc": "#E6EDF3",
                 "lc": "#1F2328"
               }
@@ -6859,7 +6859,7 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               },
               {
                 "t": ")",
-                "dc": "#FFA657",
+                "dc": "#E6EDF3",
                 "lc": "#1F2328"
               },
               {
@@ -6870,7 +6870,7 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               },
               {
                 "t": " {",
-                "dc": "#FFA657",
+                "dc": "#E6EDF3",
                 "lc": "#1F2328"
               }
             ]
@@ -6886,18 +6886,28 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               },
               {
                 "t": "return",
-                "dc": "#FFA657",
+                "dc": "#FF7B72",
                 "lc": "#CF222E"
               },
               {
-                "t": " items.filter((",
+                "t": " items.",
+                "dc": "#E6EDF3",
+                "lc": "#1F2328"
+              },
+              {
+                "t": "filter",
+                "dc": "#D2A8FF",
+                "lc": "#8250DF"
+              },
+              {
+                "t": "((",
                 "dc": "#E6EDF3",
                 "lc": "#1F2328"
               },
               {
                 "t": "it",
                 "dc": "#FFA657",
-                "lc": "#8250DF"
+                "lc": "#953800"
               },
               {
                 "t": ") ",
@@ -6907,37 +6917,17 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "=>",
                 "dc": "#FF7B72",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "it",
-                "dc": "#FFA657",
                 "lc": "#CF222E"
               },
               {
-                "t": ".",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "wrapped",
-                "dc": "#FFA657",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ").",
+                "t": " it.wrapped).",
                 "dc": "#E6EDF3",
                 "lc": "#1F2328"
               },
               {
                 "t": "length",
-                "dc": "#D2A8FF",
-                "lc": "#CF222E"
+                "dc": "#79C0FF",
+                "lc": "#0550AE"
               },
               {
                 "t": " ",
@@ -6947,10 +6937,20 @@ export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
               {
                 "t": "*",
                 "dc": "#FF7B72",
+                "lc": "#CF222E"
+              },
+              {
+                "t": " ",
+                "dc": "#E6EDF3",
+                "lc": "#1F2328"
+              },
+              {
+                "t": "3",
+                "dc": "#79C0FF",
                 "lc": "#0550AE"
               },
               {
-                "t": " 3;",
+                "t": ";",
                 "dc": "#E6EDF3",
                 "lc": "#1F2328"
               }
