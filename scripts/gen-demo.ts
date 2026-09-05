@@ -114,7 +114,8 @@ const highlighter = await createHighlighterCore({
 
 function highlightLines(text: string, lang: string, theme: string): HToken[][] {
   return highlighter
-    .codeToTokens(text, { lang: lang as never, theme })
+    // 离线生成必须完整分词；默认 500ms 超时会让冷启动或慢机器产出不同的高亮。
+    .codeToTokens(text, { lang: lang as never, theme, tokenizeTimeLimit: 0 })
     .tokens.map((line) => line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle })));
 }
 
