@@ -20,8 +20,15 @@ async function rowsWithFoldSummary(
   const newSide = await parseSide(profile, newSrc);
   const oldS = simplifyTree(oldSide.tree, oldSrc, profile.simplify!);
   const newS = simplifyTree(newSide.tree, newSrc, profile.simplify!);
-  const file: ParsedFile = { chunks: [{ changes }], from: "a", to: "a", deletions: 0, additions: 0 };
-  return buildSimplifiedRows(file, oldS, newS, foldDescriber(profile, oldSide, newSide, locale)).rows;
+  const file: ParsedFile = {
+    chunks: [{ changes }],
+    from: "a",
+    to: "a",
+    deletions: 0,
+    additions: 0,
+  };
+  return buildSimplifiedRows(file, oldS, newS, foldDescriber(profile, oldSide, newSide, locale))
+    .rows;
 }
 
 function foldSummaryOf(rows: SRow[]): string | undefined {

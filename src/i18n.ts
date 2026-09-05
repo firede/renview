@@ -21,12 +21,7 @@ export function messages(locale: Locale): Messages {
 /** BCP 47 根语言匹配：归一化（去编码/修饰符、_ → -）后只取语言子标签；不匹配返回 null */
 export function matchLocale(tag: string | null | undefined): Locale | null {
   if (!tag) return null;
-  const root = tag
-    .trim()
-    .split(/[.@]/, 1)[0]!
-    .replace(/_/g, "-")
-    .split("-", 1)[0]!
-    .toLowerCase();
+  const root = tag.trim().split(/[.@]/, 1)[0]!.replace(/_/g, "-").split("-", 1)[0]!.toLowerCase();
   if (!root) return null;
   for (const l of SUPPORTED_LOCALES) {
     if (l.split("-", 1)[0]!.toLowerCase() === root) return l;
@@ -52,8 +47,9 @@ export function detectLocale(
     const m = matchLocale(env[key]);
     if (m) return m;
   }
-  return matchLocale(systemLocale === undefined ? intlSystemLocale() : systemLocale) ??
-    FALLBACK_LOCALE;
+  return (
+    matchLocale(systemLocale === undefined ? intlSystemLocale() : systemLocale) ?? FALLBACK_LOCALE
+  );
 }
 
 /** 完整解析链：配置值（BCP 47 根匹配）优先；未设置/无法匹配时走环境检测（含英文回落） */

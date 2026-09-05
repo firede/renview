@@ -168,7 +168,11 @@ export function applySimplify(source: string, ops: SimplifyOp[]): SimplifyResult
 }
 
 /** 收集 op：前序遍历，walker 返回 true 则跳过子树 */
-export function collectSimplifyOps(root: Node, source: string, walker: SimplifyWalker): SimplifyOp[] {
+export function collectSimplifyOps(
+  root: Node,
+  source: string,
+  walker: SimplifyWalker,
+): SimplifyOp[] {
   const ops: SimplifyOp[] = [];
   const walk = (node: Node) => {
     const skip = walker(node, source, ops);

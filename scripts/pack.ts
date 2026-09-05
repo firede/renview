@@ -6,7 +6,15 @@
  * 用法：先 bun run build（或 --host 只出本机平台，此时 pack 只打包已存在的目标），再 bun run scripts/pack.ts
  */
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import pkg from "../package.json";
 
 const TARGETS = ["darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64", "windows-x64"] as const;
@@ -125,7 +133,11 @@ writeFileSync(
 console.log("✓ renview（壳包）");
 
 writeFileSync("dist/release/checksums.txt", checksums.join("\n") + "\n");
-console.log(`✓ dist/release/checksums.txt\n\n版本 ${version}，共 ${built.length} 个平台包 + 1 个壳包`);
+console.log(
+  `✓ dist/release/checksums.txt\n\n版本 ${version}，共 ${built.length} 个平台包 + 1 个壳包`,
+);
 if (built.length < TARGETS.length) {
-  console.log(`注意：dist/ 中只有 ${built.join(", ")}，未打包全部 ${TARGETS.length} 个目标（本地 --host 冒烟属正常）`);
+  console.log(
+    `注意：dist/ 中只有 ${built.join(", ")}，未打包全部 ${TARGETS.length} 个目标（本地 --host 冒烟属正常）`,
+  );
 }

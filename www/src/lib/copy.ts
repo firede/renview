@@ -20,7 +20,12 @@ export interface Copy {
   facts: { title: string; items: [string, string] };
   usage: {
     title: string;
-    rows: [{ cmd: string; note: string }, { cmd: string; note: string }, { cmd: string; note: string }, { cmd: string; note: string }];
+    rows: [
+      { cmd: string; note: string },
+      { cmd: string; note: string },
+      { cmd: string; note: string },
+      { cmd: string; note: string },
+    ];
   };
   install: {
     title: string;
@@ -62,10 +67,7 @@ export const cn: Copy = {
   },
   facts: {
     title: "还有",
-    items: [
-      "审 diff 之外，浏览模式用同样的投影读完整文件",
-      "完全本地运行，代码留在本机",
-    ],
+    items: ["审 diff 之外，浏览模式用同样的投影读完整文件", "完全本地运行，代码留在本机"],
   },
   usage: {
     title: "在任意 git 仓库里运行",
@@ -92,7 +94,8 @@ export const cn: Copy = {
 export const en: Copy = {
   htmlLang: "en",
   title: "renview — Judge the abstraction",
-  description: "Code review for agent-driven development. Every diff presented at the layer where your judgment matters.",
+  description:
+    "Code review for agent-driven development. Every diff presented at the layer where your judgment matters.",
   nav: { demo: "Demo", why: "Why", usage: "Usage", install: "Install" },
   langSwitch: { label: "中文", href: "/cn/", note: "中文版" },
   hero: {

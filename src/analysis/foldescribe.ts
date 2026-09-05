@@ -53,7 +53,12 @@ export function foldDescriber(
     );
     return messages(locale).analysis.foldedTypeMembers(
       decl.info.name,
-      involved.length > 0 ? nameList(involved.map((m) => m.name), locale) : null,
+      involved.length > 0
+        ? nameList(
+            involved.map((m) => m.name),
+            locale,
+          )
+        : null,
     );
   };
 }

@@ -3,7 +3,17 @@ import { $ } from "bun";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
-import { EMPTY_TREE, getReviewDiff, getSideContent, listFiles, listUntracked, extractPathspecs, resolveDiffArgs, resolveSides, type SideSpec } from "../src/git";
+import {
+  EMPTY_TREE,
+  getReviewDiff,
+  getSideContent,
+  listFiles,
+  listUntracked,
+  extractPathspecs,
+  resolveDiffArgs,
+  resolveSides,
+  type SideSpec,
+} from "../src/git";
 
 const tmpdirs: string[] = [];
 
@@ -50,10 +60,7 @@ describe("extractPathspecs", () => {
   });
 
   test("返回 -- 之后的所有元素", () => {
-    expect(extractPathspecs(["HEAD~1", "--", "src/", "README.md"])).toEqual([
-      "src/",
-      "README.md",
-    ]);
+    expect(extractPathspecs(["HEAD~1", "--", "src/", "README.md"])).toEqual(["src/", "README.md"]);
   });
 
   test("-- 为空尾时返回空数组", () => {
@@ -165,7 +172,6 @@ describe("resolveSides", () => {
     });
   });
 });
-
 
 describe("审阅数据范围", () => {
   test("工作区包含 untracked，暂存区与提交区间只包含选定范围", async () => {

@@ -32,7 +32,7 @@ if (files.length === 0) {
 
 const lines: string[] = [
   "// 此文件由 scripts/gen-assets.ts 生成，请勿手改",
-  "// @ts-nocheck  编译期由 Bun 以 type: \"file\" 处理这些导入，TS 无对应类型",
+  '// @ts-nocheck  编译期由 Bun 以 type: "file" 处理这些导入，TS 无对应类型',
 ];
 files.forEach((f, i) => {
   lines.push(`import f${i} from "../${DIST}/${f}" with { type: "file" };`);

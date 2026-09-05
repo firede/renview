@@ -1,4 +1,11 @@
-import { isDelete, isInsert, isNormal, type HunkData, type HunkTokens, type TokenNode } from "react-diff-view";
+import {
+  isDelete,
+  isInsert,
+  isNormal,
+  type HunkData,
+  type HunkTokens,
+  type TokenNode,
+} from "react-diff-view";
 import type { HighlighterCore } from "shiki/core";
 import type { ResolvedTheme } from "./theme";
 
@@ -137,10 +144,6 @@ export async function highlightDiff(
     return out;
   };
 
-  const [oldTokens, newTokens] = await Promise.all([
-    side(oldByLine),
-    side(newByLine),
-  ]);
+  const [oldTokens, newTokens] = await Promise.all([side(oldByLine), side(newByLine)]);
   return { old: oldTokens, new: newTokens };
 }
-

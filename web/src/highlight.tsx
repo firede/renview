@@ -12,7 +12,10 @@ export { shikiLangForPath };
 export function useHighlightedLines(text: string | null, lang: string | null): HToken[][] | null {
   const theme = useTheme();
   const [result, setResult] = useState<{
-    text: string; lang: string; theme: ResolvedTheme; tokens: HToken[][] | null;
+    text: string;
+    lang: string;
+    theme: ResolvedTheme;
+    tokens: HToken[][] | null;
   } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -27,7 +30,9 @@ export function useHighlightedLines(text: string | null, lang: string | null): H
       cancelled = true;
     };
   }, [text, lang, theme]);
-  return result?.text === text && result?.lang === lang && result?.theme === theme ? result.tokens : null;
+  return result?.text === text && result?.lang === lang && result?.theme === theme
+    ? result.tokens
+    : null;
 }
 
 export function tokenStyle(t: { color?: string; fontStyle?: number }): CSSProperties {
@@ -60,10 +65,7 @@ export function TokenSpans({ tokens }: { tokens: HToken[] }) {
 /** react-diff-view 的 renderToken：只认我们自产的 shiki 节点，其余交回默认渲染 */
 export const renderDiffToken: RenderToken = (token, renderDefault, index) =>
   token.type === "shiki" ? (
-    <span
-      key={index}
-      style={tokenStyle({ color: token.color, fontStyle: token.fontStyle })}
-    >
+    <span key={index} style={tokenStyle({ color: token.color, fontStyle: token.fontStyle })}>
       {token.value}
     </span>
   ) : (
@@ -71,10 +73,14 @@ export const renderDiffToken: RenderToken = (token, renderDefault, index) =>
   );
 
 /** 当前选中 diff 文件的高亮 tokens；无语言映射或切走文件时返回 null（纯文本渲染） */
-export function useDiffTokens(file: { hunks: HunkData[]; newPath: string; oldPath: string } | null): HunkTokens | null {
+export function useDiffTokens(
+  file: { hunks: HunkData[]; newPath: string; oldPath: string } | null,
+): HunkTokens | null {
   const theme = useTheme();
   const [result, setResult] = useState<{
-    file: typeof file; theme: ResolvedTheme; tokens: HunkTokens;
+    file: typeof file;
+    theme: ResolvedTheme;
+    tokens: HunkTokens;
   } | null>(null);
   const path = file ? (file.newPath !== "/dev/null" ? file.newPath : file.oldPath) : null;
   const lang = shikiLangForPath(path);

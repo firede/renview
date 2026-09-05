@@ -48,7 +48,9 @@ const WHITELIST = new Set(
    ToString AsRef AsMut Deref Drop Fn FnMut FnOnce Sized Unpin
    self cls None True False def elif in is not and or with try except finally raise pass
    lambda yield global nonlocal assert int float bool list dict set tuple bytes object
-   Exception print len range enumerate zip isinstance super staticmethod classmethod property`.split(/\s+/),
+   Exception print len range enumerate zip isinstance super staticmethod classmethod property`.split(
+    /\s+/,
+  ),
 );
 
 /** 差异片段切词：标识符与数字 */
@@ -167,7 +169,11 @@ async function ensureClone(repo: { name: string; url: string }, dir: string, com
 }
 
 /** 最近 N 个非 merge 提交（新→旧） */
-async function listCommits(repo: { name: string }, dir: string, commits: number): Promise<string[]> {
+async function listCommits(
+  repo: { name: string },
+  dir: string,
+  commits: number,
+): Promise<string[]> {
   const r = await $`git -C ${dir} log --no-merges -n ${commits} --format=%H`.quiet().nothrow();
   if (r.exitCode !== 0) {
     console.error(`[${repo.name}] 读取提交历史失败：${r.stderr.toString("utf8").trim()}`);
@@ -259,9 +265,10 @@ async function processRepo(
 
   for (const [idx, sha] of shas.entries()) {
     const sha8 = sha.slice(0, 8);
-    const diffOut = await $`git -C ${dir} show --format= --no-color --no-ext-diff --no-textconv ${sha}`
-      .quiet()
-      .nothrow();
+    const diffOut =
+      await $`git -C ${dir} show --format= --no-color --no-ext-diff --no-textconv ${sha}`
+        .quiet()
+        .nothrow();
     if (diffOut.exitCode !== 0) {
       console.warn(`[${repo.name}] ${sha8} diff 获取失败（可能触及浅克隆边界），跳过`);
       continue;
@@ -403,7 +410,9 @@ function sampleRandom<T>(arr: T[], n: number): T[] {
 
 function pushSampleBlock(lines: string[], s: FoldPairSample, withBadTokens: boolean): void {
   if (withBadTokens) {
-    lines.push(`- 可疑词：${s.badTokens.map(inlineCode).join(" ")}（白名单命中 ${s.whitelistHits} 个词）`);
+    lines.push(
+      `- 可疑词：${s.badTokens.map(inlineCode).join(" ")}（白名单命中 ${s.whitelistHits} 个词）`,
+    );
   }
   lines.push(`- 差异片段：${inlineCode(s.oldSeg)} → ${inlineCode(s.newSeg)}`);
   lines.push("");

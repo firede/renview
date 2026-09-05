@@ -85,9 +85,7 @@ describe("parseConfigText", () => {
   });
 
   test("未知键静默忽略（新旧版本互读不报错）", () => {
-    const { config, warnings } = parseConfigText(
-      `appearance = "light"\n[llm]\nprovider = "kimi"`,
-    );
+    const { config, warnings } = parseConfigText(`appearance = "light"\n[llm]\nprovider = "kimi"`);
     expect(config.font.size).toBe(DEFAULT_FONT_SIZE);
     expect(warnings).toEqual([]);
   });

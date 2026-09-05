@@ -46,8 +46,7 @@ export const zhCN: Messages = {
   config: {
     tomlParseFailed: (d) => `TOML 解析失败（${d}），已使用默认配置`,
     fontFamilyNotString: (got) => `font_family 应为字符串（收到 ${got}），已使用默认字体`,
-    fontSizeNotPositive: (got, fb) =>
-      `font_size 应为正数（收到 ${got}），已使用默认字号 ${fb}`,
+    fontSizeNotPositive: (got, fb) => `font_size 应为正数（收到 ${got}），已使用默认字号 ${fb}`,
     languageNotString: (got) => `language 应为字符串（收到 ${got}），已自动检测语言`,
     languageUnsupported: (v) =>
       `language 无法匹配已支持的语言（收到 ${JSON.stringify(v)}，支持 zh-CN、en），已自动检测语言`,

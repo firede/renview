@@ -9,7 +9,14 @@ describe("解析树生命周期", () => {
     const deleted = spyOn(Tree.prototype, "delete");
     try {
       for (let i = 0; i < 10; i++) {
-        const result = await analyzeFile(typescriptProfile, "const n = 1;", "const n = 2;", new Set([1]), new Set([1]), "en");
+        const result = await analyzeFile(
+          typescriptProfile,
+          "const n = 1;",
+          "const n = 2;",
+          new Set([1]),
+          new Set([1]),
+          "en",
+        );
         expect(result.units[0]?.name).toBe("n");
       }
       expect(deleted).toHaveBeenCalledTimes(20);
@@ -21,9 +28,11 @@ describe("解析树生命周期", () => {
   test("分析回调失败也释放两侧树", async () => {
     const deleted = spyOn(Tree.prototype, "delete");
     try {
-      await expect(withParsedSides(typescriptProfile, "", "", () => {
-        throw new Error("分析失败");
-      })).rejects.toThrow("分析失败");
+      await expect(
+        withParsedSides(typescriptProfile, "", "", () => {
+          throw new Error("分析失败");
+        }),
+      ).rejects.toThrow("分析失败");
       expect(deleted).toHaveBeenCalledTimes(2);
     } finally {
       deleted.mockRestore();
@@ -33,7 +42,12 @@ describe("解析树生命周期", () => {
   test("第二侧解析初始化失败时释放第一侧", async () => {
     const deleted = spyOn(Tree.prototype, "delete");
     let reads = 0;
-    const profile = { ...typescriptProfile, get grammarFile() { return ++reads === 1 ? "typescript" : "missing"; } };
+    const profile = {
+      ...typescriptProfile,
+      get grammarFile() {
+        return ++reads === 1 ? "typescript" : "missing";
+      },
+    };
     try {
       await expect(withParsedSides(profile, "", "", () => null)).rejects.toThrow("未知语法");
       expect(deleted).toHaveBeenCalledTimes(1);

@@ -20,24 +20,36 @@ export function createResourceLoader<T>(publish: (state: ResourceState<T>) => vo
     publish(next);
   };
   return {
-    cancel() { controller?.abort(); },
+    cancel() {
+      controller?.abort();
+    },
     async load(url: string) {
       controller?.abort();
       const current = new AbortController();
       controller = current;
-      update({ ...(state.url === url ? state : emptyResource<T>(url)), loading: true, error: null });
+      update({
+        ...(state.url === url ? state : emptyResource<T>(url)),
+        loading: true,
+        error: null,
+      });
       let unreachable = true;
       try {
         const response = await fetch(url, { signal: current.signal });
         unreachable = false;
-        const data = await response.json() as T & { ok?: boolean; error?: string };
-        if (!response.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${response.status}`);
-        if (!current.signal.aborted) update({ url, data, loading: false, error: null, unreachable: false });
+        const data = (await response.json()) as T & { ok?: boolean; error?: string };
+        if (!response.ok || data.ok === false)
+          throw new Error(data.error ?? `HTTP ${response.status}`);
+        if (!current.signal.aborted)
+          update({ url, data, loading: false, error: null, unreachable: false });
       } catch (error) {
-        if (!current.signal.aborted) update({
-          url, data: null, loading: false,
-          error: error instanceof Error ? error.message : String(error), unreachable,
-        });
+        if (!current.signal.aborted)
+          update({
+            url,
+            data: null,
+            loading: false,
+            error: error instanceof Error ? error.message : String(error),
+            unreachable,
+          });
       }
     },
   };

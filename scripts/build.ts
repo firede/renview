@@ -9,7 +9,8 @@ const TARGETS = [
 ] as const;
 
 function hostTarget(): (typeof TARGETS)[number] {
-  const p = process.platform === "darwin" ? "darwin" : process.platform === "win32" ? "windows" : "linux";
+  const p =
+    process.platform === "darwin" ? "darwin" : process.platform === "win32" ? "windows" : "linux";
   const a = process.arch === "arm64" ? "arm64" : "x64";
   return `bun-${p}-${a}` as (typeof TARGETS)[number];
 }

@@ -1,7 +1,14 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
-import { nameList, nodeRowRange, type DeclarationInfo, type FoldKind, type LanguageProfile, type TypeDeclMembers } from "./types";
+import {
+  nameList,
+  nodeRowRange,
+  type DeclarationInfo,
+  type FoldKind,
+  type LanguageProfile,
+  type TypeDeclMembers,
+} from "./types";
 
 /** GDScript profile：声明收集 + 类型擦除（标注/返回类型）+ enum 折叠 */
 
@@ -45,7 +52,9 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[], loca
         container,
       });
       const body = node.childForFieldName("body");
-      if (body) for (const c of body.namedChildren) collectNode(c, joinContainer(container, name), out, locale);
+      if (body)
+        for (const c of body.namedChildren)
+          collectNode(c, joinContainer(container, name), out, locale);
       return;
     }
     case "enum_definition": {
@@ -103,7 +112,8 @@ export function gdSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
       const ret = node.childForFieldName("return_type");
       if (ret) {
         const prev = ret.previousSibling;
-        const start = prev && !prev.isNamed && prev.type === "->" ? prev.startIndex : ret.startIndex;
+        const start =
+          prev && !prev.isNamed && prev.type === "->" ? prev.startIndex : ret.startIndex;
         ops.push(delSwallowingLeadingSpace(start, ret.endIndex, source));
       }
       return false;

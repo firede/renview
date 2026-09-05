@@ -37,7 +37,12 @@ const DEFAULT_FONT = { family: DEFAULT_FONT_FAMILY, size: DEFAULT_FONT_SIZE };
 
 /** 默认配置：字体取内置值；语言随环境检测，故按调用构造 */
 function defaultConfig(env: NodeJS.ProcessEnv): UiConfig {
-  return { font: { ...DEFAULT_FONT }, language: detectLocale(env), theme: "auto", updateCheck: true };
+  return {
+    font: { ...DEFAULT_FONT },
+    language: detectLocale(env),
+    theme: "auto",
+    updateCheck: true,
+  };
 }
 
 /** 配置文件位置：$XDG_CONFIG_HOME/renview/config.toml；Windows 落 %APPDATA%\renview\config.toml */
@@ -68,10 +73,7 @@ function resolveFontFamily(value: string): string {
  * 语法错误整体回退默认；类型错误逐键回退并产生警告；未知键静默忽略（新旧版本互读不报错）。
  * 警告文本随解析出的语言：language 键优先，缺失/非法时按环境检测（env 可注入以便测试）。
  */
-export function parseConfigText(
-  raw: string,
-  env: NodeJS.ProcessEnv = process.env,
-): LoadedConfig {
+export function parseConfigText(raw: string, env: NodeJS.ProcessEnv = process.env): LoadedConfig {
   let doc: unknown;
   try {
     doc = parseToml(raw);
@@ -112,7 +114,12 @@ export function parseConfigText(
     warnings.push(m.config.languageUnsupported(languageIssue.raw as string));
   }
 
-  const config: UiConfig = { font: { ...DEFAULT_FONT }, language, theme: "auto", updateCheck: true };
+  const config: UiConfig = {
+    font: { ...DEFAULT_FONT },
+    language,
+    theme: "auto",
+    updateCheck: true,
+  };
   if ("font_family" in d) {
     if (typeof d.font_family === "string") {
       config.font.family = resolveFontFamily(d.font_family);
@@ -124,9 +131,7 @@ export function parseConfigText(
     if (typeof d.font_size === "number" && Number.isFinite(d.font_size) && d.font_size > 0) {
       config.font.size = d.font_size;
     } else {
-      warnings.push(
-        m.config.fontSizeNotPositive(JSON.stringify(d.font_size), DEFAULT_FONT_SIZE),
-      );
+      warnings.push(m.config.fontSizeNotPositive(JSON.stringify(d.font_size), DEFAULT_FONT_SIZE));
     }
   }
   if ("update_check" in d) {

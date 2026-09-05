@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "samples/**",
+    "**/*.gen.ts",
+    ".agents/**",
+    ".codex/**",
+    "**/package.json",
+    "**/bun.lock",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.astro/**",
+    "**/.wrangler/**",
+    "wasm/**",
+    ".corpus/**",
+    ".wasm-build/**",
+    "local/**"
+  ]
+}

@@ -179,17 +179,29 @@ describe("buildSimplifiedRows", () => {
     const newS = await simplifyWithErasures(typescriptProfile, newSrc);
     const file = mkFile([
       { type: "del", ln: 1, content: "-export function add(a: number, b: number): number {" },
-      { type: "add", ln: 1, content: "+export function add(a: number, b: number, c?: number): number {" },
+      {
+        type: "add",
+        ln: 1,
+        content: "+export function add(a: number, b: number, c?: number): number {",
+      },
     ]);
     const { rows, stats } = buildSimplifiedRows(file, oldS, newS);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ kind: "del", text: "export function add(a, b) {", oldLn: 1 });
-    expect(rows[1]).toMatchObject({ kind: "add", text: "export function add(a, b, c) {", newLn: 1 });
+    expect(rows[1]).toMatchObject({
+      kind: "add",
+      text: "export function add(a, b, c) {",
+      newLn: 1,
+    });
     expect(stats.visible).toBe(2);
     // 配对：del/add 携带相同 pair id；擦除记录随行透传
     expect(rows[0]!.kind === "del" && rows[0]!.pair).toBeTruthy();
-    expect(rows[0]!.kind === "del" && rows[1]!.kind === "add" && rows[0]!.pair === rows[1]!.pair).toBe(true);
-    expect(rows[0]!.kind === "del" && rows[0]!.erases!.some((e) => e.original === ": number")).toBe(true);
+    expect(
+      rows[0]!.kind === "del" && rows[1]!.kind === "add" && rows[0]!.pair === rows[1]!.pair,
+    ).toBe(true);
+    expect(rows[0]!.kind === "del" && rows[0]!.erases!.some((e) => e.original === ": number")).toBe(
+      true,
+    );
   });
 
   test("interface 成员类型变化折叠、成员增减可见", async () => {

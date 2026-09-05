@@ -6,10 +6,7 @@ import { profileForPath } from "../src/analysis/langs";
 import type { LanguageProfile } from "../src/analysis/langs/types";
 import { foldDescriber } from "../src/analysis/foldescribe";
 import { changedLinesOf, type ParsedFile } from "../src/analysis/map";
-import {
-  analyzeParsed,
-  withParsedSides,
-} from "../src/analysis/project";
+import { analyzeParsed, withParsedSides } from "../src/analysis/project";
 import {
   buildSimplifiedRows,
   simplifyTree,
@@ -91,9 +88,13 @@ export async function analyzeEntry(
     }
     const projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
     const oldSimplified =
-      oldSide && profile.simplify ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null;
+      oldSide && profile.simplify
+        ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify)
+        : null;
     const newSimplified =
-      newSide && profile.simplify ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null;
+      newSide && profile.simplify
+        ? simplifyTree(newSide.tree, newSide.source, profile.simplify)
+        : null;
     const simplified = profile.simplify
       ? buildSimplifiedRows(
           diffFile,

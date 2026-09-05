@@ -260,7 +260,11 @@ export function insertBodyNotes(
     pending.push({
       start: u.newRange[0],
       end: u.newRange[1],
-      text: messages(locale).analysis.bodyNote(parts, items.length, items.length > BODY_NOTE_MAX_ITEMS),
+      text: messages(locale).analysis.bodyNote(
+        parts,
+        items.length,
+        items.length > BODY_NOTE_MAX_ITEMS,
+      ),
     });
   }
   if (pending.length === 0) return rows;
@@ -298,11 +302,7 @@ export async function analyzeFile(
 }
 
 /** 查看器用：从已解析的 CST 产出文件大纲（与投影/简化同源，复用声明收集） */
-export function outlineOf(
-  profile: LanguageProfile,
-  tree: Tree,
-  locale: Locale,
-): OutlineItem[] {
+export function outlineOf(profile: LanguageProfile, tree: Tree, locale: Locale): OutlineItem[] {
   return profile.collect(tree.rootNode, locale).map((d) => ({
     kind: d.kind,
     name: d.name,
@@ -339,7 +339,12 @@ function attachDomain(
   const added = newMembers.filter((m) => !oldSet.has(m));
   const removed = oldMembers.filter((m) => !newSet.has(m));
   // 实体增删必留；成员集合不变的细节变更不留
-  if (u.change !== "added" && u.change !== "removed" && added.length === 0 && removed.length === 0) {
+  if (
+    u.change !== "added" &&
+    u.change !== "removed" &&
+    added.length === 0 &&
+    removed.length === 0
+  ) {
     return;
   }
   u.domain = {
@@ -370,7 +375,11 @@ function classify(
   };
 
   if (o && !n) {
-    const removed: ChangeUnit = { ...base, change: "removed", oldSignature: sigText(oldSource!, o) };
+    const removed: ChangeUnit = {
+      ...base,
+      change: "removed",
+      oldSignature: sigText(oldSource!, o),
+    };
     attachDomain(profile, removed, o, null, locale);
     return removed;
   }
@@ -400,14 +409,14 @@ function classify(
   }
 
   if (o.bodyNode && n.bodyNode) {
-    const ob = normalize(
-      oldSource.slice(o.bodyNode.startIndex, o.bodyNode.endIndex),
-    );
-    const nb = normalize(
-      newSource.slice(n.bodyNode.startIndex, n.bodyNode.endIndex),
-    );
+    const ob = normalize(oldSource.slice(o.bodyNode.startIndex, o.bodyNode.endIndex));
+    const nb = normalize(newSource.slice(n.bodyNode.startIndex, n.bodyNode.endIndex));
     if (ob === nb) return null;
-    const u: ChangeUnit = { ...base, change: "body", bodySummary: summarizeBody(n.bodyNode, newLines) };
+    const u: ChangeUnit = {
+      ...base,
+      change: "body",
+      bodySummary: summarizeBody(n.bodyNode, newLines),
+    };
     // 非数据类（如含方法的 class）的 body 变更不是数据形状变更，不进领域总览
     attachDomain(profile, u, o, n, locale);
     return u;
@@ -415,16 +424,18 @@ function classify(
 
   // 无 body 的非类型级单元（变量、枚举等）：整体比较
   if (fullText(oldSource, o) !== fullText(newSource, n)) {
-    return { ...base, change: "body", signature: sigText(newSource, n), oldSignature: sigText(oldSource, o) };
+    return {
+      ...base,
+      change: "body",
+      signature: sigText(newSource, n),
+      oldSignature: sigText(oldSource, o),
+    };
   }
   return null;
 }
 
 /** 未被任何单元覆盖的变更行；有则返回其跨度 */
-function strayLines(
-  lines: Set<number>,
-  covered: Array<[number, number]>,
-): [number, number] | null {
+function strayLines(lines: Set<number>, covered: Array<[number, number]>): [number, number] | null {
   let min = Infinity;
   let max = -Infinity;
   for (const ln of lines) {

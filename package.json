@@ -16,10 +16,15 @@
     "build": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run scripts/build.ts",
     "test": "bun run sync:wasm && bun test",
     "typecheck": "bun run build:web && bun run gen:assets && tsc --noEmit",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix --deny-warnings",
+    "fmt": "oxfmt --write",
+    "fmt:check": "oxfmt --check"
   },
   "simple-git-hooks": {
-    "pre-push": "bun run test && bun run typecheck"
+    "pre-push": "bun run test && bun run typecheck",
+    "pre-commit": "bun run lint-staged"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
@@ -42,9 +47,19 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5",
     "bun-types": "^1.4.2",
+    "lint-staged": "^17.5.0",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
     "simple-git-hooks": "^2.14.0",
     "tree-sitter-cli": "0.25.10",
     "typescript": "^5",
     "vite": "^7"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}": [
+      "oxlint --fix --deny-warnings --no-error-on-unmatched-pattern",
+      "oxfmt --write --no-error-on-unmatched-pattern"
+    ],
+    "*.{json,jsonc,css,html,md,yml,yaml,toml}": "oxfmt --write --no-error-on-unmatched-pattern"
   }
 }

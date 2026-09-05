@@ -9,3 +9,4 @@ wasm/
 .wasm-build/
 *.log
 .playwright-cli/
+/local

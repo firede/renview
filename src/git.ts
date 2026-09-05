@@ -21,7 +21,10 @@ export async function resolveDiffArgs(root: string, args: string[]): Promise<str
 }
 
 export async function getDiff(root: string, args: string[], locale: Locale): Promise<string> {
-  const r = await $`git -c core.quotepath=false -C ${root} diff --no-color --no-ext-diff --no-textconv ${args}`.quiet().nothrow();
+  const r =
+    await $`git -c core.quotepath=false -C ${root} diff --no-color --no-ext-diff --no-textconv ${args}`
+      .quiet()
+      .nothrow();
   if (r.exitCode !== 0) {
     throw new Error(messages(locale).api.gitDiffFailed(r.stderr.toString().trim()));
   }
@@ -71,9 +74,10 @@ export async function getUntrackedDiff(root: string, pathspecs: string[]): Promi
   const files = await listUntracked(root, pathspecs);
   const parts: string[] = [];
   for (const file of files) {
-    const r = await $`git -c core.quotepath=false -C ${root} diff --no-index --no-color --no-ext-diff --no-textconv -- /dev/null ${file}`
-      .quiet()
-      .nothrow();
+    const r =
+      await $`git -c core.quotepath=false -C ${root} diff --no-index --no-color --no-ext-diff --no-textconv -- /dev/null ${file}`
+        .quiet()
+        .nothrow();
     // --no-index 有差异时退出码为 1，大于 1 才是真正的错误
     if (r.exitCode > 1) continue;
     const text = r.text();

@@ -48,14 +48,18 @@ Examples:
   },
   config: {
     tomlParseFailed: (d) => `Failed to parse TOML (${d}); using defaults`,
-    fontFamilyNotString: (got) => `font_family should be a string (got ${got}); using the default font`,
+    fontFamilyNotString: (got) =>
+      `font_family should be a string (got ${got}); using the default font`,
     fontSizeNotPositive: (got, fb) =>
       `font_size should be a positive number (got ${got}); using the default size ${fb}`,
-    languageNotString: (got) => `language should be a string (got ${got}); detecting language automatically`,
+    languageNotString: (got) =>
+      `language should be a string (got ${got}); detecting language automatically`,
     languageUnsupported: (v) =>
       `language ${JSON.stringify(v)} matches no supported language (supported: zh-CN, en); detecting automatically`,
-    updateCheckNotBoolean: (got) => `update_check should be a boolean (got ${got}); using the default (on)`,
-    themeUnsupported: (v) => `theme should be one of auto, dark, light (got ${v}); following the system`,
+    updateCheckNotBoolean: (got) =>
+      `update_check should be a boolean (got ${got}); using the default (on)`,
+    themeUnsupported: (v) =>
+      `theme should be one of auto, dark, light (got ${v}); following the system`,
   },
   api: {
     missingPath: "Missing path parameter",

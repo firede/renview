@@ -113,10 +113,14 @@ const highlighter = await createHighlighterCore({
 });
 
 function highlightLines(text: string, lang: string, theme: string): HToken[][] {
-  return highlighter
-    // 离线生成必须完整分词；默认 500ms 超时会让冷启动或慢机器产出不同的高亮。
-    .codeToTokens(text, { lang: lang as never, theme, tokenizeTimeLimit: 0 })
-    .tokens.map((line) => line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle })));
+  return (
+    highlighter
+      // 离线生成必须完整分词；默认 500ms 超时会让冷启动或慢机器产出不同的高亮。
+      .codeToTokens(text, { lang: lang as never, theme, tokenizeTimeLimit: 0 })
+      .tokens.map((line) =>
+        line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle })),
+      )
+  );
 }
 
 interface ThemedLines {
@@ -136,7 +140,10 @@ function buildTokens(a: AnalyzedEntry): FileTokens {
   const lang = shikiLangForPath(a.entry.path);
   const themed = (lines: string[] | null): ThemedLines | null =>
     lines && lang
-      ? { dark: highlightLines(lines.join("\n"), lang, DARK), light: highlightLines(lines.join("\n"), lang, LIGHT) }
+      ? {
+          dark: highlightLines(lines.join("\n"), lang, DARK),
+          light: highlightLines(lines.join("\n"), lang, LIGHT),
+        }
       : null;
   return {
     simpOld: themed(a.oldSimplified?.lines ?? null),
@@ -146,7 +153,10 @@ function buildTokens(a: AnalyzedEntry): FileTokens {
   };
 }
 
-function lineAt(t: ThemedLines | null, ln: number | undefined): { dark: HToken[] | null; light: HToken[] | null } {
+function lineAt(
+  t: ThemedLines | null,
+  ln: number | undefined,
+): { dark: HToken[] | null; light: HToken[] | null } {
   return {
     dark: t && ln != null ? (t.dark[ln - 1] ?? null) : null,
     light: t && ln != null ? (t.light[ln - 1] ?? null) : null,
@@ -264,7 +274,7 @@ function simplifiedRows(a: AnalyzedEntry, tk: FileTokens, s: Strings): DemoRow[]
       k: r.kind,
       o: r.oldLn,
       n: r.newLn,
-      segs: toDemoSegs(r.text, toks, { erases: r.erases, ...(wordHl.get(i) ?? {}) }),
+      segs: toDemoSegs(r.text, toks, { erases: r.erases, ...wordHl.get(i) }),
     });
   }
   return out;
@@ -276,7 +286,12 @@ function rawRows(a: AnalyzedEntry, tk: FileTokens): DemoRowLine[] {
     for (const c of chunk.changes) {
       const text = c.content.slice(1);
       if (c.type === "normal") {
-        out.push({ k: "ctx", o: c.ln1, n: c.ln2, segs: toDemoSegs(text, lineAt(tk.rawNew, c.ln2)) });
+        out.push({
+          k: "ctx",
+          o: c.ln1,
+          n: c.ln2,
+          segs: toDemoSegs(text, lineAt(tk.rawNew, c.ln2)),
+        });
       } else if (c.type === "del") {
         out.push({ k: "del", o: c.ln, segs: toDemoSegs(text, lineAt(tk.rawOld, c.ln)) });
       } else if (c.type === "add") {
@@ -292,12 +307,16 @@ function rawRows(a: AnalyzedEntry, tk: FileTokens): DemoRowLine[] {
 /** 生成演示数据（两语言各跑一遍管线；高亮与语言无关，按文件缓存复用） */
 export async function generateDemoData(): Promise<{ "zh-CN": DemoChangeset; en: DemoChangeset }> {
   const entries = loadChangeset(CHANGESET_DIR);
-  const manifest = parseToml(readFileSync(`${CHANGESET_DIR}/changeset.toml`, "utf8")) as unknown as {
+  const manifest = parseToml(
+    readFileSync(`${CHANGESET_DIR}/changeset.toml`, "utf8"),
+  ) as unknown as {
     featured?: string;
     order?: string[];
   };
   const orderIdx = new Map((manifest.order ?? []).map((p, i) => [p, i]));
-  const ordered = [...entries].sort((x, y) => (orderIdx.get(x.path) ?? 99) - (orderIdx.get(y.path) ?? 99));
+  const ordered = [...entries].sort(
+    (x, y) => (orderIdx.get(x.path) ?? 99) - (orderIdx.get(y.path) ?? 99),
+  );
 
   const tokenCache = new Map<string, FileTokens>();
   const result = {} as { "zh-CN": DemoChangeset; en: DemoChangeset };

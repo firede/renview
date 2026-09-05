@@ -82,7 +82,8 @@ async function fromRegistry() {
     // win10+ 自带 bsdtar，macOS/Linux 必有 tar
     execFileSync("tar", ["-xzf", tgz, "-C", tmp], { stdio: "ignore" });
     const extracted = path.join(tmp, "package", "bin", binName);
-    if (!fs.existsSync(extracted)) fail(`tarball of ${platformPkg}@${version} has no bin/${binName}`);
+    if (!fs.existsSync(extracted))
+      fail(`tarball of ${platformPkg}@${version} has no bin/${binName}`);
     linkBinary(extracted);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -93,7 +94,9 @@ const local = fromOptionalDependency();
 if (local) {
   linkBinary(local);
 } else {
-  console.warn(`renview: optional dependency ${platformPkg} not installed, downloading from registry…`);
+  console.warn(
+    `renview: optional dependency ${platformPkg} not installed, downloading from registry…`,
+  );
   try {
     await fromRegistry();
   } catch (e) {

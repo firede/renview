@@ -57,8 +57,6 @@ describe("samples/demo 变更集", () => {
 
   test("www 演示数据新鲜度：demo-data.gen.ts 与重生成一致", async () => {
     const { generateDemoModule } = await import("../scripts/gen-demo");
-    expect(await generateDemoModule()).toBe(
-      readFileSync("www/src/lib/demo-data.gen.ts", "utf8"),
-    );
+    expect(await generateDemoModule()).toBe(readFileSync("www/src/lib/demo-data.gen.ts", "utf8"));
   });
 });

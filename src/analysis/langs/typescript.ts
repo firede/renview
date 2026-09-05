@@ -33,7 +33,16 @@ function declaratorInfos(
 ): DeclarationInfo[] {
   const declarators = node.namedChildren.filter((c) => c.type === "variable_declarator");
   if (declarators.length === 0) {
-    return [{ kind: "variable", name: messages(locale).analysis.unknownName, typeLevel: false, node: wrap ?? node, bodyNode: null, container }];
+    return [
+      {
+        kind: "variable",
+        name: messages(locale).analysis.unknownName,
+        typeLevel: false,
+        node: wrap ?? node,
+        bodyNode: null,
+        container,
+      },
+    ];
   }
   // export const a = 1, b = 2 这类多声明合并为一个单元，避免同一范围重复计
   if (wrap && declarators.length > 1) {
@@ -164,12 +173,7 @@ function collectNode(
   }
 }
 
-function collectInto(
-  node: Node,
-  container: string,
-  out: DeclarationInfo[],
-  locale: Locale,
-): void {
+function collectInto(node: Node, container: string, out: DeclarationInfo[], locale: Locale): void {
   for (const child of node.namedChildren) collectNode(child, container, out, undefined, locale);
 }
 
@@ -178,7 +182,9 @@ export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
   // a?.b → a.b；a?.() / a?.[i] → a() / a[i]（可选链是空值安全机制，按语义安全线擦除）
   const optionalChain = node.childForFieldName("optional_chain");
   if (optionalChain) {
-    ops.push(node.type === "member_expression" ? replaceNode(optionalChain, ".") : del(optionalChain));
+    ops.push(
+      node.type === "member_expression" ? replaceNode(optionalChain, ".") : del(optionalChain),
+    );
   }
   switch (node.type) {
     case "type_annotation":
@@ -255,7 +261,12 @@ function tsFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
       const s = unwrapDecl(n).childForFieldName("source");
       return s?.namedChildren[0]?.text ?? s?.text.replace(/^['"]|['"]$/g, "") ?? "?";
     });
-    return messages(locale).analysis.importsFold("import", nodes.length, mods.slice(0, 4), mods.length > 4);
+    return messages(locale).analysis.importsFold(
+      "import",
+      nodes.length,
+      mods.slice(0, 4),
+      mods.length > 4,
+    );
   }
   const n = unwrapDecl(nodes[0]!);
   const name = nameOf(n, locale);
@@ -267,7 +278,9 @@ function tsFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
         c.childForFieldName("name")?.text ?? (c.type === "property_identifier" ? c.text : null),
     )
     .filter((x): x is string => x != null);
-  return members.length > 0 ? `${keyword} ${name} { ${nameList(members, locale)} }` : `${keyword} ${name}`;
+  return members.length > 0
+    ? `${keyword} ${name} { ${nameList(members, locale)} }`
+    : `${keyword} ${name}`;
 }
 
 /** diff 折叠组的成员定位：interface/enum 取 body 成员，type 别名取对象字面量成员 */

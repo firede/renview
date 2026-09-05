@@ -49,7 +49,9 @@ export function BrowseView({
   const files = fileList.data?.files ?? null;
   const [filter, setFilter] = useState("");
   const [path, setPath] = useState<string | null>(jump?.path ?? null);
-  const fileResource = useResource<FilePayload>(path ? `/api/file?path=${encodeURIComponent(path)}` : null);
+  const fileResource = useResource<FilePayload>(
+    path ? `/api/file?path=${encodeURIComponent(path)}` : null,
+  );
   const data = fileResource.data?.file ?? null;
   const loading = fileResource.loading;
   const [showSource, setShowSource] = useState(false);
@@ -199,91 +201,89 @@ export function BrowseView({
       {!path && <div className="center-note">{s.selectFileToBrowse}</div>}
       {path && (
         <>
-            <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
-              <span className="file-title">{path}</span>
-              {loading && <span className="dim">{s.loading}</span>}
-              {data?.degradedReason && (
-                <span className="dim">{s.viewerDegradeLabel[data.degradedReason]}</span>
-              )}
-              <span className="spacer" />
-              {hasSimplified && (
-                <span className="seg">
-                  <button
-                    title={s.shortcutS}
-                    className={!showSource ? "active" : ""}
-                    onClick={() => setShowSource(false)}
-                  >
-                    {s.simplified}
-                  </button>
-                  <button
-                    title={s.shortcutS}
-                    className={showSource ? "active" : ""}
-                    onClick={() => setShowSource(true)}
-                  >
-                    {s.source}
-                  </button>
-                </span>
-              )}
+          <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
+            <span className="file-title">{path}</span>
+            {loading && <span className="dim">{s.loading}</span>}
+            {data?.degradedReason && (
+              <span className="dim">{s.viewerDegradeLabel[data.degradedReason]}</span>
+            )}
+            <span className="spacer" />
+            {hasSimplified && (
+              <span className="seg">
+                <button
+                  title={s.shortcutS}
+                  className={!showSource ? "active" : ""}
+                  onClick={() => setShowSource(false)}
+                >
+                  {s.simplified}
+                </button>
+                <button
+                  title={s.shortcutS}
+                  className={showSource ? "active" : ""}
+                  onClick={() => setShowSource(true)}
+                >
+                  {s.source}
+                </button>
+              </span>
+            )}
+          </div>
+          {fileResource.error && (
+            <div className="error pad note" role="alert">
+              {s.loadError(fileResource.error)}
+              <button onClick={fileResource.refresh}>{s.refresh}</button>
             </div>
-            {fileResource.error && (
-              <div className="error pad note" role="alert">
-                {s.loadError(fileResource.error)}
-                <button onClick={fileResource.refresh}>{s.refresh}</button>
-              </div>
-            )}
-            {data?.source == null && data && (
-              <div className="dim pad note">{s.notTextViewable}</div>
-            )}
-            {data && data.source != null && !showSource && data.view ? (
-              // 点击代码区任意处取消持久定位提示
-              <div className="sview" onClick={() => setLocated(null)}>
-                {data.view.map((r, i) =>
-                  r.kind === "fold" ? (
-                    <ViewFoldRow
-                      key={`${path}:${i}`}
-                      row={r}
-                      index={i}
-                      lang={lang}
-                      flash={flash != null && r.srcRange[1] >= flash[0] && r.srcRange[0] <= flash[1]}
-                      located={
-                        located != null && r.srcRange[1] >= located[0] && r.srcRange[0] <= located[1]
-                      }
-                    />
-                  ) : (
-                    <div
-                      key={i}
-                      id={`R${i}`}
-                      className={`srow ctx${flash && r.src >= flash[0] && r.src <= flash[1] ? " flash" : ""}${located && r.src >= located[0] && r.src <= located[1] ? " located" : ""}`}
-                    >
-                      <span className="gutter">{r.src}</span>
-                      <pre className="scode">
-                        <DecoratedLine
-                          text={r.text}
-                          tokens={tokens?.[r.src - 1] ?? null}
-                          decor={{ erases: r.erases }}
-                        />
-                      </pre>
-                    </div>
-                  ),
-                )}
-              </div>
-            ) : data && data.source != null ? (
-              <div className="sview" onClick={() => setLocated(null)}>
-                {lines.map((t, i) => (
+          )}
+          {data?.source == null && data && <div className="dim pad note">{s.notTextViewable}</div>}
+          {data && data.source != null && !showSource && data.view ? (
+            // 点击代码区任意处取消持久定位提示
+            <div className="sview" onClick={() => setLocated(null)}>
+              {data.view.map((r, i) =>
+                r.kind === "fold" ? (
+                  <ViewFoldRow
+                    key={`${path}:${i}`}
+                    row={r}
+                    index={i}
+                    lang={lang}
+                    flash={flash != null && r.srcRange[1] >= flash[0] && r.srcRange[0] <= flash[1]}
+                    located={
+                      located != null && r.srcRange[1] >= located[0] && r.srcRange[0] <= located[1]
+                    }
+                  />
+                ) : (
                   <div
                     key={i}
-                    id={`L${i + 1}`}
-                    className={`srow ctx${flash && i + 1 >= flash[0] && i + 1 <= flash[1] ? " flash" : ""}${located && i + 1 >= located[0] && i + 1 <= located[1] ? " located" : ""}`}
+                    id={`R${i}`}
+                    className={`srow ctx${flash && r.src >= flash[0] && r.src <= flash[1] ? " flash" : ""}${located && r.src >= located[0] && r.src <= located[1] ? " located" : ""}`}
                   >
-                    <span className="gutter">{i + 1}</span>
+                    <span className="gutter">{r.src}</span>
                     <pre className="scode">
-                      {tokens?.[i] ? <TokenSpans tokens={tokens[i]!} /> : t === "" ? " " : t}
+                      <DecoratedLine
+                        text={r.text}
+                        tokens={tokens?.[r.src - 1] ?? null}
+                        decor={{ erases: r.erases }}
+                      />
                     </pre>
                   </div>
-                ))}
-              </div>
-            ) : null}
-          </>
+                ),
+              )}
+            </div>
+          ) : data && data.source != null ? (
+            <div className="sview" onClick={() => setLocated(null)}>
+              {lines.map((t, i) => (
+                <div
+                  key={i}
+                  id={`L${i + 1}`}
+                  className={`srow ctx${flash && i + 1 >= flash[0] && i + 1 <= flash[1] ? " flash" : ""}${located && i + 1 >= located[0] && i + 1 <= located[1] ? " located" : ""}`}
+                >
+                  <span className="gutter">{i + 1}</span>
+                  <pre className="scode">
+                    {tokens?.[i] ? <TokenSpans tokens={tokens[i]!} /> : t === "" ? " " : t}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
     </SplitPane>
   );

@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from "react";
-import type { ChangeKind, DeclKind, FileEntry, FileStatus, ViewerFile } from "../../src/analysis/types";
+import type {
+  ChangeKind,
+  DeclKind,
+  FileEntry,
+  FileStatus,
+  ViewerFile,
+} from "../../src/analysis/types";
 import { en } from "./locales/en";
 import { zhCN } from "./locales/zh-CN";
 
@@ -93,13 +99,11 @@ export interface Strings {
 
 const catalogs: Record<Locale, Strings> = { "zh-CN": zhCN, en };
 
-let currentLocale: Locale = "en"; // 配置未到达前的默认（产品回落语言为英文）
 let current: Strings = catalogs.en;
 const listeners = new Set<() => void>();
 
 /** 应用语言：换目录 + 同步 <html lang> + 通知组件重渲染 */
 export function setLocale(locale: Locale): void {
-  currentLocale = locale;
   current = catalogs[locale];
   document.documentElement.lang = locale;
   for (const l of listeners) l();

@@ -137,9 +137,7 @@ export function IconFile(props: SVGProps<SVGSVGElement>) {
 
 /** 展开/收起箭头（文件树目录） */
 export function IconChevron({ open, ...props }: SVGProps<SVGSVGElement> & { open?: boolean }) {
-  return (
-    <Icon {...props}>{open ? <path d="m6 9 6 6 6-6" /> : <path d="m9 18 6-6-6-6" />}</Icon>
-  );
+  return <Icon {...props}>{open ? <path d="m6 9 6 6 6-6" /> : <path d="m9 18 6-6-6-6" />}</Icon>;
 }
 
 /** 文件状态图标（文件列表元信息位）：图形承担状态语义，title 给全称 */

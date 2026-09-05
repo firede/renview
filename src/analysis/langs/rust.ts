@@ -34,12 +34,7 @@ function implName(node: Node, locale: Locale): string {
   return trait ? `${trait.text} for ${t}` : t;
 }
 
-function collectNode(
-  node: Node,
-  container: string,
-  out: DeclarationInfo[],
-  locale: Locale,
-): void {
+function collectNode(node: Node, container: string, out: DeclarationInfo[], locale: Locale): void {
   switch (node.type) {
     case "function_item": {
       out.push({
@@ -146,12 +141,7 @@ function collectNode(
   }
 }
 
-function collectInto(
-  node: Node,
-  container: string,
-  out: DeclarationInfo[],
-  locale: Locale,
-): void {
+function collectInto(node: Node, container: string, out: DeclarationInfo[], locale: Locale): void {
   for (const child of node.namedChildren) collectNode(child, container, out, locale);
 }
 
@@ -214,9 +204,10 @@ export function rustSimplify(node: Node, source: string, ops: SimplifyOp[]): boo
     case "integer_literal":
     case "float_literal": {
       const t = source.slice(node.startIndex, node.endIndex);
-      const m = /^([\d_]+(?:\.\d+)?)(?:u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|f32|f64)$/.exec(
-        t,
-      );
+      const m =
+        /^([\d_]+(?:\.\d+)?)(?:u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|f32|f64)$/.exec(
+          t,
+        );
       if (m) ops.push(replaceNode(node, m[1]!));
       return true;
     }
@@ -269,14 +260,21 @@ function rustTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null
 function rustFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const paths = nodes.map((n) => n.childForFieldName("argument")?.text ?? "?");
-    return messages(locale).analysis.importsFold("use", nodes.length, paths.slice(0, 4), paths.length > 4);
+    return messages(locale).analysis.importsFold(
+      "use",
+      nodes.length,
+      paths.slice(0, 4),
+      paths.length > 4,
+    );
   }
   const n = nodes[0]!;
   const name = nameOf(n, locale);
   if (n.type === "type_item") return `type ${name}`;
   const keyword = n.type === "struct_item" ? "struct" : n.type === "enum_item" ? "enum" : "trait";
   const members = memberNames(n);
-  return members.length > 0 ? `${keyword} ${name} { ${nameList(members, locale)} }` : `${keyword} ${name}`;
+  return members.length > 0
+    ? `${keyword} ${name} { ${nameList(members, locale)} }`
+    : `${keyword} ${name}`;
 }
 
 export const rustProfile: LanguageProfile = {

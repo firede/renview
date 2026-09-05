@@ -37,7 +37,7 @@ describe("稀疏 diff 高亮", () => {
 +const next = 3;
 `)[0]!;
     const tokens = await highlightDiff(f.hunks, "typescript", "light");
-    const text = (nodes: typeof tokens.old[number]) => nodes?.map((n) => n.value).join("");
+    const text = (nodes: (typeof tokens.old)[number]) => nodes?.map((n) => n.value).join("");
     expect(text(tokens.old[99])).toBe("const old = 2;");
     expect(text(tokens.new[100])).toBe("const next = 3;");
     expect(text(tokens.new[2])).toBe("const added = 1;");

@@ -37,10 +37,7 @@ describe("analyzeFile", () => {
   });
 
   test("签名变更：加参数，带新旧签名", async () => {
-    const next = BASE.replace(
-      "add(a: number, b: number)",
-      "add(a: number, b: number, c?: number)",
-    );
+    const next = BASE.replace("add(a: number, b: number)", "add(a: number, b: number, c?: number)");
     const p = await analyzeFile(typescriptProfile, BASE, next, lines(6), lines(6), "zh-CN");
     expect(p.units).toHaveLength(1);
     const u = p.units[0]!;

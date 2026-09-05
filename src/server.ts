@@ -8,13 +8,7 @@ import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
 import { buildViewRows } from "./analysis/view";
 import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
 import { configPath, createConfigLoader, type LoadedConfig } from "./config";
-import {
-  getReviewDiff,
-  getSideContent,
-  listFiles,
-  resolveDiffArgs,
-  resolveSides,
-} from "./git";
+import { getReviewDiff, getSideContent, listFiles, resolveDiffArgs, resolveSides } from "./git";
 import { messages, type Locale } from "./i18n";
 import { webAssets } from "./webassets.gen";
 
@@ -117,11 +111,7 @@ function safeRepoPath(root: string, path: string): string | null {
 }
 
 /** 查看器单文件：worktree 内容 + 一次 parse 产出大纲与简化行 */
-async function handleFile(
-  root: string,
-  path: string | null,
-  locale: Locale,
-): Promise<Response> {
+async function handleFile(root: string, path: string | null, locale: Locale): Promise<Response> {
   const m = messages(locale).api;
   if (!path) return Response.json({ ok: false, error: m.missingPath }, { status: 400 });
   const abs = safeRepoPath(root, path);
@@ -207,7 +197,10 @@ async function buildFileEntry(
       entry.degradedReason = "no-source";
       return entry;
     }
-    if ((oldSource?.length ?? 0) > MAX_ANALYZE_BYTES || (newSource?.length ?? 0) > MAX_ANALYZE_BYTES) {
+    if (
+      (oldSource?.length ?? 0) > MAX_ANALYZE_BYTES ||
+      (newSource?.length ?? 0) > MAX_ANALYZE_BYTES
+    ) {
       entry.degradedReason = "too-large";
       return entry;
     }

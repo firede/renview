@@ -1,7 +1,14 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { del, delSwallowingLeadingSpace, replaceNode, type SimplifyOp } from "../simplify";
-import { nameList, nodeRowRange, type DeclarationInfo, type FoldKind, type LanguageProfile, type TypeDeclMembers } from "./types";
+import {
+  nameList,
+  nodeRowRange,
+  type DeclarationInfo,
+  type FoldKind,
+  type LanguageProfile,
+  type TypeDeclMembers,
+} from "./types";
 
 /** Go profile：声明收集 + 简化器（类型与错误传播机制擦除）+ 顶层块折叠 */
 
@@ -111,7 +118,7 @@ function truncateSafe(text: string, limit: number): string {
  * 返回值为 nil/err 之外的内容时保留其文本（fmt.Errorf 的包装信息是业务定位信息）。
  * 标记文本锚定 Go 源码关键字，属伪代码而非文案，不随语言切换翻译。
  */
-function errCheckMarker(node: Node, source: string): string | null {
+function errCheckMarker(node: Node, _source: string): string | null {
   if (node.childForFieldName("initializer")) return null; // if err := f(); … 的初始化里有真实调用，保留
   const cond = node.childForFieldName("condition");
   if (!cond || cond.type !== "binary_expression") return null;
@@ -120,12 +127,12 @@ function errCheckMarker(node: Node, source: string): string | null {
   if (cond.childForFieldName("right")?.text !== "nil") return null;
   // consequence 结构为 block → statement_list → 语句
   const consequence = node.childForFieldName("consequence");
-  const list =
-    consequence?.namedChildren.find((c) => c.type === "statement_list") ?? consequence;
+  const list = consequence?.namedChildren.find((c) => c.type === "statement_list") ?? consequence;
   const stmts = (list?.namedChildren ?? []).filter((c) => c.type !== "comment");
   if (stmts.length !== 1 || stmts[0]!.type !== "return_statement") return null;
   const returned = stmts[0]!.namedChildren[0]?.text.trim() ?? "";
-  const trivial = returned === "" || returned.split(",").every((s) => ["nil", "err"].includes(s.trim()));
+  const trivial =
+    returned === "" || returned.split(",").every((s) => ["nil", "err"].includes(s.trim()));
   if (trivial) return "if err: return";
   return `if err: return ${truncateSafe(returned, 60)}`;
 }
@@ -165,7 +172,8 @@ export function goSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
       const type = node.childForFieldName("type");
       if (!type) return false;
       const prev = type.previousSibling;
-      const start = prev && !prev.isNamed && prev.type === "..." ? prev.startIndex : type.startIndex;
+      const start =
+        prev && !prev.isNamed && prev.type === "..." ? prev.startIndex : type.startIndex;
       ops.push({ start, end: type.endIndex, replacement: "..." });
       return false;
     }
@@ -224,7 +232,9 @@ function typeSpecSummary(spec: Node, locale: Locale): string {
     const fields = (list?.namedChildren ?? [])
       .map((f) => f.childForFieldName("name")?.text ?? f.childForFieldName("type")?.text ?? null)
       .filter((x): x is string => x != null);
-    return fields.length > 0 ? `type ${name} struct { ${nameList(fields, locale)} }` : `type ${name} struct`;
+    return fields.length > 0
+      ? `type ${name} struct { ${nameList(fields, locale)} }`
+      : `type ${name} struct`;
   }
   if (t?.type === "interface_type") {
     const methods = t.namedChildren
@@ -241,7 +251,12 @@ function goFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
   if (kind === "import") {
     const paths: string[] = [];
     for (const n of nodes) collectImportPaths(n, paths);
-    return messages(locale).analysis.importsFold("import", paths.length, paths.slice(0, 4), paths.length > 4);
+    return messages(locale).analysis.importsFold(
+      "import",
+      paths.length,
+      paths.slice(0, 4),
+      paths.length > 4,
+    );
   }
   const specs = nodes[0]!.namedChildren.filter((c) => c.type === "type_spec");
   return specs

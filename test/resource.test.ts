@@ -4,7 +4,10 @@ import { createResourceLoader, type ResourceState } from "../web/src/resource";
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason: Error) => void;
-  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
   return { promise, resolve, reject };
 }
 
@@ -31,13 +34,16 @@ describe("资源请求", () => {
       const next = loader.load("/a");
       expect(states.at(-1)?.data).toBeNull();
       await next;
-    } finally { fetched.mockRestore(); }
+    } finally {
+      fetched.mockRestore();
+    }
   });
 
   test("已开始解析 JSON 的旧响应也不能发布，卸载后不更新", async () => {
     const body = deferred<Payload>();
     const fetched = spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true, json: () => body.promise,
+      ok: true,
+      json: () => body.promise,
     } as Response);
     const states: ResourceState<Payload>[] = [];
     const loader = createResourceLoader<Payload>((s) => states.push(s));
@@ -48,7 +54,9 @@ describe("资源请求", () => {
       body.resolve({ ok: true, value: "已取消" });
       await pending;
       expect(states).toHaveLength(1);
-    } finally { fetched.mockRestore(); }
+    } finally {
+      fetched.mockRestore();
+    }
   });
 
   test("HTTP、业务、网络错误可见，重试可以恢复", async () => {
@@ -58,7 +66,9 @@ describe("资源请求", () => {
       .mockRejectedValueOnce(new Error("离线"))
       .mockResolvedValueOnce(Response.json({ ok: true, value: "恢复" }));
     let state: ResourceState<Payload> | undefined;
-    const loader = createResourceLoader<Payload>((s) => { state = s; });
+    const loader = createResourceLoader<Payload>((s) => {
+      state = s;
+    });
     try {
       await loader.load("/a");
       expect(state?.error).toBe("文件不存在");
@@ -71,7 +81,9 @@ describe("资源请求", () => {
       expect(state?.data?.value).toBe("恢复");
       expect(state?.error).toBeNull();
       expect(state?.loading).toBe(false);
-    } finally { fetched.mockRestore(); }
+    } finally {
+      fetched.mockRestore();
+    }
   });
 
   test("旧请求的错误不覆盖新请求成功状态", async () => {
@@ -80,7 +92,9 @@ describe("资源请求", () => {
       .mockReturnValueOnce(slow.promise)
       .mockResolvedValueOnce(Response.json({ ok: true, value: "新" }));
     let state: ResourceState<Payload> | undefined;
-    const loader = createResourceLoader<Payload>((s) => { state = s; });
+    const loader = createResourceLoader<Payload>((s) => {
+      state = s;
+    });
     try {
       const old = loader.load("/a");
       await loader.load("/a");
@@ -88,6 +102,8 @@ describe("资源请求", () => {
       await old;
       expect(state?.data?.value).toBe("新");
       expect(state?.error).toBeNull();
-    } finally { fetched.mockRestore(); }
+    } finally {
+      fetched.mockRestore();
+    }
   });
 });

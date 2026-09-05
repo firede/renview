@@ -135,7 +135,14 @@ export function FileTree({
 
   return (
     <div className="file-tree">
-      <TreeLevel nodes={tree} depth={0} open={open} onToggle={toggle} selected={selected} onSelect={onSelect} />
+      <TreeLevel
+        nodes={tree}
+        depth={0}
+        open={open}
+        onToggle={toggle}
+        selected={selected}
+        onSelect={onSelect}
+      />
     </div>
   );
 }

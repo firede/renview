@@ -34,10 +34,7 @@ export type InstallMethod = "script" | "bun" | "pnpm" | "yarn" | "npm" | "unknow
  * 按二进制所在路径推断安装方式：~/.renview/bin 下为安装脚本；
  * 各 pm 全局目录按路径特征区分；不是 renview 命名的二进制（bun run 源码、dist/ 直跑）为 unknown。
  */
-export function detectInstallMethod(
-  execPath: string,
-  home: string = homedir(),
-): InstallMethod {
+export function detectInstallMethod(execPath: string, home: string = homedir()): InstallMethod {
   // 先统一分隔符与小写再判定（basename 在 POSIX 上不认 Windows 的反斜杠）
   const p = execPath.replace(/\\/g, "/").toLowerCase();
   const base = p.split("/").pop()!;
@@ -94,7 +91,11 @@ export async function checkForUpdate(
     if (cache?.latest && compareVersions(cache.latest, current) > 0) {
       console.log(m.cli.updateAvailable(current, cache.latest));
     }
-    if (!cache || typeof cache.lastCheck !== "number" || Date.now() - cache.lastCheck > CHECK_INTERVAL) {
+    if (
+      !cache ||
+      typeof cache.lastCheck !== "number" ||
+      Date.now() - cache.lastCheck > CHECK_INTERVAL
+    ) {
       const latest = await latestVersion(env);
       if (latest) {
         const next: UpdateCheckCache = { lastCheck: Date.now(), latest };

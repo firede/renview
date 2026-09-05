@@ -193,7 +193,8 @@ func move_card(card: Node2D, dest: Vector2) -> bool:
   });
 });
 
-describe("gdscript 声明收集与折叠", () => {  test("collect：函数/变量/信号/enum", async () => {
+describe("gdscript 声明收集与折叠", () => {
+  test("collect：函数/变量/信号/enum", async () => {
     const src = `extends Node2D
 
 signal card_moved(card)

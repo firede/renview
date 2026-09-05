@@ -68,7 +68,9 @@ function OutlineLevel({
             <KindGlyph kind={n.kind} />
             <span className="outline-name">{n.name}</span>
           </button>
-          {n.children.length > 0 && <OutlineLevel nodes={n.children} depth={depth + 1} onJump={onJump} />}
+          {n.children.length > 0 && (
+            <OutlineLevel nodes={n.children} depth={depth + 1} onJump={onJump} />
+          )}
         </div>
       ))}
     </>

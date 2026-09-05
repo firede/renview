@@ -43,17 +43,26 @@ describe("detectInstallMethod", () => {
 
   test("各包管理器全局目录按路径特征区分", () => {
     expect(
-      detectInstallMethod("/Users/u/.bun/install/global/node_modules/renview/bin/renview.exe", "/Users/u"),
+      detectInstallMethod(
+        "/Users/u/.bun/install/global/node_modules/renview/bin/renview.exe",
+        "/Users/u",
+      ),
     ).toBe("bun");
     expect(
-      detectInstallMethod("/Users/u/Library/pnpm/global/5/node_modules/renview/bin/renview.exe", "/Users/u"),
+      detectInstallMethod(
+        "/Users/u/Library/pnpm/global/5/node_modules/renview/bin/renview.exe",
+        "/Users/u",
+      ),
     ).toBe("pnpm");
     expect(
-      detectInstallMethod("/home/u/.config/yarn/global/node_modules/renview/bin/renview.exe", "/home/u"),
+      detectInstallMethod(
+        "/home/u/.config/yarn/global/node_modules/renview/bin/renview.exe",
+        "/home/u",
+      ),
     ).toBe("yarn");
-    expect(detectInstallMethod("/usr/local/lib/node_modules/renview/bin/renview.exe", "/home/u")).toBe(
-      "npm",
-    );
+    expect(
+      detectInstallMethod("/usr/local/lib/node_modules/renview/bin/renview.exe", "/home/u"),
+    ).toBe("npm");
   });
 
   test("非 renview 命名的二进制（源码/构建产物直跑）判为 unknown", () => {

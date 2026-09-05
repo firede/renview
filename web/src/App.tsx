@@ -229,7 +229,10 @@ export function App() {
   );
 
   // 按路径身份保留选中项，刷新引起的签名排序变化不应把用户带到另一文件。
-  const safeSelected = Math.max(0, items.findIndex(({ file }) => fileKey(file) === selected));
+  const safeSelected = Math.max(
+    0,
+    items.findIndex(({ file }) => fileKey(file) === selected),
+  );
   const selectedFile = items[safeSelected]?.file ?? null;
   const selectedEntry = items[safeSelected]?.entry ?? null;
 
@@ -273,17 +276,21 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (resource.error) return (
-    <div className="center-note error" role="alert">
-      <div>{resource.unreachable ? s.serverGoneTitle : s.loadError(resource.error)}</div>
-      <button onClick={load} disabled={refreshing}>{s.refresh}</button>
-    </div>
-  );
+  if (resource.error)
+    return (
+      <div className="center-note error" role="alert">
+        <div>{resource.unreachable ? s.serverGoneTitle : s.loadError(resource.error)}</div>
+        <button onClick={load} disabled={refreshing}>
+          {s.refresh}
+        </button>
+      </div>
+    );
   if (!payload) return <div className="center-note">{s.loading}</div>;
   if (!payload.ok && payload.unreachable) {
     return <div className="center-note gone">{s.serverGoneTitle}</div>;
   }
-  if (!payload.ok) return <div className="center-note error">{s.loadError(payload.error ?? "")}</div>;
+  if (!payload.ok)
+    return <div className="center-note error">{s.loadError(payload.error ?? "")}</div>;
 
   return (
     <div className="layout">
@@ -331,11 +338,7 @@ export function App() {
         )}
       </header>
       {mode === "browse" ? (
-        <BrowseView
-          jump={jump}
-          onJumpDone={() => setJump(null)}
-          sidebarHidden={sidebarHidden}
-        />
+        <BrowseView jump={jump} onJumpDone={() => setJump(null)} sidebarHidden={sidebarHidden} />
       ) : files.length === 0 ? (
         <div className="center-note">{s.noChanges}</div>
       ) : (
@@ -392,10 +395,7 @@ export function App() {
               bottom={{
                 title: s.sectionUnits,
                 body: (
-                  <UnitList
-                    units={selectedEntry?.projection?.units ?? null}
-                    onJump={jumpToUnit}
-                  />
+                  <UnitList units={selectedEntry?.projection?.units ?? null} onJump={jumpToUnit} />
                 ),
               }}
             />
@@ -415,15 +415,18 @@ export function App() {
                     <IconOpenExternal />
                   </button>
                 )}
-                {selectedEntry?.degradedReason &&
-                  selectedEntry.degradedReason !== "no-profile" && (
+                {selectedEntry?.degradedReason && selectedEntry.degradedReason !== "no-profile" && (
+                  <span className="dim">
+                    {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
+                  </span>
+                )}
+                {!showRaw &&
+                  selectedEntry?.simplified &&
+                  selectedEntry.simplified.stats.folded > 0 && (
                     <span className="dim">
-                      {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
+                      {s.foldedLines(selectedEntry.simplified.stats.folded)}
                     </span>
                   )}
-                {!showRaw && selectedEntry?.simplified && selectedEntry.simplified.stats.folded > 0 && (
-                  <span className="dim">{s.foldedLines(selectedEntry.simplified.stats.folded)}</span>
-                )}
                 <span className="spacer" />
                 {hasSimplified && (
                   <span className="seg">

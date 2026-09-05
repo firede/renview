@@ -1,7 +1,20 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
-import { del, delSpan, delSwallowingLeadingSpace, stripColonType, type SimplifyOp } from "../simplify";
-import { nameList, nodeRowRange, type DeclarationInfo, type FoldKind, type LanguageProfile, type TypeDeclMembers } from "./types";
+import {
+  del,
+  delSpan,
+  delSwallowingLeadingSpace,
+  stripColonType,
+  type SimplifyOp,
+} from "../simplify";
+import {
+  nameList,
+  nodeRowRange,
+  type DeclarationInfo,
+  type FoldKind,
+  type LanguageProfile,
+  type TypeDeclMembers,
+} from "./types";
 
 /** Python profile：声明收集 + 类型/机制擦除（标注、self、cast、TYPE_CHECKING）+ 顶层块折叠 */
 
@@ -69,7 +82,8 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[], loca
       });
       const body = inner.childForFieldName("body");
       if (body) {
-        for (const c of body.namedChildren) collectNode(c, joinContainer(container, name), out, locale);
+        for (const c of body.namedChildren)
+          collectNode(c, joinContainer(container, name), out, locale);
       }
       return;
     }
@@ -211,7 +225,12 @@ function pyFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
       }
       return n.childForFieldName("name")?.text ?? "?";
     });
-    return messages(locale).analysis.importsFold("import", mods.length, mods.slice(0, 4), mods.length > 4);
+    return messages(locale).analysis.importsFold(
+      "import",
+      mods.length,
+      mods.slice(0, 4),
+      mods.length > 4,
+    );
   }
   const n = nodes[0]!;
   const inner = unwrapDecorated(n);

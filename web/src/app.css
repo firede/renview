@@ -450,11 +450,26 @@ body {
   white-space: nowrap;
 }
 
-.chip-signature { color: var(--sig); border: 1px solid color-mix(in srgb, var(--sig) 33%, transparent); }
-.chip-body { color: var(--body-chg); border: 1px solid color-mix(in srgb, var(--body-chg) 33%, transparent); }
-.chip-type { color: var(--fg-dim); border: 1px solid var(--border); }
-.chip-added { color: var(--add); border: 1px solid color-mix(in srgb, var(--add) 33%, transparent); }
-.chip-removed { color: var(--del); border: 1px solid color-mix(in srgb, var(--del) 33%, transparent); }
+.chip-signature {
+  color: var(--sig);
+  border: 1px solid color-mix(in srgb, var(--sig) 33%, transparent);
+}
+.chip-body {
+  color: var(--body-chg);
+  border: 1px solid color-mix(in srgb, var(--body-chg) 33%, transparent);
+}
+.chip-type {
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+}
+.chip-added {
+  color: var(--add);
+  border: 1px solid color-mix(in srgb, var(--add) 33%, transparent);
+}
+.chip-removed {
+  color: var(--del);
+  border: 1px solid color-mix(in srgb, var(--del) 33%, transparent);
+}
 
 /* 简化 diff 视图 */
 .sview {
@@ -704,11 +719,21 @@ body {
   font-size: 11px;
 }
 
-.chg-signature { color: var(--sig); }
-.chg-body { color: var(--body-chg); }
-.chg-type-only { color: var(--fg-dim); }
-.chg-added { color: var(--add); }
-.chg-removed { color: var(--del); }
+.chg-signature {
+  color: var(--sig);
+}
+.chg-body {
+  color: var(--body-chg);
+}
+.chg-type-only {
+  color: var(--fg-dim);
+}
+.chg-added {
+  color: var(--add);
+}
+.chg-removed {
+  color: var(--del);
+}
 
 /* 单元行内的数据形状成员增删（无新增区域、无新增交互，就近呈现） */
 .unit-item {
@@ -735,9 +760,18 @@ body {
   line-height: 1.4;
 }
 
-.unit-delta .d-added { color: var(--add); margin-right: 6px; }
-.unit-delta .d-removed { color: var(--del); text-decoration: line-through; margin-right: 6px; }
-.unit-delta .d-more { color: var(--fg-dim); }
+.unit-delta .d-added {
+  color: var(--add);
+  margin-right: 6px;
+}
+.unit-delta .d-removed {
+  color: var(--del);
+  text-decoration: line-through;
+  margin-right: 6px;
+}
+.unit-delta .d-more {
+  color: var(--fg-dim);
+}
 
 /* 折叠行（查看器块折叠与 diff 类型/格式折叠共用）：整行可点、gutter 留空，折叠态注释色降权；展开即审视，内容带完整高亮 */
 .vfold-head {
