@@ -53,6 +53,11 @@ function fileKey(file: FileData): string {
   return JSON.stringify([file.oldPath, file.newPath]);
 }
 
+/** 删除文件的新侧是 /dev/null，界面名称仍使用原路径。 */
+function displayPath(file: FileData): string {
+  return file.newPath === "/dev/null" ? file.oldPath : file.newPath;
+}
+
 function splitPath(p: string): { dir: string; base: string } {
   const i = p.lastIndexOf("/");
   return i >= 0 ? { dir: p.slice(0, i + 1), base: p.slice(i + 1) } : { dir: "", base: p };
@@ -342,6 +347,8 @@ export function App() {
               top={{
                 title: s.sectionFiles,
                 body: items.map(({ file: f, entry }, i) => {
+                  const path = displayPath(f);
+                  const { dir, base } = splitPath(path);
                   const stat = fileStats(f);
                   const sum = entry?.projection?.summary;
                   return (
@@ -354,11 +361,9 @@ export function App() {
                         setUnitJump(null);
                       }}
                     >
-                      <span className="file-path" title={f.newPath}>
-                        {splitPath(f.newPath).dir && (
-                          <span className="file-dir">{splitPath(f.newPath).dir}</span>
-                        )}
-                        <span className="file-base">{splitPath(f.newPath).base}</span>
+                      <span className="file-path" title={path}>
+                        {dir && <span className="file-dir">{dir}</span>}
+                        <span className="file-base">{base}</span>
                       </span>
                       <span className="file-meta">
                         <span
@@ -399,7 +404,7 @@ export function App() {
           {selectedFile && (
             <>
               <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
-                <span className="file-title">{selectedFile.newPath}</span>
+                <span className="file-title">{displayPath(selectedFile)}</span>
                 {selectedFile.newPath !== "/dev/null" && (
                   <button
                     className="icon-btn"
@@ -463,11 +468,7 @@ export function App() {
                 <SimplifiedView
                   key={fileKey(selectedFile)}
                   data={selectedEntry.simplified}
-                  lang={shikiLangForPath(
-                    selectedFile.newPath !== "/dev/null"
-                      ? selectedFile.newPath
-                      : selectedFile.oldPath,
-                  )}
+                  lang={shikiLangForPath(displayPath(selectedFile))}
                   jump={unitJump}
                 />
               ) : (
