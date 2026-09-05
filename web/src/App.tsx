@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   parseDiff,
   Diff,
@@ -26,6 +26,7 @@ import {
 import { SideSections, SplitPane } from "./SplitPane";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
 import { UnitList } from "./UnitList";
+import { useResource } from "./useResource";
 
 interface DiffPayload {
   ok: boolean;
@@ -47,6 +48,10 @@ const SUMMARY_CHIP_CLASS: Array<[ChangeKind, string]> = [
   ["added", "chip-added"],
   ["removed", "chip-removed"],
 ];
+
+function fileKey(file: FileData): string {
+  return JSON.stringify([file.oldPath, file.newPath]);
+}
 
 function splitPath(p: string): { dir: string; base: string } {
   const i = p.lastIndexOf("/");
@@ -166,9 +171,11 @@ function RawDiff({
 
 export function App() {
   const s = useStrings();
-  const [payload, setPayload] = useState<DiffPayload | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selected, setSelected] = useState<number>(0);
+  const resource = useResource<DiffPayload>("/api/diff");
+  const payload = resource.data;
+  const refreshing = resource.loading;
+  const load = resource.refresh;
+  const [selected, setSelected] = useState<string | null>(null);
   const [viewType, setViewType] = useState<ViewType>("unified");
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"review" | "browse">("review");
@@ -187,34 +194,6 @@ export function App() {
   const jumpToUnit = (u: ChangeUnit) => {
     setUnitJump({ nonce: Date.now(), newLn: u.newRange?.[0], oldLn: u.oldRange?.[0] });
   };
-
-  const load = useCallback(async () => {
-    setRefreshing(true);
-    let r: Response;
-    try {
-      r = await fetch("/api/diff");
-    } catch {
-      // fetch 抛错 = 网络层失败：CLI 进程已退出或端口不可达（页面还能打开但拿不到数据）
-      setPayload({ ok: false, unreachable: true });
-      setRefreshing(false);
-      return;
-    }
-    try {
-      setPayload((await r.json()) as DiffPayload);
-    } catch (e) {
-      setPayload({ ok: false, error: String(e) });
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
-
-  // 首次加载 + 窗口重新获得焦点时刷新
-  useEffect(() => {
-    void load();
-    const onFocus = () => void load();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [load]);
 
   const files = useMemo<FileData[]>(
     () => (payload?.ok && payload.diff ? parseDiff(payload.diff) : []),
@@ -244,7 +223,8 @@ export function App() {
     [files, entries],
   );
 
-  const safeSelected = Math.min(selected, Math.max(items.length - 1, 0));
+  // 按路径身份保留选中项，刷新引起的签名排序变化不应把用户带到另一文件。
+  const safeSelected = Math.max(0, items.findIndex(({ file }) => fileKey(file) === selected));
   const selectedFile = items[safeSelected]?.file ?? null;
   const selectedEntry = items[safeSelected]?.entry ?? null;
 
@@ -288,6 +268,12 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  if (resource.error) return (
+    <div className="center-note error" role="alert">
+      <div>{resource.unreachable ? s.serverGoneTitle : s.loadError(resource.error)}</div>
+      <button onClick={load} disabled={refreshing}>{s.refresh}</button>
+    </div>
+  );
   if (!payload) return <div className="center-note">{s.loading}</div>;
   if (!payload.ok && payload.unreachable) {
     return <div className="center-note gone">{s.serverGoneTitle}</div>;
@@ -363,7 +349,7 @@ export function App() {
                       key={`${f.oldPath}→${f.newPath}`}
                       className={`file-item ${i === safeSelected ? "selected" : ""}`}
                       onClick={() => {
-                        setSelected(i);
+                        setSelected(fileKey(f));
                         setRawOverride(null);
                         setUnitJump(null);
                       }}
@@ -475,6 +461,7 @@ export function App() {
               </div>
               {!showRaw && selectedEntry?.simplified ? (
                 <SimplifiedView
+                  key={fileKey(selectedFile)}
                   data={selectedEntry.simplified}
                   lang={shikiLangForPath(
                     selectedFile.newPath !== "/dev/null"
@@ -485,6 +472,7 @@ export function App() {
                 />
               ) : (
                 <RawDiff
+                  key={fileKey(selectedFile)}
                   file={selectedFile}
                   viewType={viewType}
                   tokens={diffTokens}

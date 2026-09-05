@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ViewerFile, ViewRow } from "../../src/analysis/types";
 import { rowIndexOfLine } from "../../src/analysis/view";
 import { DecoratedLine } from "./decor";
@@ -7,6 +7,7 @@ import { TokenSpans, shikiLangForPath, useHighlightedLines } from "./highlight";
 import { useStrings } from "./i18n";
 import { OutlinePanel } from "./Outline";
 import { SideSections, SplitPane } from "./SplitPane";
+import { useResource } from "./useResource";
 
 interface FilesPayload {
   ok: boolean;
@@ -44,51 +45,19 @@ export function BrowseView({
   sidebarHidden: boolean;
 }) {
   const s = useStrings();
-  const [files, setFiles] = useState<string[] | null>(null);
+  const fileList = useResource<FilesPayload>("/api/files");
+  const files = fileList.data?.files ?? null;
   const [filter, setFilter] = useState("");
   const [path, setPath] = useState<string | null>(jump?.path ?? null);
-  const [data, setData] = useState<ViewerFile | null>(null);
+  const fileResource = useResource<FilePayload>(path ? `/api/file?path=${encodeURIComponent(path)}` : null);
+  const data = fileResource.data?.file ?? null;
+  const loading = fileResource.loading;
   const [showSource, setShowSource] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [scrollTo, setScrollTo] = useState<number | null>(jump?.line ?? null);
   /** 一次性闪烁的源码行范围（视觉引导，1.7s 后消退）；[start, end]，1-based */
   const [flash, setFlash] = useState<[number, number] | null>(null);
   /** 持久定位提示的源码行范围：行号加粗常驻，点击代码区或切换文件取消 */
   const [located, setLocated] = useState<[number, number] | null>(null);
-
-  const loadFiles = useCallback(async () => {
-    try {
-      const r = await fetch("/api/files");
-      const p = (await r.json()) as FilesPayload;
-      setFiles(p.ok ? (p.files ?? []) : []);
-    } catch {
-      setFiles([]);
-    }
-  }, []);
-
-  const loadFile = useCallback(async (p: string) => {
-    setLoading(true);
-    try {
-      const r = await fetch(`/api/file?path=${encodeURIComponent(p)}`);
-      const d = (await r.json()) as FilePayload;
-      setData(d.ok && d.file ? d.file : null);
-    } catch {
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 首次加载 + 窗口重新获得焦点时刷新（文件列表与当前文件）
-  useEffect(() => {
-    void loadFiles();
-    const onFocus = () => {
-      void loadFiles();
-      if (path) void loadFile(path);
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [loadFiles, loadFile, path]);
 
   // 来自 diff 视图的跳转：定位到文件与变更行
   useEffect(() => {
@@ -99,22 +68,21 @@ export function BrowseView({
     onJumpDone();
   }, [jump, onJumpDone]);
 
+  // 清理必须先于跳转定位，避免数据到达后把刚设置的定位再次清空。
   useEffect(() => {
-    if (path) void loadFile(path);
-  }, [path, loadFile]);
+    setLocated(null);
+    setFlash(null);
+  }, [path]);
 
   // 数据到达后滚动到目标行（视图模式按源码行号映射到显示行）
   useEffect(() => {
-    if (data && scrollTo != null) {
+    if (data?.path === path && scrollTo != null) {
       const anchor = viewAnchor(data, scrollTo, showSource);
       if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "center" });
       locateRange([scrollTo, scrollTo]);
       setScrollTo(null);
     }
-  }, [data, scrollTo, showSource]);
-
-  // 切换文件（数据更换）时清除持久定位
-  useEffect(() => setLocated(null), [data]);
+  }, [data, path, scrollTo, showSource]);
 
   /** 大纲/跳转定位：源码行号 → 当前模式的元素 id */
   function viewAnchor(d: ViewerFile, ln: number, sourceMode: boolean): string | null {
@@ -187,6 +155,12 @@ export function BrowseView({
                     onChange={(e) => setFilter(e.target.value)}
                   />
                 </div>
+                {fileList.error && (
+                  <div className="error pad note" role="alert">
+                    {s.loadError(fileList.error)}
+                    <button onClick={fileList.refresh}>{s.refresh}</button>
+                  </div>
+                )}
                 {filter.trim() ? (
                   // 过滤时退回平铺列表（匹配结果本就稀疏）
                   <>
@@ -251,6 +225,12 @@ export function BrowseView({
                 </span>
               )}
             </div>
+            {fileResource.error && (
+              <div className="error pad note" role="alert">
+                {s.loadError(fileResource.error)}
+                <button onClick={fileResource.refresh}>{s.refresh}</button>
+              </div>
+            )}
             {data?.source == null && data && (
               <div className="dim pad note">{s.notTextViewable}</div>
             )}
@@ -260,7 +240,7 @@ export function BrowseView({
                 {data.view.map((r, i) =>
                   r.kind === "fold" ? (
                     <ViewFoldRow
-                      key={i}
+                      key={`${path}:${i}`}
                       row={r}
                       index={i}
                       lang={lang}
