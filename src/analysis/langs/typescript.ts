@@ -218,7 +218,9 @@ export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
       return false;
     }
     case "type_alias_declaration": {
-      // type F = ...; → type F;
+      // 对象别名保留字段结构，字段类型沿用 interface 的擦除规则。
+      if (node.childForFieldName("value")?.type === "object_type") return false;
+      // 其他别名仍只保留名字桩。
       const name = node.childForFieldName("name");
       if (name) ops.push({ start: name.endIndex, end: node.endIndex, replacement: ";" });
       return true;
@@ -272,14 +274,13 @@ function tsFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
   }
   const n = unwrapDecl(nodes[0]!);
   const name = nameOf(n, locale);
-  if (n.type === "type_alias_declaration") return `type ${name}`;
-  const keyword = n.type === "enum_declaration" ? "enum" : "interface";
-  const members = (n.childForFieldName("body")?.namedChildren ?? [])
-    .map(
-      (c) =>
-        c.childForFieldName("name")?.text ?? (c.type === "property_identifier" ? c.text : null),
-    )
-    .filter((x): x is string => x != null);
+  const keyword =
+    n.type === "type_alias_declaration"
+      ? "type"
+      : n.type === "enum_declaration"
+        ? "enum"
+        : "interface";
+  const members = tsTypeDeclMembers(n, locale)?.members.map((m) => m.name) ?? [];
   return members.length > 0
     ? `${keyword} ${name} { ${nameList(members, locale)} }`
     : `${keyword} ${name}`;

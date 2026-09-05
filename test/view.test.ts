@@ -22,6 +22,27 @@ async function simplify(profile: LanguageProfile, source: string): Promise<strin
 }
 
 describe("buildViewRows：ts 块折叠", () => {
+  test("对象类型别名摘要显示字段名，展开保留完整原文", async () => {
+    const src =
+      "export type Order<T> = {\n  customer: Customer;\n  items: T[];\n  note?: string;\n};";
+    const rows = await viewRows(typescriptProfile, src);
+    expect(rows).toEqual([
+      {
+        kind: "fold",
+        text: "type Order { customer, items, note }",
+        srcRange: [1, 5],
+        original: src.split("\n"),
+      },
+    ]);
+    expect(await simplify(typescriptProfile, src)).toEqual([
+      "export type Order = {",
+      "  customer;",
+      "  items;",
+      "  note;",
+      "};",
+    ]);
+  });
+
   test("imports 连续段折叠为单行摘要，展开保留原文", async () => {
     const src = `import { a } from "./a";
 import { b } from "./b";

@@ -149,6 +149,38 @@ describe("buildSimplifiedRows", () => {
     return { chunks: [{ changes }], from: "a.ts", to: "a.ts", deletions: 0, additions: 0 };
   }
 
+  test("对象类型别名：字段增删直接可见，类型细节折叠且可取回", async () => {
+    const oldSrc = "export type Order = {\n  id: number;\n  legacy: string;\n};";
+    const newSrc = "export type Order = {\n  id: string;\n  total: number;\n};";
+    const file = mkFile([
+      { type: "normal", ln1: 1, ln2: 1, content: " export type Order = {" },
+      { type: "del", ln: 2, content: "-  id: number;" },
+      { type: "del", ln: 3, content: "-  legacy: string;" },
+      { type: "add", ln: 2, content: "+  id: string;" },
+      { type: "add", ln: 3, content: "+  total: number;" },
+      { type: "normal", ln1: 4, ln2: 4, content: " };" },
+    ]);
+    const result = buildSimplifiedRows(
+      file,
+      await simplifyWithErasures(typescriptProfile, oldSrc),
+      await simplifyWithErasures(typescriptProfile, newSrc),
+    );
+    expect(result.rows).toContainEqual(
+      expect.objectContaining({ kind: "del", text: "  legacy;", oldLn: 3 }),
+    );
+    expect(result.rows).toContainEqual(
+      expect.objectContaining({ kind: "add", text: "  total;", newLn: 3 }),
+    );
+    expect(result.rows).toContainEqual(
+      expect.objectContaining({
+        kind: "fold",
+        oldLines: ["  id: number;"],
+        newLines: ["  id: string;"],
+      }),
+    );
+    expect(result.stats).toEqual({ folded: 1, visible: 2 });
+  });
+
   test("简化后相同的行对折叠，真实变更保留", async () => {
     const oldSrc = `export function f(a: string): string {
   return a;
