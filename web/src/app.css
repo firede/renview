@@ -484,7 +484,9 @@ body {
   margin: 0;
   line-height: var(--line-height-code);
   flex: 1;
-  white-space: pre;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   /* 元素级声明：UA 的 pre { font-family: monospace } 会压过继承值，泛型 monospace 各引擎解析不定（可落到衬线体） */
   font-family: var(--font-mono);
 }
@@ -757,6 +759,9 @@ body {
 }
 
 .vfold-summary {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   line-height: var(--line-height-code);
   font-style: italic;
 }
