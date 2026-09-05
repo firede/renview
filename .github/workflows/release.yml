@@ -32,7 +32,7 @@ jobs:
       # Bun 版本与本地开发锁定一致（见 .agents/truth/stack.md）
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.4.0"
+          bun-version: "1.4.2"
 
       - name: 校验 tag 与 package.json 版本一致
         run: |

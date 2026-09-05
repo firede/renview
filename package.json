@@ -41,7 +41,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5",
-    "bun-types": "^1",
+    "bun-types": "^1.4.2",
     "simple-git-hooks": "^2.14.0",
     "tree-sitter-cli": "0.25.10",
     "typescript": "^5",
