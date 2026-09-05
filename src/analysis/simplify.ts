@@ -96,17 +96,23 @@ export function applySimplify(source: string, ops: SimplifyOp[]): SimplifyResult
 
   const out: string[] = [];
   const eraseOut: EraseSpan[][] = [];
+  let opIndex = 0;
   for (let li = 0; li < lines.length; li++) {
     const ls = starts[li]!;
     const le = ls + lines[li]!.length; // 不含换行符
-    const lineOps = accepted
-      .filter((op) => op.start < le && op.end > ls)
-      .map((op) => ({
+    // accepted 已按起点排序且互不重叠；随行号推进游标，避免每行扫描全部擦除。
+    while (opIndex < accepted.length && accepted[opIndex]!.end <= ls) opIndex++;
+    const lineOps: SimplifyOp[] = [];
+    for (let oi = opIndex; oi < accepted.length && accepted[oi]!.start < le; oi++) {
+      const op = accepted[oi]!;
+      if (op.end <= ls) continue;
+      lineOps.push({
         start: Math.max(op.start, ls),
         end: Math.min(op.end, le),
-        // 跨行 op 的替换文本只落在起始行，后续行纯删除
+        // 跨行替换只出现在首行，后续行仍须保留逐行擦除原文。
         replacement: op.start >= ls ? op.replacement : undefined,
-      }));
+      });
+    }
     if (lineOps.length === 0) {
       out.push(lines[li]!);
       eraseOut.push([]);

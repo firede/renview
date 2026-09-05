@@ -361,3 +361,19 @@ gamma = 3;
     expect(add.kind === "add" && add.pair).toBeUndefined();
   });
 });
+
+// 行扫描游标必须保留跨行擦除、空行与相邻操作的边界行为。
+test("跨行替换只落首行，后续擦除与新操作不丢失", () => {
+  const source = "abc\n\ndef\nxyz";
+  const result = applySimplify(source, [
+    { start: 1, end: 7, replacement: "…" },
+    { start: 9, end: 10 },
+  ]);
+  expect(result.lines).toEqual(["a…", "", "f", "yz"]);
+  expect(result.erasures).toEqual([
+    [{ start: 1, end: 2, original: "bc" }],
+    [],
+    [{ start: 0, end: 0, original: "de" }],
+    [{ start: 0, end: 0, original: "x" }],
+  ]);
+});
