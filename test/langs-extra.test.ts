@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { gdscriptProfile } from "../src/analysis/langs/gdscript";
 import { goProfile } from "../src/analysis/langs/go";
 import { pythonProfile } from "../src/analysis/langs/python";
+import { rustProfile } from "../src/analysis/langs/rust";
 import type { LanguageProfile } from "../src/analysis/langs/types";
+import { analyzeFile } from "../src/analysis/project";
 import { parseSource } from "../src/analysis/parser";
 import { applySimplify, collectSimplifyOps, simplifyTree } from "../src/analysis/simplify";
 import { buildViewRows } from "../src/analysis/view";
@@ -323,5 +325,73 @@ class Worker:
     ]);
     // Worker 有方法，不折叠
     expect(rows.some((r) => r.kind === "line" && r.text === "class Worker:")).toBe(true);
+  });
+});
+
+describe("声明收集覆盖：Go type 别名与空 domain 守卫", () => {
+  for (const grouped of [false, true]) {
+    test(`${grouped ? "分组" : "独立"}结构体别名：字段增删产生形状信号`, async () => {
+      const wrap = (fields: string) =>
+        grouped
+          ? `package shop\ntype (\nOrder = struct { ${fields} }\n)\n`
+          : `package shop\ntype Order = struct { ${fields} }\n`;
+      const changedLines = new Set([grouped ? 3 : 2]);
+      const p = await analyzeFile(
+        goProfile,
+        wrap("ID string; Legacy int"),
+        wrap("ID string; Total int"),
+        changedLines,
+        changedLines,
+        "zh-CN",
+      );
+      expect(p.units).toHaveLength(1);
+      expect(p.units[0]!.domain).toEqual({
+        members: ["ID", "Total"],
+        added: ["Total"],
+        removed: ["Legacy"],
+      });
+    });
+  }
+
+  test("Go 标量别名新增：不挂空 domain", async () => {
+    const p = await analyzeFile(
+      goProfile,
+      "package shop\n",
+      "package shop\ntype OrderID = string\n",
+      new Set(),
+      new Set([2]),
+      "zh-CN",
+    );
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.domain).toBeUndefined();
+  });
+
+  test("type 别名（type X = Y）变更：type-only 单元而非兜底", async () => {
+    const old = `package shop\n\ntype OrderID = string\n\ntype Order struct {\n\tID OrderID\n}\n`;
+    const next = old.replace("type OrderID = string", "type OrderID = int64");
+    const p = await analyzeFile(goProfile, old, next, new Set([3]), new Set([3]), "zh-CN");
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.change).toBe("type-only");
+    expect(p.units[0]!.name).toBe("OrderID");
+  });
+
+  test("分组 type 声明中的 alias：同样收集", async () => {
+    const old = `package shop\n\ntype (\n\tOrderID = string\n\tOrder struct{}\n)\n`;
+    const next = old.replace("OrderID = string", "OrderID = int64");
+    const p = await analyzeFile(goProfile, old, next, new Set([4]), new Set([4]), "zh-CN");
+    expect(p.units.map((u) => u.name)).toEqual(["OrderID"]);
+  });
+
+  test("rust type 别名新增：不挂空 domain（无成员实体不产生形状信号）", async () => {
+    const p = await analyzeFile(
+      rustProfile,
+      null,
+      "pub type Millis = u64;\n",
+      new Set(),
+      new Set([1]),
+      "zh-CN",
+    );
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.domain).toBeUndefined();
   });
 });

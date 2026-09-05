@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { pythonProfile } from "../src/analysis/langs/python";
 import { typescriptProfile } from "../src/analysis/langs/typescript";
-import { analyzeFile, insertBodyNotes } from "../src/analysis/project";
+import { analyzeFile, insertBodyNotes, outlineOf, withParsedSides } from "../src/analysis/project";
 import type { SRow } from "../src/analysis/simplify";
 import type { ChangeUnit } from "../src/analysis/types";
 
@@ -323,5 +323,105 @@ describe("insertBodyNotes：实现摘要注释行", () => {
     };
     const out = insertBodyNotes(rows, [sig], null, "zh-CN");
     expect(out).toHaveLength(1);
+  });
+});
+
+describe("声明收集覆盖：装饰器与签名型声明", () => {
+  for (const removed of [false, true]) {
+    test(`${removed ? "删除" : "新增"}重载并修改实现：正文保持独立配对`, async () => {
+      const signature = "export function find(id: string): string;\n";
+      const overload = "export function find(id: number): number;\n";
+      const old =
+        signature +
+        (removed ? overload : "") +
+        "export function find(id: any): any { return id; }\n";
+      const next =
+        signature +
+        (removed ? "" : overload) +
+        "export function find(id: any): any { return lookup(id); }\n";
+      const p = await analyzeFile(
+        typescriptProfile,
+        old,
+        next,
+        removed ? lines(2, 3) : lines(2),
+        removed ? lines(2) : lines(2, 3),
+        "zh-CN",
+      );
+      expect(p.units).toHaveLength(2);
+      const body = p.units.find((u) => u.change === "body")!;
+      expect(body.oldRange).toEqual(removed ? [3, 3] : [2, 2]);
+      expect(body.newRange).toEqual(removed ? [2, 2] : [3, 3]);
+      expect(body.bodySummary?.[0]?.preview).toBe("return lookup(id);");
+      const changed = p.units.find((u) => u.change === (removed ? "removed" : "added"))!;
+      expect(removed ? changed.oldSignature : changed.signature).toBe(overload.trim());
+      expect(p.summary["type-only"]).toBe(0);
+    });
+  }
+
+  test("仅新增重载：不把未改动的实现报为变更", async () => {
+    const old = "function find(id: string): string;\nfunction find(id: any): any { return id; }\n";
+    const next = old.replace(
+      "function find(id: any)",
+      "function find(id: number): number;\nfunction find(id: any)",
+    );
+    const p = await analyzeFile(typescriptProfile, old, next, lines(), lines(2), "zh-CN");
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.change).toBe("added");
+    expect(p.units[0]!.signature).toBe("function find(id: number): number;");
+  });
+
+  test("装饰器 + export class：方法签名正常成单元，类进大纲", async () => {
+    const old = `@Injectable()
+export class OrderService {
+  getOrder(id: string): string {
+    return id;
+  }
+}
+`;
+    const next = `@Injectable()
+export class OrderService {
+  getOrder(id: string, full = false): string {
+    return id;
+  }
+}
+`;
+    const p = await analyzeFile(typescriptProfile, old, next, lines(3), lines(3), "zh-CN");
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.change).toBe("signature");
+    expect(p.units[0]!.name).toBe("getOrder");
+    const outline = await withParsedSides(typescriptProfile, null, next, (_, side) =>
+      outlineOf(typescriptProfile, side!.tree, "zh-CN"),
+    );
+    expect(outline.map((o) => o.name)).toEqual(["OrderService", "getOrder"]);
+  });
+
+  test("非导出装饰器类：decorator 在 class_declaration 内，同样可收集", async () => {
+    const src = `@Component()\nclass Card {}\n`;
+    const p = await analyzeFile(typescriptProfile, null, src, lines(), lines(1, 2), "zh-CN");
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.name).toBe("Card");
+  });
+
+  test("顶层重载签名变更：type-only 单元而非'声明之外的变更'兜底", async () => {
+    const old = `function find(id: string): Item;\nfunction find(ids: string[]): Item[];\n`;
+    const next = `function find(id: string): Item | null;\nfunction find(ids: string[]): Item[];\n`;
+    const p = await analyzeFile(typescriptProfile, old, next, lines(1), lines(1), "zh-CN");
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.change).toBe("type-only");
+    expect(p.units[0]!.name).toBe("find");
+    expect(p.units[0]!.typeText).toContain("Item | null");
+  });
+
+  test("declare function 可收集", async () => {
+    const p = await analyzeFile(
+      typescriptProfile,
+      null,
+      `declare function g(): void;\n`,
+      lines(),
+      lines(1),
+      "zh-CN",
+    );
+    expect(p.units).toHaveLength(1);
+    expect(p.units[0]!.name).toBe("g");
   });
 });

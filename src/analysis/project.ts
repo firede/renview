@@ -32,7 +32,9 @@ function fullText(source: string, d: DeclarationInfo): string {
 }
 
 function pairKey(d: DeclarationInfo): string {
-  return `${d.container}/${d.kind}/${d.name}`;
+  // 重载签名与实现分别配对，避免增删签名时把函数正文错配为类型变更。
+  const kind = d.kind === "function" && d.typeLevel ? "function-signature" : d.kind;
+  return `${d.container}/${kind}/${d.name}`;
 }
 
 /** 按 key 分组、按位置排序后按下标配对；多余的一侧计为新增/删除 */
@@ -315,7 +317,7 @@ export function outlineOf(profile: LanguageProfile, tree: Tree, locale: Locale):
 /**
  * 领域成员挂载（数据形状变更的行内信号源）：
  * 只处理数据形状候选（kind 为 type，或纯数据 class），且只在"成员集合"发生变化时挂载——
- * 实体增删（added/removed，有无成员都挂）、成员增减（added/removed 非空才挂）。
+ * 有成员的实体增删（added/removed）必挂、成员增减（added/removed 非空）才挂；无成员实体（type 别名等）不挂。
  * 纯类型细节变更（number→string，成员无增减）不挂：它已在折叠摘要里就近呈现，再聚一次是重复。
  * 成员提取复用各语言现成的 typeDeclMembers hook（新语言无此 hook 时自然缺席，不阻塞）。
  */
@@ -338,6 +340,8 @@ function attachDomain(
   const newSet = new Set(newMembers);
   const added = newMembers.filter((m) => !oldSet.has(m));
   const removed = oldMembers.filter((m) => !newSet.has(m));
+  // 无成员的实体（如 type 别名）增删不构成数据形状信号，不挂空 domain
+  if (oldMembers.length === 0 && newMembers.length === 0) return;
   // 实体增删必留；成员集合不变的细节变更不留
   if (
     u.change !== "added" &&

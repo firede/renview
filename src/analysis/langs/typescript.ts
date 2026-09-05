@@ -75,7 +75,8 @@ function collectNode(
   switch (node.type) {
     case "export_statement":
     case "ambient_declaration": {
-      const inner = node.namedChildren.find((c) => c.type !== "comment");
+      // 装饰器（@Injectable() export class …）不是声明本体，跳过后取内层声明
+      const inner = node.namedChildren.find((c) => c.type !== "comment" && c.type !== "decorator");
       if (inner) collectNode(inner, container, out, wrap ?? node, locale);
       return;
     }
@@ -99,8 +100,9 @@ function collectNode(
       return;
     }
     case "method_signature":
-    case "abstract_method_signature": {
-      // 无实现的签名型成员：整体即签名，归为类型级
+    case "abstract_method_signature":
+    case "function_signature": {
+      // 无实现的签名型成员（接口方法、抽象方法、顶层重载签名/declare function）：整体即签名，归为类型级
       out.push({
         kind: "function",
         name: nameOf(node, locale),
@@ -233,10 +235,10 @@ export function tsSimplify(node: Node, source: string, ops: SimplifyOp[]): boole
 
 /* ---- 顶层块折叠（查看器）：imports 与类型级声明压缩为单行摘要 ---- */
 
-/** 透视 export / declare 包装节点 */
+/** 透视 export / declare 包装节点（跳过装饰器） */
 function unwrapDecl(node: Node): Node {
   if (node.type === "export_statement" || node.type === "ambient_declaration") {
-    const inner = node.namedChildren.find((c) => c.type !== "comment");
+    const inner = node.namedChildren.find((c) => c.type !== "comment" && c.type !== "decorator");
     if (inner) return inner;
   }
   return node;

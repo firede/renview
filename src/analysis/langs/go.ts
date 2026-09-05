@@ -49,8 +49,10 @@ function collectNode(node: Node, container: string, out: DeclarationInfo[], loca
       return;
     }
     case "type_declaration": {
-      // type 分组声明拆成每个 type_spec 一个单元
-      for (const spec of node.namedChildren.filter((c) => c.type === "type_spec")) {
+      // type 分组声明拆成每个 spec 一个单元；type_alias（`type X = Y`）与 type_spec 字段同构
+      for (const spec of node.namedChildren.filter(
+        (c) => c.type === "type_spec" || c.type === "type_alias",
+      )) {
         const t = spec.childForFieldName("type");
         out.push({
           kind: "type",
@@ -258,15 +260,17 @@ function goFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: L
       paths.length > 4,
     );
   }
-  const specs = nodes[0]!.namedChildren.filter((c) => c.type === "type_spec");
+  const specs = nodes[0]!.namedChildren.filter(
+    (c) => c.type === "type_spec" || c.type === "type_alias",
+  );
   return specs
     .map((s) => typeSpecSummary(s, locale))
     .join(messages(locale).analysis.typeSpecJoiner);
 }
 
-/** diff 折叠组的成员定位：挂在 type_spec 上（type (...) 多 spec 声明有逐 spec 精度） */
+/** diff 折叠组的成员定位：挂在 type_spec / type_alias 上，分组声明保留逐项精度 */
 function goTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
-  if (node.type !== "type_spec") return null;
+  if (node.type !== "type_spec" && node.type !== "type_alias") return null;
   const name = nameOf(node, locale);
   const t = node.childForFieldName("type");
   const memberOf = (m: Node) => {
