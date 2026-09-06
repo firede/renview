@@ -76,6 +76,7 @@ jobs:
           - { os: ubuntu-24.04, target: linux-x64 }
           - { os: ubuntu-24.04-arm, target: linux-arm64 }
           - { os: windows-latest, target: windows-x64 }
+          - { os: windows-11-arm, target: windows-arm64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/download-artifact@v8
@@ -88,7 +89,7 @@ jobs:
           set -euo pipefail
           tar -xzf "dist/release/renview-${{ matrix.target }}.tar.gz" -C dist/release
           bin="dist/release/renview"
-          if [ "${{ matrix.target }}" = "windows-x64" ]; then bin="dist/release/renview.exe"; fi
+          if [[ "${{ matrix.target }}" == windows-* ]]; then bin="dist/release/renview.exe"; fi
           got="$("$bin" --version | tr -d '[:space:]')"
           expected="${GITHUB_REF_NAME#v}"
           echo "target=${{ matrix.target }} got=$got expected=$expected"

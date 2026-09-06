@@ -28,7 +28,6 @@ function fail(message) {
 const platform = OS[process.platform];
 const arch = CPU[process.arch];
 if (!platform || !arch) fail(`unsupported platform: ${process.platform} ${process.arch}`);
-if (platform === "windows" && arch !== "x64") fail("Windows arm64 is not supported yet; use WSL");
 const platformPkg = `renview-${platform}-${arch}`;
 const binName = platform === "windows" ? "renview.exe" : "renview";
 

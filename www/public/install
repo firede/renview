@@ -64,9 +64,6 @@ detect_target() {
   if [ "$os-$arch" = "darwin-x64" ] && [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)" = "1" ]; then
     arch="arm64"
   fi
-  if [ "$os" = "windows" ] && [ "$arch" != "x64" ]; then
-    error "Windows arm64 is not supported yet — install inside WSL instead"
-  fi
   if [ "$os" = "linux" ]; then
     if [ -f /etc/alpine-release ] || ldd --version 2>&1 | grep -qi musl; then
       error "musl-based distros (e.g. Alpine) are not supported yet"

@@ -1,6 +1,6 @@
 /**
  * 把 dist/ 的平台二进制组装成发布产物：
- *   dist/npm/renview-<target>/  5 个平台包（os/cpu 字段供 npm 平台过滤）
+ *   dist/npm/renview-<target>/  6 个平台包（os/cpu 字段供 npm 平台过滤）
  *   dist/npm/renview/           壳包（optionalDependencies 钉同版本平台包 + postinstall）
  *   dist/release/renview-<target>.tar.gz + checksums.txt  GitHub Release 镜像资产
  * 用法：先 bun run build（或 --host 只出本机平台，此时 pack 只打包已存在的目标），再 bun run scripts/pack.ts
@@ -17,7 +17,14 @@ import {
 } from "node:fs";
 import pkg from "../package.json";
 
-const TARGETS = ["darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64", "windows-x64"] as const;
+const TARGETS = [
+  "darwin-arm64",
+  "darwin-x64",
+  "linux-x64",
+  "linux-arm64",
+  "windows-x64",
+  "windows-arm64",
+] as const;
 type Target = (typeof TARGETS)[number];
 
 const NPM_OS: Record<string, string> = { darwin: "darwin", linux: "linux", windows: "win32" };
@@ -44,7 +51,7 @@ function targetInfo(target: Target) {
   };
 }
 
-/** 只打包 dist/ 里真实存在的目标：CI 全量构建出 5 个，本地 --host 冒烟只出 1 个 */
+/** 只打包 dist/ 里真实存在的目标：CI 全量构建出 6 个，本地 --host 冒烟只出 1 个 */
 const built = TARGETS.filter((t) => existsSync(targetInfo(t).distFile));
 if (built.length === 0) {
   console.error("dist/ 下没有任何平台二进制，请先运行 bun run build");
