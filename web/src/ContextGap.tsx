@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import type { ContextGap as Gap } from "./reviewContext";
 import { useStrings } from "./i18n";
 import { IconExpandAll, IconExpandDown, IconExpandUp } from "./icons";
@@ -21,41 +22,39 @@ export function ContextGap({
         {count > 20 && (
           <>
             {gap.before > 0 && (
-              <button
-                title={s.expandDown}
-                aria-label={s.expandDown}
-                onClick={() => onExpand(gap.start, Math.min(gap.end, gap.start + 20))}
-              >
-                <IconExpandDown />
-              </button>
+              <Tooltip content={s.expandDown}>
+                <button
+                  aria-label={s.expandDown}
+                  onClick={() => onExpand(gap.start, Math.min(gap.end, gap.start + 20))}
+                >
+                  <IconExpandDown />
+                </button>
+              </Tooltip>
             )}
             {!trailing && (
-              <button
-                title={s.expandUp}
-                aria-label={s.expandUp}
-                onClick={() => onExpand(Math.max(gap.start, gap.end - 20), gap.end)}
-              >
-                <IconExpandUp />
-              </button>
+              <Tooltip content={s.expandUp}>
+                <button
+                  aria-label={s.expandUp}
+                  onClick={() => onExpand(Math.max(gap.start, gap.end - 20), gap.end)}
+                >
+                  <IconExpandUp />
+                </button>
+              </Tooltip>
             )}
           </>
         )}
-        <button
-          title={s.expandAll}
-          aria-label={s.expandAll}
-          onClick={() => onExpand(gap.start, gap.end)}
-        >
-          <IconExpandAll />
-        </button>
+        <Tooltip content={s.expandAll}>
+          <button aria-label={s.expandAll} onClick={() => onExpand(gap.start, gap.end)}>
+            <IconExpandAll />
+          </button>
+        </Tooltip>
       </div>
       <div className="context-gap-summary">
-        <span
-          className="context-gap-count"
-          title={s.hiddenContext(count)}
-          aria-label={s.hiddenContext(count)}
-        >
-          ⋯ {count}
-        </span>
+        <Tooltip content={s.hiddenContext(count)}>
+          <span className="context-gap-count" aria-label={s.hiddenContext(count)}>
+            ⋯ {count}
+          </span>
+        </Tooltip>
         {scope && <code>{scope}</code>}
       </div>
     </div>

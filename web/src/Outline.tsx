@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import { useMemo } from "react";
 import type { OutlineItem } from "../../src/analysis/types";
 import { useStrings } from "./i18n";
@@ -59,15 +60,16 @@ function OutlineLevel({
     <>
       {nodes.map((n, i) => (
         <div key={`${n.container}/${n.kind}/${n.name}/${i}`}>
-          <button
-            className={`outline-row${n.typeLevel ? " type-level" : ""}`}
-            style={{ paddingLeft: 12 + depth * 12 }}
-            title={n.container ? `${n.container} · ${n.name}` : n.name}
-            onClick={() => onJump(n.range)}
-          >
-            <KindGlyph kind={n.kind} />
-            <span className="outline-name">{n.name}</span>
-          </button>
+          <Tooltip content={n.container ? `${n.container} · ${n.name}` : n.name}>
+            <button
+              className={`outline-row${n.typeLevel ? " type-level" : ""}`}
+              style={{ paddingLeft: 12 + depth * 12 }}
+              onClick={() => onJump(n.range)}
+            >
+              <KindGlyph kind={n.kind} />
+              <span className="outline-name">{n.name}</span>
+            </button>
+          </Tooltip>
           {n.children.length > 0 && (
             <OutlineLevel nodes={n.children} depth={depth + 1} onJump={onJump} />
           )}

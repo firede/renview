@@ -1009,7 +1009,7 @@ body {
   background: var(--accent);
 }
 
-/* 图标按钮：仅图形（title/aria-label 承担语义），只用于语义通用的控件 */
+/* 图标按钮：仅图形（Tooltip/aria-label 承担语义），只用于语义通用的控件 */
 button.icon-btn {
   display: inline-flex;
   align-items: center;
@@ -1135,4 +1135,43 @@ button.icon-btn.spinning svg {
   opacity: 0.35;
   cursor: default;
   pointer-events: none;
+}
+
+/* 文件上下文操作融入工具栏底色，只在交互时强调。 */
+.context-actions button.icon-btn {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.context-actions button.icon-btn:hover:not(:disabled),
+.context-actions button.icon-btn:focus-visible {
+  background: color-mix(in srgb, var(--fg) 9%, transparent);
+}
+
+.context-actions button.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tooltip-disabled {
+  display: inline-flex;
+}
+
+.tooltip-positioner {
+  z-index: 100;
+}
+
+.tooltip-popup {
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-raised);
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  box-shadow: 0 3px 10px #0002;
 }

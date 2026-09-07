@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import type { ChangeKind, ChangeUnit } from "../../src/analysis/types";
 import { useStrings } from "./i18n";
 import { KindGlyph } from "./icons";
@@ -23,22 +24,23 @@ function MemberDelta({ unit }: { unit: ChangeUnit }) {
   const removed = d.removed.slice(0, 4);
   const hidden = d.added.length - added.length + (d.removed.length - removed.length);
   return (
-    <span
-      className="unit-delta"
-      title={`${d.added.map((m) => `+${m}`).join(" ")}${d.removed.length > 0 ? ` / ${d.removed.map((m) => `−${m}`).join(" ")}` : ""}`}
+    <Tooltip
+      content={`${d.added.map((m) => `+${m}`).join(" ")}${d.removed.length > 0 ? ` / ${d.removed.map((m) => `−${m}`).join(" ")}` : ""}`}
     >
-      {added.map((m) => (
-        <span key={`+${m}`} className="d-added">
-          +{m}
-        </span>
-      ))}
-      {removed.map((m) => (
-        <span key={`-${m}`} className="d-removed">
-          −{m}
-        </span>
-      ))}
-      {hidden > 0 && <span className="d-more">…{hidden}</span>}
-    </span>
+      <span className="unit-delta">
+        {added.map((m) => (
+          <span key={`+${m}`} className="d-added">
+            +{m}
+          </span>
+        ))}
+        {removed.map((m) => (
+          <span key={`-${m}`} className="d-removed">
+            −{m}
+          </span>
+        ))}
+        {hidden > 0 && <span className="d-more">…{hidden}</span>}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -66,24 +68,27 @@ export function UnitList({
       {units.map((u) => {
         const isShape = u.domain != null && (u.change === "type-only" || u.change === "body");
         return (
-          <button
+          <Tooltip
             key={u.id}
-            className="unit-item"
-            aria-pressed={selectedId === u.id}
-            title={
+            content={
               u.change === "signature" && u.oldSignature && u.signature
                 ? `${u.oldSignature}\n→ ${u.signature}`
                 : u.name
             }
-            onClick={() => onJump(u)}
           >
-            <KindGlyph kind={u.kind} />
-            <span className="unit-name">{u.name}</span>
-            <span className={`chg ${isShape ? "chg-type-only" : CHANGE_CLASS[u.change]}`}>
-              {isShape ? s.domainShape : s.summaryChips[u.change]}
-            </span>
-            {u.domain && <MemberDelta unit={u} />}
-          </button>
+            <button
+              className="unit-item"
+              aria-pressed={selectedId === u.id}
+              onClick={() => onJump(u)}
+            >
+              <KindGlyph kind={u.kind} />
+              <span className="unit-name">{u.name}</span>
+              <span className={`chg ${isShape ? "chg-type-only" : CHANGE_CLASS[u.change]}`}>
+                {isShape ? s.domainShape : s.summaryChips[u.change]}
+              </span>
+              {u.domain && <MemberDelta unit={u} />}
+            </button>
+          </Tooltip>
         );
       })}
     </div>

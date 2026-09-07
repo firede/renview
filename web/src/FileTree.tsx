@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import { useEffect, useMemo, useState } from "react";
 import { IconChevron, IconFile, IconFolder } from "./icons";
 
@@ -191,17 +192,17 @@ function TreeLevel({
             )}
           </div>
         ) : (
-          <button
-            key={n.path}
-            className={`tree-row tree-file${n.path === selected ? " selected" : ""}`}
-            style={{ paddingLeft: 8 + depth * 12 }}
-            title={n.path}
-            onClick={() => onSelect(n.path)}
-          >
-            <span className="tree-chevron" />
-            <IconFile className="tree-icon" width={14} height={14} />
-            <span className="tree-name">{n.name}</span>
-          </button>
+          <Tooltip key={n.path} content={n.path}>
+            <button
+              className={`tree-row tree-file${n.path === selected ? " selected" : ""}`}
+              style={{ paddingLeft: 8 + depth * 12 }}
+              onClick={() => onSelect(n.path)}
+            >
+              <span className="tree-chevron" />
+              <IconFile className="tree-icon" width={14} height={14} />
+              <span className="tree-name">{n.name}</span>
+            </button>
+          </Tooltip>
         ),
       )}
     </>

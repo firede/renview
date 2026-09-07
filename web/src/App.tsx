@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import { Fragment, useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import {
   parseDiff,
@@ -466,14 +467,15 @@ export function App() {
     <div className="layout">
       <header className="topbar">
         <span className="brand">renview</span>
-        <button
-          className={`icon-btn${sidebarHidden ? "" : " active"}`}
-          title={`${s.toggleSidebar} · ${s.shortcutB}`}
-          aria-label={s.toggleSidebar}
-          onClick={() => setSidebarHidden((v) => !v)}
-        >
-          <IconPanelLeft />
-        </button>
+        <Tooltip content={`${s.toggleSidebar} · ${s.shortcutB}`}>
+          <button
+            className={`icon-btn${sidebarHidden ? "" : " active"}`}
+            aria-label={s.toggleSidebar}
+            onClick={() => setSidebarHidden((v) => !v)}
+          >
+            <IconPanelLeft />
+          </button>
+        </Tooltip>
         <span className="seg">
           <button
             className={mode === "review" ? "active" : ""}
@@ -488,9 +490,9 @@ export function App() {
           </button>
         </span>
         <span className="topbar-detail">
-          <span className="repo" title={payload.repoRoot}>
-            {payload.repoRoot}
-          </span>
+          <Tooltip content={payload.repoRoot}>
+            <span className="repo">{payload.repoRoot}</span>
+          </Tooltip>
           <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
         </span>
         <span className="spacer" />
@@ -500,15 +502,16 @@ export function App() {
               {s.fileCount(files.length)} <em className="add">+{totals.adds}</em>{" "}
               <em className="del">−{totals.dels}</em>
             </span>
-            <button
-              className={`icon-btn${refreshing ? " spinning" : ""}`}
-              title={s.refresh}
-              aria-label={s.refresh}
-              onClick={() => void load()}
-              disabled={refreshing}
-            >
-              <IconRefresh />
-            </button>
+            <Tooltip content={s.refresh}>
+              <button
+                className={`icon-btn${refreshing ? " spinning" : ""}`}
+                aria-label={s.refresh}
+                onClick={() => void load()}
+                disabled={refreshing}
+              >
+                <IconRefresh />
+              </button>
+            </Tooltip>
           </>
         )}
       </header>
@@ -539,17 +542,18 @@ export function App() {
                           setUnitJump(null);
                         }}
                       >
-                        <span className="file-path" title={path}>
-                          {dir && <span className="file-dir">{dir}</span>}
-                          <span className="file-base">{base}</span>
-                        </span>
-                        <span className="file-meta">
-                          <span
-                            className={`status status-${f.type}`}
-                            title={s.statusLabel[f.type as FileStatus] ?? f.type}
-                          >
-                            <StatusIcon status={f.type as FileStatus} />
+                        <Tooltip content={path}>
+                          <span className="file-path">
+                            {dir && <span className="file-dir">{dir}</span>}
+                            <span className="file-base">{base}</span>
                           </span>
+                        </Tooltip>
+                        <span className="file-meta">
+                          <Tooltip content={s.statusLabel[f.type as FileStatus] ?? f.type}>
+                            <span className={`status status-${f.type}`}>
+                              <StatusIcon status={f.type as FileStatus} />
+                            </span>
+                          </Tooltip>
                           <em className="add">+{stat.adds}</em>
                           <em className="del">−{stat.dels}</em>
                           {sum && (
@@ -586,24 +590,26 @@ export function App() {
                   <span className="file-title">{displayPath(selectedFile)}</span>
                   {(gaps.length > 0 || expansions.length > 0) && (
                     <span className="context-actions">
-                      <button
-                        className="icon-btn"
-                        title={s.expandAll}
-                        aria-label={s.expandAll}
-                        disabled={gaps.length === 0}
-                        onClick={expandAllContext}
-                      >
-                        <IconExpandAll />
-                      </button>
-                      <button
-                        className="icon-btn"
-                        title={s.collapseAll}
-                        aria-label={s.collapseAll}
-                        disabled={expansions.length === 0}
-                        onClick={() => updateExpansions([])}
-                      >
-                        <IconCollapseAll />
-                      </button>
+                      <Tooltip content={s.expandAll}>
+                        <button
+                          className="icon-btn"
+                          aria-label={s.expandAll}
+                          disabled={gaps.length === 0}
+                          onClick={expandAllContext}
+                        >
+                          <IconExpandAll />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={s.collapseAll}>
+                        <button
+                          className="icon-btn"
+                          aria-label={s.collapseAll}
+                          disabled={expansions.length === 0}
+                          onClick={() => updateExpansions([])}
+                        >
+                          <IconCollapseAll />
+                        </button>
+                      </Tooltip>
                     </span>
                   )}
                   {selectedEntry?.degradedReason &&
@@ -620,42 +626,46 @@ export function App() {
                       </span>
                     )}
                   <span className="spacer" />
-                  {hasSimplified && (
-                    <span className="seg">
-                      <button
-                        title={s.shortcutS}
-                        className={!showRaw ? "active" : ""}
-                        onClick={() => setRawOverride(false)}
-                      >
-                        {s.simplified}
-                      </button>
-                      <button
-                        title={s.shortcutS}
-                        className={showRaw ? "active" : ""}
-                        onClick={() => setRawOverride(true)}
-                      >
-                        {s.rawDiff}
-                      </button>
-                    </span>
-                  )}
                   {showRaw && (
                     <span className="seg">
-                      <button
-                        className={`icon-btn${viewType === "unified" ? " active" : ""}`}
-                        title={s.unified}
-                        aria-label={s.unified}
-                        onClick={() => setViewType("unified")}
-                      >
-                        <IconUnified />
-                      </button>
-                      <button
-                        className={`icon-btn${viewType === "split" ? " active" : ""}`}
-                        title={s.split}
-                        aria-label={s.split}
-                        onClick={() => setViewType("split")}
-                      >
-                        <IconSplit />
-                      </button>
+                      <Tooltip content={s.unified}>
+                        <button
+                          className={`icon-btn${viewType === "unified" ? " active" : ""}`}
+                          aria-label={s.unified}
+                          onClick={() => setViewType("unified")}
+                        >
+                          <IconUnified />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={s.split}>
+                        <button
+                          className={`icon-btn${viewType === "split" ? " active" : ""}`}
+                          aria-label={s.split}
+                          onClick={() => setViewType("split")}
+                        >
+                          <IconSplit />
+                        </button>
+                      </Tooltip>
+                    </span>
+                  )}
+                  {hasSimplified && (
+                    <span className="seg">
+                      <Tooltip content={s.shortcutS}>
+                        <button
+                          className={!showRaw ? "active" : ""}
+                          onClick={() => setRawOverride(false)}
+                        >
+                          {s.simplified}
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={s.shortcutS}>
+                        <button
+                          className={showRaw ? "active" : ""}
+                          onClick={() => setRawOverride(true)}
+                        >
+                          {s.rawDiff}
+                        </button>
+                      </Tooltip>
                     </span>
                   )}
                 </div>

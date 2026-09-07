@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import type { ReactNode, SVGProps } from "react";
 import type { DeclKind, FileStatus } from "../../src/analysis/types";
 import { useStrings } from "./i18n";
@@ -170,9 +171,9 @@ const KIND_GLYPH: Record<DeclKind, string> = {
 export function KindGlyph({ kind }: { kind: DeclKind }) {
   const s = useStrings();
   return (
-    <span className={`kind-glyph kind-${kind}`} title={s.declKind[kind]}>
-      {KIND_GLYPH[kind]}
-    </span>
+    <Tooltip content={s.declKind[kind]}>
+      <span className={`kind-glyph kind-${kind}`}>{KIND_GLYPH[kind]}</span>
+    </Tooltip>
   );
 }
 

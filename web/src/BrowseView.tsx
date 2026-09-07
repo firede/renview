@@ -1,3 +1,4 @@
+import { Tooltip } from "./Tooltip";
 import { useEffect, useMemo, useState } from "react";
 import type { ViewerFile, ViewRow } from "../../src/analysis/types";
 import { rowIndexOfLine } from "../../src/analysis/view";
@@ -141,10 +142,12 @@ export function BrowseView({ sidebarHidden }: { sidebarHidden: boolean }) {
                           className={`file-item ${f === path ? "selected" : ""}`}
                           onClick={() => setPath(f)}
                         >
-                          <span className="file-path" title={f}>
-                            {dir && <span className="file-dir">{dir}</span>}
-                            <span className="file-base">{base}</span>
-                          </span>
+                          <Tooltip content={f}>
+                            <span className="file-path">
+                              {dir && <span className="file-dir">{dir}</span>}
+                              <span className="file-base">{base}</span>
+                            </span>
+                          </Tooltip>
                         </button>
                       );
                     })}
@@ -177,20 +180,22 @@ export function BrowseView({ sidebarHidden }: { sidebarHidden: boolean }) {
             <span className="spacer" />
             {hasSimplified && (
               <span className="seg">
-                <button
-                  title={s.shortcutS}
-                  className={!showSource ? "active" : ""}
-                  onClick={() => setShowSource(false)}
-                >
-                  {s.simplified}
-                </button>
-                <button
-                  title={s.shortcutS}
-                  className={showSource ? "active" : ""}
-                  onClick={() => setShowSource(true)}
-                >
-                  {s.source}
-                </button>
+                <Tooltip content={s.shortcutS}>
+                  <button
+                    className={!showSource ? "active" : ""}
+                    onClick={() => setShowSource(false)}
+                  >
+                    {s.simplified}
+                  </button>
+                </Tooltip>
+                <Tooltip content={s.shortcutS}>
+                  <button
+                    className={showSource ? "active" : ""}
+                    onClick={() => setShowSource(true)}
+                  >
+                    {s.source}
+                  </button>
+                </Tooltip>
               </span>
             )}
           </div>
