@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SRow, SimplifiedViewData } from "../../src/analysis/types";
 import { DecoratedLine } from "./decor";
 import { TokenSpans, useHighlightedLines } from "./highlight";
@@ -31,6 +31,8 @@ function FoldRow({
       {/* 与查看器块折叠同一形态：整行可点、gutter 留空、箭头 + 注释色摘要 */}
       <button
         id={id}
+        data-old-line={row.oldLns?.[0]}
+        data-new-line={row.newLns?.[0]}
         className={`vfold-head${flash ? " flash" : ""}${located ? " located" : ""}`}
         onClick={() => setOpen(!open)}
       >
@@ -70,31 +72,39 @@ export function SimplifiedView({
   data,
   lang,
   jump,
+  beforeRow,
+  afterRows,
 }: {
   data: SimplifiedViewData;
   lang: string | null;
   jump?: LineJump | null;
+  beforeRow?: (row: SRow, index: number) => ReactNode;
+  afterRows?: ReactNode;
 }) {
   const s = useStrings();
   /** 一次性闪烁（视觉引导，1.7s 后消退） */
   const [flashIdx, setFlashIdx] = useState<number | null>(null);
   /** 持久定位提示：行号加粗常驻，点击代码区或切换文件取消 */
-  const [locatedIdx, setLocatedIdx] = useState<number | null>(null);
-
-  // 切换文件（数据更换）时清除持久定位
-  useEffect(() => setLocatedIdx(null), [data]);
+  const lastJump = useRef<LineJump | null>(null);
+  const [locatedJump, setLocatedJump] = useState<LineJump | null>(null);
+  const locatedIdx = locatedJump ? findRowIndex(data.rows, locatedJump) : null;
 
   // 变更单元导航：滚动到目标行，闪烁一次 + 行号加粗常驻
   useEffect(() => {
     if (!jump) return;
     const idx = findRowIndex(data.rows, jump);
     if (idx == null) return;
+    if (lastJump.current === jump) return;
+    lastJump.current = jump;
     document.getElementById(`srow-${idx}`)?.scrollIntoView({ block: "center" });
-    setLocatedIdx(idx);
+    setLocatedJump(jump);
     setFlashIdx(idx);
-    const t = setTimeout(() => setFlashIdx((cur) => (cur === idx ? null : cur)), 1700);
-    return () => clearTimeout(t);
   }, [jump, data]);
+  useEffect(() => {
+    if (flashIdx == null) return;
+    const t = setTimeout(() => setFlashIdx(null), 1700);
+    return () => clearTimeout(t);
+  }, [flashIdx, jump]);
   // 高亮文本 = 代码行（fold/note 行不参与）按序拼接；token 按下标回填。跨 hunk 拼接仅影响颜色连续性。
   const visibleRows = useMemo(
     () =>
@@ -127,48 +137,64 @@ export function SimplifiedView({
   }, [data]);
 
   if (data.rows.length === 0) {
-    return <div className="dim note pad">{s.noVisibleChanges}</div>;
+    return (
+      <>
+        <div className="dim note pad">{s.noVisibleChanges}</div>
+        {afterRows}
+      </>
+    );
   }
   let vi = 0;
   return (
     // 点击代码区任意处取消持久定位提示
-    <div className="sview" onClick={() => setLocatedIdx(null)}>
+    <div className="sview" onClick={() => setLocatedJump(null)}>
       {data.rows.map((r, i) => {
+        const key =
+          r.kind === "fold"
+            ? `fold:${r.oldLns?.join(",")}:${r.newLns?.join(",")}`
+            : `${r.kind}:${r.oldLn}:${r.newLn}`;
         if (r.kind === "fold")
           return (
-            <FoldRow
-              key={i}
-              row={r}
-              lang={lang}
-              id={`srow-${i}`}
-              flash={flashIdx === i}
-              located={locatedIdx === i}
-            />
+            <Fragment key={key}>
+              {beforeRow?.(r, i)}
+              <FoldRow
+                row={r}
+                lang={lang}
+                id={`srow-${i}`}
+                flash={flashIdx === i}
+                located={locatedIdx === i}
+              />
+            </Fragment>
           );
         const lineTokens = tokens?.[vi++] ?? null;
         const wd = r.pair != null ? pairDiffs.get(r.pair) : undefined;
         return (
-          <div
-            key={i}
-            id={`srow-${i}`}
-            className={`srow ${r.kind}${flashIdx === i ? " flash" : ""}${locatedIdx === i ? " located" : ""}`}
-          >
-            <span className="gutter">{r.oldLn ?? ""}</span>
-            <span className="gutter">{r.newLn ?? ""}</span>
-            <pre className="scode">
-              <DecoratedLine
-                text={r.text}
-                tokens={lineTokens}
-                decor={{
-                  hl: wd ? (r.kind === "del" ? wd.a : wd.b) : undefined,
-                  hlClass: r.kind === "del" ? "wdel" : r.kind === "add" ? "wadd" : undefined,
-                  erases: r.erases,
-                }}
-              />
-            </pre>
-          </div>
+          <Fragment key={key}>
+            {beforeRow?.(r, i)}
+            <div
+              data-old-line={r.oldLn}
+              data-new-line={r.newLn}
+              id={`srow-${i}`}
+              className={`srow ${r.kind}${flashIdx === i ? " flash" : ""}${locatedIdx === i ? " located" : ""}`}
+            >
+              <span className="gutter">{r.oldLn ?? ""}</span>
+              <span className="gutter">{r.newLn ?? ""}</span>
+              <pre className="scode">
+                <DecoratedLine
+                  text={r.text}
+                  tokens={lineTokens}
+                  decor={{
+                    hl: wd ? (r.kind === "del" ? wd.a : wd.b) : undefined,
+                    hlClass: r.kind === "del" ? "wdel" : r.kind === "add" ? "wadd" : undefined,
+                    erases: r.erases,
+                  }}
+                />
+              </pre>
+            </div>
+          </Fragment>
         );
       })}
+      {afterRows}
     </div>
   );
 }

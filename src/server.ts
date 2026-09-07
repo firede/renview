@@ -54,6 +54,8 @@ export async function startServer(root: string, gitArgs: string[], opts: ServerO
           if (url.pathname.startsWith("/api/")) {
             const locale = (await getConfig()).config.language;
             if (url.pathname === "/api/diff") return handleDiff(root, diffArgs, locale);
+            if (url.pathname === "/api/review-file")
+              return handleReviewFile(root, diffArgs, url.searchParams.get("path"), locale);
             if (url.pathname === "/api/files") return handleFiles(root, locale);
             if (url.pathname === "/api/file") {
               return handleFile(root, url.searchParams.get("path"), locale);
@@ -127,36 +129,72 @@ async function handleFile(root: string, path: string | null, locale: Locale): Pr
     return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
   }
 
+  const head = new Uint8Array(await f.slice(0, 8192).arrayBuffer());
+  return Response.json({
+    ok: true,
+    file: await viewerFile(path, head.includes(0) ? "\0" : await f.text(), locale),
+  });
+}
+
+/** 只读取当前 diff 中的路径和版本，避免接受任意 revision 参数。 */
+export async function handleReviewFile(
+  root: string,
+  args: string[],
+  path: string | null,
+  locale: Locale,
+): Promise<Response> {
+  const m = messages(locale).api;
+  if (!path || !safeRepoPath(root, path))
+    return Response.json({ ok: false, error: m.invalidPath }, { status: 400 });
+  try {
+    const { diff, sides } = await getReviewDiff(root, args, locale);
+    const f = parseDiff(diff).find((f) => (f.to === "/dev/null" ? f.from : f.to) === path);
+    if (!f) return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
+    const read = async (path: string | undefined, side: typeof sides.oldSide) => {
+      if (!path || path === "/dev/null") return null;
+      const source = await getSideContent(root, side, path);
+      return source == null ? null : viewerFile(path, source, locale);
+    };
+    const [oldFile, newFile] = await Promise.all([
+      read(f.from, sides.oldSide),
+      read(f.to, sides.newSide),
+    ]);
+    return Response.json({ ok: true, oldFile, newFile, diff });
+  } catch (e) {
+    return Response.json(
+      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
+}
+
+/** 查看器与审阅上下文共用同一套源码分析。 */
+async function viewerFile(path: string, source: string, locale: Locale): Promise<ViewerFile> {
+  const profile = profileForPath(path);
   const file: ViewerFile = {
     path,
-    language: null,
+    language: profile?.id ?? null,
     source: null,
     simplified: null,
     view: null,
     outline: [],
   };
-  const profile = profileForPath(path);
-  file.language = profile?.id ?? null;
-
-  // 头部含 NUL 即视为二进制，不返回内容
-  const head = new Uint8Array(await f.slice(0, 8192).arrayBuffer());
-  if (head.includes(0)) {
+  if (source.slice(0, 8192).includes("\0")) {
     file.degradedReason = "binary";
-    return Response.json({ ok: true, file });
+    return file;
   }
-
-  const source = await f.text();
   file.source = source;
   if (!profile) {
     file.degradedReason = "no-profile";
-    return Response.json({ ok: true, file });
+    return file;
   }
   if (source.length > MAX_ANALYZE_BYTES) {
     file.degradedReason = "too-large";
-    return Response.json({ ok: true, file });
+    return file;
   }
   try {
     await withParsedSides(profile, null, source, (_, side) => {
+      if (side!.tree.rootNode.hasError) throw new Error("解析失败");
       file.outline = outlineOf(profile, side!.tree, locale);
       if (profile.simplify) {
         const r = simplifyTree(side!.tree, source, profile.simplify);
@@ -167,7 +205,7 @@ async function handleFile(root: string, path: string | null, locale: Locale): Pr
   } catch {
     file.degradedReason = "parse-error";
   }
-  return Response.json({ ok: true, file });
+  return file;
 }
 
 async function buildFileEntry(

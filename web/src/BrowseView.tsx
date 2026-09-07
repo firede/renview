@@ -18,12 +18,15 @@ interface FilesPayload {
 interface FilePayload {
   ok: boolean;
   file?: ViewerFile;
+  version?: string;
   error?: string;
 }
 
 export interface JumpTarget {
   path: string;
   line: number;
+  file?: ViewerFile;
+  version?: string;
 }
 
 function splitPath(p: string): { dir: string; base: string } {
@@ -49,10 +52,17 @@ export function BrowseView({
   const files = fileList.data?.files ?? null;
   const [filter, setFilter] = useState("");
   const [path, setPath] = useState<string | null>(jump?.path ?? null);
+  const [version, setVersion] = useState(jump?.version);
+  const [pinnedFile, setPinnedFile] = useState<ViewerFile | null>(jump?.file ?? null);
+  const selectPath = (path: string) => {
+    setPinnedFile(null);
+    setVersion(undefined);
+    setPath(path);
+  };
   const fileResource = useResource<FilePayload>(
-    path ? `/api/file?path=${encodeURIComponent(path)}` : null,
+    path && !pinnedFile ? `/api/file?path=${encodeURIComponent(path)}` : null,
   );
-  const data = fileResource.data?.file ?? null;
+  const data = pinnedFile ?? fileResource.data?.file ?? null;
   const loading = fileResource.loading;
   const [showSource, setShowSource] = useState(false);
   const [scrollTo, setScrollTo] = useState<number | null>(jump?.line ?? null);
@@ -65,6 +75,8 @@ export function BrowseView({
   useEffect(() => {
     if (!jump) return;
     setPath(jump.path);
+    setPinnedFile(jump.file ?? null);
+    setVersion(jump.version);
     setScrollTo(jump.line);
     setShowSource(false);
     onJumpDone();
@@ -172,7 +184,7 @@ export function BrowseView({
                         <button
                           key={f}
                           className={`file-item ${f === path ? "selected" : ""}`}
-                          onClick={() => setPath(f)}
+                          onClick={() => selectPath(f)}
                         >
                           <span className="file-path" title={f}>
                             {dir && <span className="file-dir">{dir}</span>}
@@ -186,7 +198,7 @@ export function BrowseView({
                     )}
                   </>
                 ) : (
-                  files && <FileTree paths={files} selected={path} onSelect={setPath} />
+                  files && <FileTree paths={files} selected={path} onSelect={selectPath} />
                 )}
               </>
             ),
@@ -203,6 +215,7 @@ export function BrowseView({
         <>
           <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
             <span className="file-title">{path}</span>
+            {version && <span className="dim">{version}</span>}
             {loading && <span className="dim">{s.loading}</span>}
             {data?.degradedReason && (
               <span className="dim">{s.viewerDegradeLabel[data.degradedReason]}</span>

@@ -170,3 +170,56 @@ export function KindGlyph({ kind }: { kind: DeclKind }) {
     </span>
   );
 }
+
+/**
+ * 上下文展开图标：Lucide arrow-up-from-line、arrow-down-from-line、unfold-vertical。
+ * 来源：https://github.com/lucide-icons/lucide/tree/main/icons
+ */
+/*!
+ * ISC License
+ * Copyright (c) 2026 Lucide Icons and Contributors
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+export function IconExpandUp(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m18 9-6-6-6 6" />
+      <path d="M12 3v14" />
+      <path d="M5 21h14" />
+    </Icon>
+  );
+}
+
+export function IconExpandDown(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M19 3H5" />
+      <path d="M12 21V7" />
+      <path d="m6 15 6 6 6-6" />
+    </Icon>
+  );
+}
+
+export function IconExpandAll(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M12 22v-6" />
+      <path d="M12 8V2" />
+      <path d="M4 12H2" />
+      <path d="M10 12H8" />
+      <path d="M16 12h-2" />
+      <path d="M22 12h-2" />
+      <path d="m15 19-3 3-3-3" />
+      <path d="m15 5-3-3-3 3" />
+    </Icon>
+  );
+}

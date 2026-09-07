@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import {
   parseDiff,
   Diff,
+  Decoration,
   Hunk,
   isDelete,
   isInsert,
@@ -11,7 +12,13 @@ import {
   type HunkTokens,
   type ViewType,
 } from "react-diff-view";
-import type { ChangeKind, ChangeUnit, FileEntry, FileStatus } from "../../src/analysis/types";
+import type {
+  ChangeKind,
+  ChangeUnit,
+  FileEntry,
+  FileStatus,
+  ReviewContext,
+} from "../../src/analysis/types";
 import { BrowseView, type JumpTarget } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { useStrings } from "./i18n";
@@ -26,6 +33,17 @@ import {
 import { SideSections, SplitPane } from "./SplitPane";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
 import { findRowIndex } from "./navigation";
+import { ContextGap } from "./ContextGap";
+import {
+  changeRow,
+  contextGaps,
+  expandContext,
+  expandedRows,
+  rowLine,
+  rowScope,
+  isScopeStart,
+  scopeGroups,
+} from "./reviewContext";
 import { UnitList } from "./UnitList";
 import { useResource } from "./useResource";
 
@@ -114,22 +132,31 @@ function RawDiff({
   viewType,
   tokens,
   jump,
+  context,
+  gaps,
+  onExpand,
 }: {
   file: FileData;
   viewType: ViewType;
   tokens: HunkTokens | null;
   jump: LineJump | null;
+  context: ReviewContext | null;
+  gaps: ReturnType<typeof contextGaps>;
+  onExpand: (start: number, end: number) => void;
 }) {
   /** 持久定位的行锚 id（点击代码区或切换文件取消） */
+  const lastJump = useRef<LineJump | null>(null);
   const [locatedId, setLocatedId] = useState<string | null>(null);
 
   // 切换文件时清除持久定位
-  useEffect(() => setLocatedId(null), [file]);
+  useEffect(() => setLocatedId(null), [file.oldPath, file.newPath]);
 
   useEffect(() => {
     if (!jump) return;
     const id = findRawAnchor(file, jump);
     if (!id) return;
+    if (lastJump.current === jump) return;
+    lastJump.current = jump;
     document.getElementById(id)?.scrollIntoView({ block: "center" });
     setLocatedId(id);
   }, [jump, file, viewType]);
@@ -151,7 +178,42 @@ function RawDiff({
           return hit ? `${base} located`.trim() : base;
         }}
       >
-        {(hunks) => hunks.map((h) => <Hunk key={h.content} hunk={h} />)}
+        {(hunks) => (
+          <>
+            {hunks.map((h, i) => {
+              const gap = gaps.find((g) => g.before === i);
+              const groups = scopeGroups(h.changes, context);
+              return (
+                <Fragment key={h.oldStart + ":" + h.newStart}>
+                  {gap && (
+                    <Decoration>
+                      <ContextGap gap={gap} onExpand={onExpand} scope={groups[0]?.scope} />
+                    </Decoration>
+                  )}
+                  {groups.map((group, j) => (
+                    <Fragment key={j}>
+                      {group.scope &&
+                        !(gap && j === 0) &&
+                        !isScopeStart(changeRow(group.changes[0]!), context) && (
+                          <Decoration>
+                            <div className="scope-label">{group.scope}</div>
+                          </Decoration>
+                        )}
+                      <Hunk hunk={{ ...h, changes: group.changes }} />
+                    </Fragment>
+                  ))}
+                </Fragment>
+              );
+            })}
+            {gaps
+              .filter((g) => g.before === hunks.length)
+              .map((g) => (
+                <Decoration key={g.start}>
+                  <ContextGap gap={g} onExpand={onExpand} trailing />
+                </Decoration>
+              ))}
+          </>
+        )}
       </Diff>
     </div>
   );
@@ -162,7 +224,10 @@ export function App() {
   const resource = useResource<DiffPayload>("/api/diff");
   const payload = resource.data;
   const refreshing = resource.loading;
-  const load = resource.refresh;
+  const load = () => {
+    resource.refresh();
+    contextResource.refresh();
+  };
   const [selected, setSelected] = useState<string | null>(null);
   const [viewType, setViewType] = useState<ViewType>("unified");
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
@@ -172,10 +237,73 @@ export function App() {
   /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
   const [unitJump, setUnitJump] = useState<LineJump | null>(null);
 
-  // 从 diff 跳转查看器：打开该文件完整简化视图并定位到首个变更行（hunk 外上下文由查看器承接）
-  const openInViewer = (path: string) => {
-    setJump({ path, line: viewerLineOf(selectedEntry) });
+  const reviewPane = useRef<HTMLDivElement>(null);
+  const reviewScroll = useRef(0);
+  const [returnToReview, setReturnToReview] = useState(false);
+  const [expansions, setExpansions] = useState<Array<[number, number]>>([]);
+
+  useLayoutEffect(() => {
+    if (mode === "review") {
+      const content = reviewPane.current?.querySelector<HTMLElement>(".content");
+      if (content) content.scrollTop = reviewScroll.current;
+      const frame = requestAnimationFrame(() => {
+        if (content) content.scrollTop = reviewScroll.current;
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [mode]);
+
+  const leaveReview = () => {
+    reviewScroll.current =
+      reviewPane.current?.querySelector<HTMLElement>(".content")?.scrollTop ?? 0;
     setMode("browse");
+  };
+
+  // 按当前屏幕中央的代码行打开对应版本；删除行打开旧侧源码。
+  const openInViewer = () => {
+    if (!context) return;
+    const content = reviewPane.current?.querySelector<HTMLElement>(".content");
+    const bounds = content?.getBoundingClientRect();
+    const middle = bounds ? (bounds.top + bounds.bottom) / 2 : 0;
+    const candidates = [
+      ...(content?.querySelectorAll<HTMLElement>(
+        "[data-new-line], [data-old-line], [id^='rvn-'], [id^='rvo-']",
+      ) ?? []),
+    ]
+      .filter((el) => {
+        if (el.getBoundingClientRect().height <= 0) return false;
+        const codes = el.matches("[data-new-line], [data-old-line]")
+          ? el.querySelectorAll(".scode")
+          : el.closest(".diff-line")?.querySelectorAll(".diff-code");
+        return (
+          el.classList.contains("vfold-head") ||
+          [...(codes ?? [])].some((code) => code.textContent?.trim())
+        );
+      })
+      .sort(
+        (a, b) =>
+          Math.abs(a.getBoundingClientRect().top - middle) -
+            Math.abs(b.getBoundingClientRect().top - middle) ||
+          Number(Boolean(b.dataset.newLine || b.id.startsWith("rvn-"))) -
+            Number(Boolean(a.dataset.newLine || a.id.startsWith("rvn-"))),
+      );
+    const el = candidates[0];
+    const newLn = Number(el?.dataset.newLine || (el?.id.startsWith("rvn-") ? el.id.slice(4) : 0));
+    const oldLn = Number(el?.dataset.oldLine || (el?.id.startsWith("rvo-") ? el.id.slice(4) : 0));
+    const file = newLn
+      ? context.newFile
+      : oldLn
+        ? context.oldFile
+        : (context.newFile ?? context.oldFile);
+    if (!file) return;
+    setJump({
+      path: file.path,
+      line: newLn || oldLn || viewerLineOf(selectedEntry),
+      file,
+      version: file === context.oldFile ? s.beforeChange : s.afterChange,
+    });
+    setReturnToReview(true);
+    leaveReview();
   };
 
   // 变更单元导航：定位到单元内的实际变更；nonce 保证重复点击同一单元也触发
@@ -192,7 +320,7 @@ export function App() {
 
   const files = useMemo<FileData[]>(
     () => (payload?.ok && payload.diff ? parseDiff(payload.diff) : []),
-    [payload],
+    [payload?.ok, payload?.diff],
   );
   // 首次加载时若无任何变更，默认进入浏览模式（diff 审阅无内容可看）
   const firstLoaded = useRef(false);
@@ -225,6 +353,88 @@ export function App() {
   );
   const selectedFile = items[safeSelected]?.file ?? null;
   const selectedEntry = items[safeSelected]?.entry ?? null;
+  const contextResource = useResource<ReviewContext & { ok: boolean; error?: string }>(
+    selectedFile ? `/api/review-file?path=${encodeURIComponent(displayPath(selectedFile))}` : null,
+  );
+  const context =
+    contextResource.data?.ok && contextResource.data.diff === payload?.diff
+      ? contextResource.data
+      : null;
+  useEffect(() => setExpansions([]), [selectedFile]);
+  const expandedFile = useMemo(
+    () =>
+      selectedFile && context?.oldFile?.source != null
+        ? expandContext(selectedFile, context.oldFile.source, expansions)
+        : selectedFile,
+    [selectedFile, context, expansions],
+  );
+  const gaps = useMemo(
+    () =>
+      expandedFile && context?.oldFile?.source != null
+        ? contextGaps(expandedFile, context.oldFile.source)
+        : [],
+    [expandedFile, context],
+  );
+  const simplified = useMemo(
+    () =>
+      selectedEntry?.simplified && selectedFile && expandedFile && context
+        ? expandedRows(selectedEntry.simplified, selectedFile, expandedFile, context)
+        : selectedEntry?.simplified,
+    [selectedEntry, selectedFile, expandedFile, context],
+  );
+  const expand = (start: number, end: number) => {
+    const content = reviewPane.current?.querySelector<HTMLElement>(".content");
+    const top = content?.getBoundingClientRect().top ?? 0;
+    const anchor = [
+      ...(content?.querySelectorAll<HTMLElement>(
+        "[data-new-line], [data-old-line], [id^='rvn-'], [id^='rvo-']",
+      ) ?? []),
+    ].find((el) => el.getBoundingClientRect().top >= top + 48);
+    const offset = anchor?.getBoundingClientRect().top;
+    const id = anchor?.id;
+    const anchorNew = anchor?.dataset.newLine;
+    const anchorOld = anchor?.dataset.oldLine;
+    setExpansions((prev) => [...prev, [start, end]]);
+    requestAnimationFrame(() => {
+      const next = anchorNew
+        ? content?.querySelector<HTMLElement>(`[data-new-line="${anchorNew}"]`)
+        : anchorOld
+          ? content?.querySelector<HTMLElement>(`[data-old-line="${anchorOld}"]`)
+          : id
+            ? document.getElementById(id)
+            : null;
+      if (content && next && offset != null)
+        content.scrollTop += next.getBoundingClientRect().top - offset;
+    });
+  };
+  const beforeRow = (row: import("../../src/analysis/types").SRow, i: number) => {
+    const oldLn = rowLine(row, "old");
+    const newLn = rowLine(row, "new");
+    const gap = gaps.find((g) => {
+      const next = expandedFile?.hunks[g.before];
+      if (!next) return false;
+      const matches =
+        (oldLn != null && oldLn >= next.oldStart) || (newLn != null && newLn >= next.newStart);
+      const prev = simplified?.rows[i - 1];
+      return (
+        matches &&
+        (!prev ||
+          ((rowLine(prev, "old") ?? 0) < next.oldStart &&
+            (rowLine(prev, "new") ?? 0) < next.newStart))
+      );
+    });
+    const scope = rowScope(row, context);
+    const prev = simplified?.rows[i - 1];
+    const changedScope = !prev || rowScope(prev, context) !== scope;
+    return (
+      <>
+        {gap && <ContextGap gap={gap} onExpand={expand} scope={scope} />}
+        {scope && !gap && changedScope && !isScopeStart(row, context) && (
+          <div className="scope-label">{scope}</div>
+        )}
+      </>
+    );
+  };
 
   const totals = useMemo(() => {
     let adds = 0;
@@ -240,7 +450,7 @@ export function App() {
   const hasSimplified = selectedEntry?.simplified != null;
   const showRaw = rawOverride ?? !hasSimplified;
   // 仅在展示原始 diff 时计算高亮 tokens（懒加载 shiki，完成前纯文本渲染）
-  const diffTokens = useDiffTokens(selectedFile && showRaw ? selectedFile : null);
+  const diffTokens = useDiffTokens(expandedFile && showRaw ? expandedFile : null);
 
   // S 键在简化与原始 diff 间切换（输入框聚焦时不生效）
   useEffect(() => {
@@ -295,13 +505,29 @@ export function App() {
           <IconPanelLeft />
         </button>
         <span className="seg">
-          <button className={mode === "review" ? "active" : ""} onClick={() => setMode("review")}>
+          <button
+            className={mode === "review" ? "active" : ""}
+            onClick={() => {
+              setMode("review");
+              setReturnToReview(false);
+            }}
+          >
             {s.modeChanges}
           </button>
-          <button className={mode === "browse" ? "active" : ""} onClick={() => setMode("browse")}>
+          <button className={mode === "browse" ? "active" : ""} onClick={leaveReview}>
             {s.modeBrowse}
           </button>
         </span>
+        {mode === "browse" && returnToReview && (
+          <button
+            onClick={() => {
+              setMode("review");
+              setReturnToReview(false);
+            }}
+          >
+            ← {s.returnToReview}
+          </button>
+        )}
         <span className="topbar-detail">
           <span className="repo" title={payload.repoRoot}>
             {payload.repoRoot}
@@ -327,160 +553,182 @@ export function App() {
           </>
         )}
       </header>
-      {mode === "browse" ? (
+      {mode === "browse" && (
         <BrowseView jump={jump} onJumpDone={() => setJump(null)} sidebarHidden={sidebarHidden} />
-      ) : files.length === 0 ? (
-        <div className="center-note">{s.noChanges}</div>
-      ) : (
-        <SplitPane
-          hidden={sidebarHidden}
-          side={
-            <SideSections
-              storageKey="review"
-              top={{
-                title: s.sectionFiles,
-                body: items.map(({ file: f, entry }, i) => {
-                  const path = displayPath(f);
-                  const { dir, base } = splitPath(path);
-                  const stat = fileStats(f);
-                  const sum = entry?.projection?.summary;
-                  return (
-                    <button
-                      key={`${f.oldPath}→${f.newPath}`}
-                      className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                      onClick={() => {
-                        setSelected(fileKey(f));
-                        setRawOverride(null);
-                        setUnitJump(null);
-                      }}
-                    >
-                      <span className="file-path" title={path}>
-                        {dir && <span className="file-dir">{dir}</span>}
-                        <span className="file-base">{base}</span>
-                      </span>
-                      <span className="file-meta">
-                        <span
-                          className={`status status-${f.type}`}
-                          title={s.statusLabel[f.type as FileStatus] ?? f.type}
-                        >
-                          <StatusIcon status={f.type as FileStatus} />
+      )}
+      <div ref={reviewPane} className="review-pane" hidden={mode !== "review"}>
+        {files.length === 0 ? (
+          <div className="center-note">{s.noChanges}</div>
+        ) : (
+          <SplitPane
+            hidden={sidebarHidden}
+            side={
+              <SideSections
+                storageKey="review"
+                top={{
+                  title: s.sectionFiles,
+                  body: items.map(({ file: f, entry }, i) => {
+                    const path = displayPath(f);
+                    const { dir, base } = splitPath(path);
+                    const stat = fileStats(f);
+                    const sum = entry?.projection?.summary;
+                    return (
+                      <button
+                        key={`${f.oldPath}→${f.newPath}`}
+                        className={`file-item ${i === safeSelected ? "selected" : ""}`}
+                        onClick={() => {
+                          setSelected(fileKey(f));
+                          setRawOverride(null);
+                          setUnitJump(null);
+                        }}
+                      >
+                        <span className="file-path" title={path}>
+                          {dir && <span className="file-dir">{dir}</span>}
+                          <span className="file-base">{base}</span>
                         </span>
-                        <em className="add">+{stat.adds}</em>
-                        <em className="del">−{stat.dels}</em>
-                        {sum && (
-                          <span className="chips">
-                            {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
-                              <span key={k} className={`chip ${cls}`}>
-                                {s.summaryChips[k]}
-                                {sum[k]}
-                              </span>
-                            ))}
+                        <span className="file-meta">
+                          <span
+                            className={`status status-${f.type}`}
+                            title={s.statusLabel[f.type as FileStatus] ?? f.type}
+                          >
+                            <StatusIcon status={f.type as FileStatus} />
                           </span>
-                        )}
-                      </span>
+                          <em className="add">+{stat.adds}</em>
+                          <em className="del">−{stat.dels}</em>
+                          {sum && (
+                            <span className="chips">
+                              {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
+                                <span key={k} className={`chip ${cls}`}>
+                                  {s.summaryChips[k]}
+                                  {sum[k]}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  }),
+                }}
+                bottom={{
+                  title: s.sectionUnits,
+                  body: (
+                    <UnitList
+                      selectedId={unitJump?.unitId}
+                      units={selectedEntry?.projection?.units ?? null}
+                      onJump={jumpToUnit}
+                    />
+                  ),
+                }}
+              />
+            }
+          >
+            {selectedFile && (
+              <>
+                <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
+                  <span className="file-title">{displayPath(selectedFile)}</span>
+                  {(context?.newFile?.source != null || context?.oldFile?.source != null) && (
+                    <button
+                      className="icon-btn"
+                      title={s.openInViewer}
+                      aria-label={s.openInViewer}
+                      onClick={openInViewer}
+                    >
+                      <IconOpenExternal />
                     </button>
-                  );
-                }),
-              }}
-              bottom={{
-                title: s.sectionUnits,
-                body: (
-                  <UnitList
-                    selectedId={unitJump?.unitId}
-                    units={selectedEntry?.projection?.units ?? null}
-                    onJump={jumpToUnit}
-                  />
-                ),
-              }}
-            />
-          }
-        >
-          {selectedFile && (
-            <>
-              <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
-                <span className="file-title">{displayPath(selectedFile)}</span>
-                {selectedFile.newPath !== "/dev/null" && (
-                  <button
-                    className="icon-btn"
-                    title={s.openInViewer}
-                    aria-label={s.openInViewer}
-                    onClick={() => openInViewer(selectedFile.newPath)}
-                  >
-                    <IconOpenExternal />
-                  </button>
-                )}
-                {selectedEntry?.degradedReason && selectedEntry.degradedReason !== "no-profile" && (
-                  <span className="dim">
-                    {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
-                  </span>
-                )}
-                {!showRaw &&
-                  selectedEntry?.simplified &&
-                  selectedEntry.simplified.stats.folded > 0 && (
-                    <span className="dim">
-                      {s.foldedLines(selectedEntry.simplified.stats.folded)}
+                  )}
+                  {selectedEntry?.degradedReason &&
+                    selectedEntry.degradedReason !== "no-profile" && (
+                      <span className="dim">
+                        {s.fellBack(s.degradeLabel[selectedEntry.degradedReason])}
+                      </span>
+                    )}
+                  {!showRaw &&
+                    selectedEntry?.simplified &&
+                    selectedEntry.simplified.stats.folded > 0 && (
+                      <span className="dim">
+                        {s.foldedLines(selectedEntry.simplified.stats.folded)}
+                      </span>
+                    )}
+                  <span className="spacer" />
+                  {hasSimplified && (
+                    <span className="seg">
+                      <button
+                        title={s.shortcutS}
+                        className={!showRaw ? "active" : ""}
+                        onClick={() => setRawOverride(false)}
+                      >
+                        {s.simplified}
+                      </button>
+                      <button
+                        title={s.shortcutS}
+                        className={showRaw ? "active" : ""}
+                        onClick={() => setRawOverride(true)}
+                      >
+                        {s.rawDiff}
+                      </button>
                     </span>
                   )}
-                <span className="spacer" />
-                {hasSimplified && (
-                  <span className="seg">
-                    <button
-                      title={s.shortcutS}
-                      className={!showRaw ? "active" : ""}
-                      onClick={() => setRawOverride(false)}
-                    >
-                      {s.simplified}
-                    </button>
-                    <button
-                      title={s.shortcutS}
-                      className={showRaw ? "active" : ""}
-                      onClick={() => setRawOverride(true)}
-                    >
-                      {s.rawDiff}
-                    </button>
-                  </span>
+                  {showRaw && (
+                    <span className="seg">
+                      <button
+                        className={`icon-btn${viewType === "unified" ? " active" : ""}`}
+                        title={s.unified}
+                        aria-label={s.unified}
+                        onClick={() => setViewType("unified")}
+                      >
+                        <IconUnified />
+                      </button>
+                      <button
+                        className={`icon-btn${viewType === "split" ? " active" : ""}`}
+                        title={s.split}
+                        aria-label={s.split}
+                        onClick={() => setViewType("split")}
+                      >
+                        <IconSplit />
+                      </button>
+                    </span>
+                  )}
+                </div>
+                {contextResource.error && (
+                  <div className="error pad">
+                    {s.loadError(contextResource.error)}{" "}
+                    <button onClick={contextResource.refresh}>{s.refresh}</button>
+                  </div>
                 )}
-                {showRaw && (
-                  <span className="seg">
-                    <button
-                      className={`icon-btn${viewType === "unified" ? " active" : ""}`}
-                      title={s.unified}
-                      aria-label={s.unified}
-                      onClick={() => setViewType("unified")}
-                    >
-                      <IconUnified />
-                    </button>
-                    <button
-                      className={`icon-btn${viewType === "split" ? " active" : ""}`}
-                      title={s.split}
-                      aria-label={s.split}
-                      onClick={() => setViewType("split")}
-                    >
-                      <IconSplit />
-                    </button>
-                  </span>
+                {contextResource.data?.ok && !context && (
+                  <div className="dim pad">{s.contextChanged}</div>
                 )}
-              </div>
-              {!showRaw && selectedEntry?.simplified ? (
-                <SimplifiedView
-                  key={fileKey(selectedFile)}
-                  data={selectedEntry.simplified}
-                  lang={shikiLangForPath(displayPath(selectedFile))}
-                  jump={unitJump}
-                />
-              ) : (
-                <RawDiff
-                  key={fileKey(selectedFile)}
-                  file={selectedFile}
-                  viewType={viewType}
-                  tokens={diffTokens}
-                  jump={unitJump}
-                />
-              )}
-            </>
-          )}
-        </SplitPane>
-      )}
+                {!showRaw && simplified ? (
+                  <SimplifiedView
+                    key={fileKey(selectedFile)}
+                    data={simplified}
+                    beforeRow={beforeRow}
+                    afterRows={gaps
+                      .filter((g) => g.before === expandedFile?.hunks.length)
+                      .map((g) => (
+                        <ContextGap key={g.start} gap={g} onExpand={expand} trailing />
+                      ))}
+                    lang={shikiLangForPath(displayPath(selectedFile))}
+                    jump={unitJump}
+                  />
+                ) : (
+                  <RawDiff
+                    key={fileKey(selectedFile)}
+                    file={expandedFile!}
+                    context={context}
+                    gaps={gaps}
+                    onExpand={expand}
+                    viewType={viewType}
+                    tokens={diffTokens}
+                    jump={unitJump}
+                  />
+                )}
+              </>
+            )}
+          </SplitPane>
+        )}
+      </div>
     </div>
   );
 }

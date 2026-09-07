@@ -47,6 +47,14 @@ export interface Strings {
   domainShape: string;
   /** 在查看器中打开按钮 */
   openInViewer: string;
+  returnToReview: string;
+  beforeChange: string;
+  afterChange: string;
+  hiddenContext: (n: number) => string;
+  expandUp: string;
+  expandDown: string;
+  expandAll: string;
+  contextChanged: string;
   /** 已退回原始 diff 的提示（括号内含原因） */
   fellBack: (reason: string) => string;
   /** 简化视图"已折叠 N 行"提示 */

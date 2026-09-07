@@ -247,6 +247,15 @@ export function outlineOf(profile: LanguageProfile, tree: Tree, locale: Locale):
     container: d.container,
     typeLevel: d.typeLevel,
     range: rangeOf(d),
+    signature:
+      d.kind === "function" || d.kind === "class"
+        ? normalize(
+            d.node.text.slice(
+              0,
+              d.bodyNode ? d.bodyNode.startIndex - d.node.startIndex : undefined,
+            ),
+          )
+        : undefined,
   }));
 }
 

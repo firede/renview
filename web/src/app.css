@@ -20,6 +20,11 @@
   /* diff 行底与词底（react-diff-view 与简化视图共用） */
   --add-line-bg: rgba(46, 160, 67, 0.15);
   --add-word-bg: rgba(46, 160, 67, 0.35);
+  --add-gutter-bg: #204a2e;
+  --del-gutter-bg: #61302f;
+  --context-bg: #152b3c;
+  --context-control-bg: #23435a;
+  --context-fg: #9db8cb;
   --del-line-bg: rgba(248, 81, 73, 0.15);
   --del-word-bg: rgba(248, 81, 73, 0.35);
   --sel-line-bg: rgba(56, 139, 253, 0.15);
@@ -64,6 +69,11 @@
   --accent-faint: rgba(9, 105, 218, 0.3);
   --add-line-bg: #dafbe1;
   --add-word-bg: #aceebb;
+  --add-gutter-bg: #b9edc5;
+  --del-gutter-bg: #ffd1cc;
+  --context-bg: #ddf4ff;
+  --context-control-bg: #b6e3ff;
+  --context-fg: #526b7b;
   --del-line-bg: #ffebe9;
   --del-word-bg: #ffcecb;
   --sel-line-bg: rgba(9, 105, 218, 0.1);
@@ -361,16 +371,24 @@ body {
   padding-left: 0;
 }
 
-.diff-gutter-insert,
 .diff-code-insert {
   background: var(--add-line-bg);
+}
+
+/* 行号底比代码底更深，定位橙色由后面的 located 规则覆盖。 */
+.diff-gutter-insert,
+.srow.add .gutter {
+  background: var(--add-gutter-bg);
+}
+.diff-gutter-delete,
+.srow.del .gutter {
+  background: var(--del-gutter-bg);
 }
 
 .diff-code-insert .diff-code-edit {
   background: var(--add-word-bg);
 }
 
-.diff-gutter-delete,
 .diff-code-delete {
   background: var(--del-line-bg);
 }
@@ -1027,4 +1045,81 @@ button.icon-btn.spinning svg {
   .vfold-head.flash {
     animation: none;
   }
+}
+
+/* 审阅面板在查看器往返时保留挂载，维持展开状态和滚动位置。 */
+.review-pane {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.review-pane[hidden] {
+  display: none;
+}
+.context-gap {
+  display: flex;
+  align-items: stretch;
+  background: var(--context-bg);
+  color: var(--context-fg);
+  font-size: var(--font-size-code);
+  min-height: 30px;
+}
+.context-gap-controls {
+  display: flex;
+  flex: 0 0 calc(var(--gutter-width) * 2);
+  background: var(--context-control-bg);
+}
+.context-gap-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 0;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.context-gap-controls button:hover,
+.context-gap-controls button:focus-visible {
+  background: var(--accent);
+  color: #fff;
+}
+.context-gap-controls button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.context-gap-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.context-gap-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.context-gap-summary code {
+  font: inherit;
+  font-family: var(--font-mono);
+}
+.diff-split .context-gap-controls {
+  flex-basis: var(--gutter-width);
+  flex-direction: column;
+}
+.diff-decoration-content:has(> .context-gap) {
+  padding: 0;
+}
+.scope-label {
+  padding: 4px 12px;
+  background: var(--bg-raised);
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  overflow-wrap: anywhere;
 }

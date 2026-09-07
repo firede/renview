@@ -53,6 +53,7 @@ export interface OutlineItem {
   container: string;
   typeLevel: boolean;
   range: [number, number];
+  signature?: string;
 }
 
 export interface FileEntry {
@@ -78,4 +79,11 @@ export interface ViewerFile {
   view: ViewRow[] | null;
   outline: OutlineItem[];
   degradedReason?: "no-profile" | "parse-error" | "too-large" | "binary";
+}
+
+/** 当前审阅文件两侧的完整上下文，按需获取。 */
+export interface ReviewContext {
+  oldFile: ViewerFile | null;
+  newFile: ViewerFile | null;
+  diff: string;
 }

@@ -44,6 +44,8 @@ renview -p 8080 --no-open  # 指定端口、不自动打开浏览器
 
 界面含「变更 / 浏览」两种模式：变更 = diff 审阅（默认简化视图，可回退原始 diff）；浏览 = 完整文件的只读简化视图（可切源码、声明大纲跳转）。
 
+变更视图显示函数归属，可按需展开隐藏上下文；从审阅打开查看器时沿用对应版本和阅读位置，点击「返回变更」恢复原来的审阅状态。
+
 ## 配置
 
 配置文件为 TOML 格式，位置：`$XDG_CONFIG_HOME/renview/config.toml`（默认 `~/.config/renview/config.toml`），Windows 为 `%APPDATA%\renview\config.toml`。
