@@ -29,8 +29,8 @@
   /* 变更分类徽章（签名/实现） */
   --sig: #d29922;
   --body-chg: #58a6ff;
-  /* 跳转定位的闪烁底色 */
-  --flash-bg: rgba(31, 111, 235, 0.28);
+  /* 持久定位的行号底色，独立于代码增删色 */
+  --located-gutter-bg: #593a20;
   /* 投影态文件工具条底色（扫一眼识别简化视图） */
   --toolbar-projected-bg: #131a26;
   /* 代码字体唯一 token：配置 font_family 即覆写此处；默认值须与 src/config.ts 的 DEFAULT_FONT_FAMILY 保持一致 */
@@ -71,7 +71,7 @@
   --del-text: #cf222e;
   --sig: #9a6700;
   --body-chg: #0550ae;
-  --flash-bg: rgba(9, 105, 218, 0.18);
+  --located-gutter-bg: #ffe0b2;
   --toolbar-projected-bg: #ddf4ff;
 }
 
@@ -817,9 +817,10 @@ body {
   animation: flash-range 1.6s ease-out;
 }
 
-/* 行定位的持久提示：目标行行号提亮加粗（点击代码区或切换文件取消）；一次性闪烁由 .flash 承担 */
+/* 行定位的持久提示：行号加粗并加橙色底（点击代码区或切换文件取消），保留代码增删底色 */
 .srow.located .gutter,
 .diff-line.located .diff-gutter {
+  background: var(--located-gutter-bg);
   color: var(--fg);
   font-weight: 700;
 }
