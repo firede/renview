@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parseDiff } from "react-diff-view";
-import { highlightDiff } from "../web/src/highlight-core";
+import { highlightDiff, highlightSparseLines, highlightText } from "../web/src/highlight-core";
 
 function diffAt(line: number) {
   return parseDiff(`diff --git a/a.ts b/a.ts
@@ -44,3 +44,35 @@ describe("稀疏 diff 高亮", () => {
     expect(tokens.old[2]).toBeUndefined();
   });
 });
+
+for (const theme of ["light", "dark"] as const) {
+  test(`折叠缺口后的代码不继承前段注释色（${theme}）`, async () => {
+    const code = "  upgradeManualHint: `Manual upgrade: ${INSTALL_CMD}`,";
+    const tokens = await highlightSparseLines(
+      new Map([
+        [1, "/**"],
+        [2, " * English copy"],
+        [52, code],
+      ]),
+      "typescript",
+      theme,
+      "deterministic",
+    );
+    const expected = await highlightText(code, "typescript", theme, "deterministic");
+    expect(tokens[51]).toEqual(expected![0]!);
+    expect(new Set(tokens[51]!.map((t) => t.color)).size).toBeGreaterThan(1);
+    expect(tokens[2]).toBeUndefined();
+  });
+
+  test(`连续行保留跨行注释状态（${theme}）`, async () => {
+    const source = ["/**", " * English copy", " */", "const value = 1;"];
+    const tokens = await highlightSparseLines(
+      new Map(source.map((line, i) => [i + 10, line])),
+      "typescript",
+      theme,
+      "deterministic",
+    );
+    const expected = await highlightText(source.join("\n"), "typescript", theme, "deterministic");
+    expect(tokens.slice(9)).toEqual(expected!);
+  });
+}

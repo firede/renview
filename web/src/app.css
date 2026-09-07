@@ -20,6 +20,7 @@
   /* diff 行底与词底（react-diff-view 与简化视图共用） */
   --add-line-bg: rgba(46, 160, 67, 0.15);
   --add-word-bg: rgba(46, 160, 67, 0.35);
+  --gutter-bg: #161b22;
   --add-gutter-bg: #204a2e;
   --del-gutter-bg: #61302f;
   --context-bg: #152b3c;
@@ -70,6 +71,7 @@
   --accent-faint: rgba(9, 105, 218, 0.3);
   --add-line-bg: #dafbe1;
   --add-word-bg: #aceebb;
+  --gutter-bg: #f1f3f5;
   --add-gutter-bg: #b9edc5;
   --del-gutter-bg: #ffd1cc;
   --context-bg: #ddf4ff;
@@ -348,7 +350,7 @@ body {
 }
 
 .diff-gutter {
-  background: var(--bg);
+  background: var(--gutter-bg);
   color: var(--fg-dim);
   font-size: var(--font-size-gutter);
   padding: 0 6px;
@@ -495,6 +497,7 @@ body {
 
 /* gutter 几何三处共用（简化 diff 双 gutter、查看器行、查看器折叠头）：栏宽随字号联动，折叠头摘要与代码列对齐 */
 .gutter {
+  background: var(--gutter-bg);
   width: var(--gutter-width);
   flex: none;
   text-align: right;

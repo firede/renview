@@ -112,7 +112,7 @@ function toNodes(line: HToken[]): TokenNode[] {
 }
 
 /**
- * 高亮一个文件的 diff：每侧只拼接实际 diff 行，再回填到原始行号。
+ * 高亮一个文件的 diff：每侧按连续行分段高亮，再回填到原始行号。
  * 成本随 diff 内容增长，而非末尾行号；百万行文件尾部的小改动也不分配百万个空行。
  * 局限：hunk 外缺失的语法上下文可能导致断色，仅影响颜色不影响文本。
  */
@@ -138,19 +138,39 @@ export async function highlightDiff(
   }
 
   const side = async (byLine: Map<number, string>): Promise<TokenNode[][]> => {
+    const lines = await highlightSparseLines(byLine, lang, theme, mode);
     const out: TokenNode[][] = [];
-    if (byLine.size === 0) return out;
-    const entries = [...byLine];
-    const text = entries.map(([, content]) => content).join("\n");
-    const lines = await highlightText(text, lang, theme, mode);
-    if (!lines) return out;
-    for (let i = 0; i < entries.length; i++) {
-      const t = lines[i];
-      if (t) out[entries[i]![0] - 1] = toNodes(t);
-    }
+    for (const key of Object.keys(lines)) out[Number(key)] = toNodes(lines[Number(key)]!);
     return out;
   };
 
   const [oldTokens, newTokens] = await Promise.all([side(oldByLine), side(newByLine)]);
   return { old: oldTokens, new: newTokens };
+}
+
+/** 按原始行号高亮连续片段，缺口处重置语法状态。 */
+export async function highlightSparseLines(
+  byLine: Map<number, string>,
+  lang: string,
+  theme: ResolvedTheme,
+  mode: HighlightMode = "interactive",
+): Promise<HToken[][]> {
+  const out: HToken[][] = [];
+  const entries = [...byLine].sort(([a], [b]) => a - b);
+  for (let start = 0; start < entries.length;) {
+    let end = start + 1;
+    while (end < entries.length && entries[end]![0] === entries[end - 1]![0] + 1) end++;
+    const text = entries
+      .slice(start, end)
+      .map(([, content]) => content)
+      .join("\n");
+    const lines = await highlightText(text, lang, theme, mode);
+    if (!lines) return out;
+    for (let i = start; i < end; i++) {
+      const t = lines[i - start];
+      if (t) out[entries[i]![0] - 1] = t;
+    }
+    start = end;
+  }
+  return out;
 }

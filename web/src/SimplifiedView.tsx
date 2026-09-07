@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SRow, SimplifiedViewData } from "../../src/analysis/types";
 import { DecoratedLine } from "./decor";
-import { TokenSpans, useHighlightedLines } from "./highlight";
+import { TokenSpans, useHighlightedLines, useSparseTokens } from "./highlight";
 import { useStrings } from "./i18n";
 import { wordDiffRanges, type WordDiff } from "./worddiff";
 
@@ -105,17 +105,17 @@ export function SimplifiedView({
     const t = setTimeout(() => setFlashIdx(null), 1700);
     return () => clearTimeout(t);
   }, [flashIdx, jump]);
-  // 高亮文本 = 代码行（fold/note 行不参与）按序拼接；token 按下标回填。跨 hunk 拼接仅影响颜色连续性。
-  const visibleRows = useMemo(
-    () =>
-      data.rows.filter(
-        (r): r is Extract<SRow, { kind: "ctx" | "del" | "add" }> =>
-          r.kind === "ctx" || r.kind === "del" || r.kind === "add",
-      ),
-    [data],
-  );
-  const text = useMemo(() => visibleRows.map((r) => r.text).join("\n"), [visibleRows]);
-  const tokens = useHighlightedLines(lang ? text : null, lang);
+  const [oldLines, newLines] = useMemo(() => {
+    const old = new Map<number, string>();
+    const next = new Map<number, string>();
+    for (const row of data.rows) {
+      if (row.kind === "fold") continue;
+      if (row.oldLn != null) old.set(row.oldLn, row.text);
+      if (row.newLn != null) next.set(row.newLn, row.text);
+    }
+    return [old, next];
+  }, [data]);
+  const tokens = useSparseTokens(oldLines, newLines, lang);
 
   // 词级高亮：按 pair id 求配对行的差异区间（零交互呈现签名/规则的 delta）
   const pairDiffs = useMemo(() => {
@@ -144,7 +144,6 @@ export function SimplifiedView({
       </>
     );
   }
-  let vi = 0;
   return (
     // 点击代码区任意处取消持久定位提示
     <div className="sview" onClick={() => setLocatedJump(null)}>
@@ -166,7 +165,9 @@ export function SimplifiedView({
               />
             </Fragment>
           );
-        const lineTokens = tokens?.[vi++] ?? null;
+        const lineTokens =
+          (r.kind === "del" ? tokens?.old[(r.oldLn ?? 0) - 1] : tokens?.new[(r.newLn ?? 0) - 1]) ??
+          null;
         const wd = r.pair != null ? pairDiffs.get(r.pair) : undefined;
         return (
           <Fragment key={key}>

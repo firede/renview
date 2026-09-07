@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import type { HunkData, HunkTokens, RenderToken } from "react-diff-view";
 import { useTheme, type ResolvedTheme } from "./theme";
 
-import { highlightText, highlightDiff, type HToken } from "./highlight-core";
+import { highlightText, highlightDiff, highlightSparseLines, type HToken } from "./highlight-core";
 export { highlightText, highlightDiff, type HToken } from "./highlight-core";
 /** 语言映射收敛在 ./langForPath（纯数据模块，scripts/gen-demo.ts 等非浏览器消费方共用） */
 import { shikiLangForPath } from "./langForPath";
@@ -99,4 +99,43 @@ export function useDiffTokens(
     };
   }, [file, lang, theme]);
   return result?.file === file && result?.theme === theme ? result.tokens : null;
+}
+
+/** 简化视图两侧分别高亮，避免删除行及折叠缺口污染后续代码。 */
+export function useSparseTokens(
+  oldLines: Map<number, string>,
+  newLines: Map<number, string>,
+  lang: string | null,
+) {
+  const theme = useTheme();
+  const [result, setResult] = useState<{
+    oldLines: typeof oldLines;
+    newLines: typeof newLines;
+    lang: string;
+    theme: ResolvedTheme;
+    old: HToken[][];
+    new: HToken[][];
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (lang) {
+      Promise.all([
+        highlightSparseLines(oldLines, lang, theme),
+        highlightSparseLines(newLines, lang, theme),
+      ])
+        .then(([old, next]) => {
+          if (!cancelled) setResult({ oldLines, newLines, lang, theme, old, new: next });
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [oldLines, newLines, lang, theme]);
+  return result?.oldLines === oldLines &&
+    result?.newLines === newLines &&
+    result?.lang === lang &&
+    result?.theme === theme
+    ? result
+    : null;
 }
