@@ -66,6 +66,8 @@ export interface Messages {
     help: string;
     invalidPort: (value: string) => string;
     notInRepo: string;
+    missingCwd: string;
+    invalidCwd: (path: string) => string;
     started: (url: string) => string;
     repo: (root: string) => string;
     configWarning: (path: string, warning: string) => string;

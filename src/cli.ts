@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import pkg from "../package.json";
 import { configPath, createConfigLoader } from "./config";
 import { findRepoRoot } from "./git";
@@ -8,17 +10,30 @@ import { checkForUpdate, upgrade } from "./updater";
 
 interface CliOptions {
   port?: number;
+  cwd?: string;
   open: boolean;
   gitArgs: string[];
 }
 
-function parseArgs(argv: string[], m: Messages): CliOptions {
+export function parseArgs(argv: string[], m: Messages): CliOptions {
   const gitArgs: string[] = [];
   let port: number | undefined;
   let open = true;
+  let cwd: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "-p" || a === "--port") {
+    if (a === "--") {
+      gitArgs.push(...argv.slice(i));
+      break;
+    }
+    if (a === "-C" || a === "--cwd" || a?.startsWith("--cwd=")) {
+      const value = a.startsWith("--cwd=") ? a.slice(6) : argv[++i];
+      if (!value || (!a.startsWith("--cwd=") && value.startsWith("-"))) {
+        console.error(m.cli.missingCwd);
+        process.exit(1);
+      }
+      cwd = value;
+    } else if (a === "-p" || a === "--port") {
       const v = Number(argv[++i]);
       if (!Number.isInteger(v) || v <= 0 || v > 65535) {
         console.error(m.cli.invalidPort(argv[i]!));
@@ -37,7 +52,7 @@ function parseArgs(argv: string[], m: Messages): CliOptions {
       gitArgs.push(a);
     }
   }
-  return { port, open, gitArgs };
+  return { port, open, gitArgs, cwd };
 }
 
 function openBrowser(url: string): void {
@@ -61,9 +76,14 @@ async function main(): Promise<void> {
 
   const opts = parseArgs(argv, m);
 
-  const root = await findRepoRoot(process.cwd());
+  const cwd = resolve(opts.cwd ?? process.cwd());
+  if (!(await stat(cwd).catch(() => null))?.isDirectory()) {
+    console.error(m.cli.invalidCwd(cwd));
+    process.exit(1);
+  }
+  const root = await findRepoRoot(cwd);
   if (!root) {
-    console.error(m.cli.notInRepo);
+    console.error(opts.cwd == null ? m.cli.notInRepo : `${m.cli.notInRepo} ${cwd}`);
     process.exit(1);
   }
 
@@ -78,4 +98,4 @@ async function main(): Promise<void> {
   if (opts.open) openBrowser(url);
 }
 
-await main();
+if (import.meta.main) await main();

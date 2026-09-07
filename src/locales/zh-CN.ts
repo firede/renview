@@ -12,6 +12,7 @@ export const zhCN: Messages = {
   upgrade [版本]        升级到最新（或指定）版本
 
 选项:
+  -C, --cwd <路径>   指定工作目录（默认当前目录）
   -p, --port <端口>   指定本地服务端口（默认 17171，占用时递增）
       --no-open       不自动打开浏览器
   -h, --help          显示帮助
@@ -24,7 +25,10 @@ export const zhCN: Messages = {
   renview --staged           审阅已暂存变更
   renview main...HEAD        审阅分支区间
   renview HEAD~3 -- src/     审阅指定区间与路径
+  renview -C ../project      审阅其他仓库
 `,
+    missingCwd: "--cwd / -C 需要提供目录路径。",
+    invalidCwd: (path) => `无法访问目录: ${path}`,
     invalidPort: (v) => `无效端口: ${v}`,
     notInRepo: "当前目录不在 git 仓库内。",
     started: (url) => `renview 已启动: ${url}`,

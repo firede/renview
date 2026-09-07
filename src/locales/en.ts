@@ -15,6 +15,7 @@ Commands:
   upgrade [version]     Upgrade to the latest (or a specific) version
 
 Options:
+  -C, --cwd <path>   Use a working directory (default: current directory)
   -p, --port <port>   Use a specific local port (default: 17171, increments if busy)
       --no-open       Do not open the browser automatically
   -h, --help          Show this help
@@ -27,7 +28,10 @@ Examples:
   renview --staged           Review staged changes
   renview main...HEAD        Review a branch range
   renview HEAD~3 -- src/     Review a range, limited to given paths
+  renview -C ../project      Review another repository
 `,
+    missingCwd: "--cwd / -C requires a directory path.",
+    invalidCwd: (path) => `Cannot access directory: ${path}`,
     invalidPort: (v) => `Invalid port: ${v}`,
     notInRepo: "Not inside a git repository.",
     started: (url) => `renview started: ${url}`,

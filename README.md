@@ -29,13 +29,16 @@ renview upgrade 0.2.0   # 升级到指定版本
 renview                    # 审阅未提交变更（working tree vs HEAD，含 untracked 新文件）
 renview --staged           # 审阅已暂存变更
 renview main...HEAD        # 审阅分支区间
+renview -C ../project      # 指定仓库目录
 renview HEAD~3 -- src/     # 指定区间与路径
 renview -p 8080 --no-open  # 指定端口、不自动打开浏览器
 ```
 
 未跟踪文件仅补入工作区审阅；`--staged` 和提交区间审阅不包含工作区草稿。
 
-除 `-p/--port`、`--no-open`、`-h/--help`、`-v/--version` 外，参数原样透传给 `git diff`。
+`--cwd <路径>`（简写 `-C`）指定工作目录，支持相对路径和仓库子目录；默认当前目录，审阅范围仍以仓库根目录为准。
+
+除 `-C/--cwd`、`-p/--port`、`--no-open`、`-h/--help`、`-v/--version` 外，参数原样透传给 `git diff`；`--` 后的内容一律作为路径参数透传。
 
 默认使用端口 `17171`，被占用时依次尝试 `17172`、`17173`……；显式指定 `--port` 时只使用该端口，占用则报错。
 
