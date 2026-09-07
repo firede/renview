@@ -1,92 +1,101 @@
 # renview
 
-帮助人类降低认知负担的代码审核工具。对 git diff 做语言感知的投影（签名/实现/类型变更分层），支持逐级披露与原始 diff 回退。
+[English](README.en.md) · [官网](https://view.bandwidth.ren)
+
+帮助人类读懂 agent 写的代码，把注意力留给业务建模、接口和关键流程。
+
+renview 在本地浏览器中展示 Git 变更，收起类型标注等语言细节，让代码的主要变化更容易看清。
+
+- **简化审阅**：保留连续的代码阅读体验，突出参数、模型成员与实现的变化。
+- **随时对照**：悬停查看被简化的片段，展开折叠与上下文，或切换到原始 diff。
+- **浏览源码**：用同样的简化视图阅读仓库文件，通过声明大纲跳转。
+
+代码分析在本机完成，无需 LLM。简化视图用于辅助理解，原始代码始终可查。
 
 ## 安装
 
-```bash
-curl -fsSL https://view.bandwidth.ren/install | bash   # macOS / Linux / Git Bash 下的 Windows
-# 或
-npm install -g renview                                # bun / pnpm / yarn 全局安装亦可
-```
-
-安装到 `~/.renview/bin` 并自动配置 PATH（`--no-modify-path` 跳过）。支持平台：macOS（arm64/x64）、Linux（x64/arm64，glibc）、Windows（x64/arm64）；musl（Alpine）暂未支持。安装脚本经 npm registry 分发并校验 sha512 完整性，可用 `RENVIEW_REGISTRY` 环境变量切换 registry 镜像（如 `https://registry.npmmirror.com`）。
-
-注意：浏览器手动下载 [GitHub Releases](https://github.com/firede/renview/releases) 的 tar.gz 会带 macOS quarantine 属性，未签名二进制首次运行需在「系统设置 → 隐私与安全性」放行（或 `xattr -d com.apple.quarantine renview`）；安装脚本与 npm 渠道无此问题。
-
-升级：
+使用安装脚本（Windows 需在 Git Bash 中运行）：
 
 ```bash
-renview upgrade         # 升级到最新版（脚本安装会重跑官网脚本；npm/bun/pnpm/yarn 安装会调对应包管理器）
-renview upgrade 0.2.0   # 升级到指定版本
+curl -fsSL https://view.bandwidth.ren/install | bash
 ```
 
-启动时若发现新版本会提示一行（24h 缓存、不阻塞）；在 `config.toml` 设 `update_check = false` 或环境变量 `RENVIEW_DISABLE_UPDATE_CHECK=1` 可关闭。
+也可以通过 npm 安装：
+
+```bash
+npm install -g renview
+```
+
+支持 macOS、Linux（glibc）和 Windows，均提供 x64 与 arm64 版本。
+
+升级到最新版：
+
+```bash
+renview upgrade
+```
 
 ## 使用
 
+在 Git 仓库中运行，自动打开浏览器：
+
 ```bash
-renview                    # 审阅未提交变更（working tree vs HEAD，含 untracked 新文件）
-renview --staged           # 审阅已暂存变更
-renview main...HEAD        # 审阅分支区间
-renview -C ../project      # 指定仓库目录
-renview HEAD~3 -- src/     # 指定区间与路径
-renview -p 8080 --no-open  # 指定端口、不自动打开浏览器
+renview
 ```
 
-未跟踪文件仅补入工作区审阅；`--staged` 和提交区间审阅不包含工作区草稿。
+默认审阅全部未提交变更，包括已暂存、未暂存和未跟踪的新文件。
 
-`--cwd <路径>`（简写 `-C`）指定工作目录，支持相对路径和仓库子目录；默认当前目录，审阅范围仍以仓库根目录为准。
+| 场景                                      | 命令                        |
+| ----------------------------------------- | --------------------------- |
+| 只看已暂存变更                            | `renview --staged`          |
+| 查看分支相对共同祖先的变更                | `renview main...HEAD`       |
+| 对比三个提交前与当前工作区，只看 src 目录 | `renview HEAD~3 -- src/`    |
+| 指定仓库目录                              | `renview -C ../project`     |
+| 指定端口，不自动打开浏览器                | `renview -p 8080 --no-open` |
 
-除 `-C/--cwd`、`-p/--port`、`--no-open`、`-h/--help`、`-v/--version` 外，参数原样透传给 `git diff`；`--` 后的内容一律作为路径参数透传。启动前会执行 diff 校验，命令失败时在终端报错退出，不启动服务或打开浏览器。
+审阅已暂存变更或提交区间时，不混入工作区草稿。比较版本与筛选路径沿用 `git diff` 的参数，用 `renview --help` 查看工具选项。
 
-默认使用端口 `17171`，被占用时依次尝试 `17172`、`17173`……；显式指定 `--port` 时只使用该端口，占用则报错。
+界面默认进入「变更」模式，可在简化视图与原始 diff 之间切换，按需展开未变更的上下文。「浏览」模式用于阅读仓库文件。
 
-界面含「变更 / 浏览」两种模式：变更 = diff 审阅（默认简化视图，可回退原始 diff）；浏览 = 完整文件的只读简化视图（可切源码、声明大纲跳转）。
-
-变更视图显示函数归属，可按需展开隐藏上下文；文件名旁的两个按钮分别用于全部展开上下文、全部折叠以恢复默认范围，不影响简化视图内的折叠。
+支持 TypeScript / JavaScript、Rust、Go、Python 和 GDScript 的代码简化；其他文件使用原始 diff。
 
 ## 配置
 
-配置文件为 TOML 格式，位置：`$XDG_CONFIG_HOME/renview/config.toml`（默认 `~/.config/renview/config.toml`），Windows 为 `%APPDATA%\renview\config.toml`。
+无需配置即可使用，界面语言和主题默认跟随系统。需要自定义时，创建 `~/.config/renview/config.toml`；设置了 `XDG_CONFIG_HOME` 时使用该目录下的 `renview/config.toml`，Windows 使用 `%APPDATA%\renview\config.toml`。
 
 ```toml
-# 界面语言：BCP 47 标签，按根语言匹配（如 zh-TW 归为 zh-CN）；支持 zh-CN、en
-# 不设置时自动检测系统语言（LC_ALL/LC_MESSAGES/LANG），匹配不到回落英文
 language = "zh-CN"
-# 界面主题：auto（默认，跟随系统）、dark、light
 theme = "light"
-# 代码字体：逗号分隔列表，未安装时回落到内置系统等宽栈
 font_family = "JetBrains Mono, Sarasa Mono SC"
-# 代码阅读区字号（px，默认 12），行高随字号联动
 font_size = 13
-# 启动时被动检查新版本并提示一行（默认 true）
 update_check = false
 ```
 
-保存后窗口重新聚焦即生效，无需重启。配置写坏（语法/类型错误）时回退默认值并在终端提示，不影响审阅。
+| 配置项         | 说明                         | 默认值       |
+| -------------- | ---------------------------- | ------------ |
+| `language`     | `zh-CN` 或 `en`              | 自动检测     |
+| `theme`        | `auto`、`light` 或 `dark`    | `auto`       |
+| `font_family`  | 字体名称，多个字体用逗号分隔 | 系统等宽字体 |
+| `font_size`    | 代码字号，单位 px            | `12`         |
+| `update_check` | 启动时检查新版本             | `true`       |
+
+界面配置保存后，重新聚焦窗口即可生效。
 
 ## 开发
 
+需要 Bun；首次构建 GDScript 解析器还需要可用的 Docker。
+
 ```bash
 bun install
-bun run dev                      # 同步 wasm + 构建前端 + watch 启动 CLI
-bun run test                     # 同步 wasm 并运行全部测试
-bun run typecheck
-bun run build                    # 交叉编译全平台单文件二进制到 dist/
-bun run scripts/build.ts --host  # 仅编译本机平台
-bun run scripts/pack.ts          # 组装 dist/npm/（6 个 npm 包）与 dist/release/（tarball + checksums）
-bun run gen:demo                 # 重新生成 www 演示数据（samples/demo → www/src/lib/demo-data.gen.ts；新鲜度由 samples 测试锁定）
-
-# 发版（tag 触发 release.yml：构建 → 5 平台冒烟 → npm Trusted Publishing + GitHub Release）
-# npm version 会自动改 package.json + 提交 + 打 v 前缀 tag；tag 提交必须在 main 祖先链上，否则 CI 拒绝
-npm version patch                # 或 minor / major
-git push --follow-tags
-
-# 体验（以本仓库最近 5 个提交为样本，换成任意真实仓库与区间皆可）
 bun run dev HEAD~5
 ```
 
-## 决策记录
+开发服务启动后，在浏览器打开终端显示的地址。
 
-重要且无法从代码直接读出的产品取舍见 [产品决策](.agents/truth/product.md)；实现与验证以代码、测试和提交为准。
+| 命令                | 用途                         |
+| ------------------- | ---------------------------- |
+| `bun run test`      | 准备构建资源并运行全部测试   |
+| `bun run typecheck` | 类型检查                     |
+| `bun run build`     | 构建各平台二进制到 dist 目录 |
+| `bun run gen:demo`  | 更新官网演示数据             |
+
+开发约定见 [AGENTS.md](AGENTS.md)，产品取舍见 [产品决策](.agents/truth/product.md)。
