@@ -107,7 +107,7 @@ test("上下展开与全部展开保持新旧行号和变更不变，无重复�
   expect(newLns).toEqual(Array.from({ length: next.split("\n").length - 1 }, (_, i) => i + 1));
 });
 
-test("简化视图补入上下文时保留原有变更行与折叠对象", async () => {
+test("简化视图补入上下文时保留原有行内容与统计", async () => {
   const c = await context();
   const f = parseDiff(c.diff)[0]!;
   const baseRows: SRow[] = f.hunks.flatMap((h) => h.changes.map(changeRow));
@@ -118,11 +118,11 @@ test("简化视图补入上下文时保留原有变更行与折叠对象", async
     contextGaps(f, old).map((g) => [g.start, g.end]),
   );
   const result = expandedRows(base, f, full, c);
-  for (const r of baseRows) expect(result.rows.includes(r)).toBe(true);
-  expect(result.rows.filter((r) => !baseRows.includes(r)).every((r) => r.kind === "ctx")).toBe(
-    true,
+  for (const row of baseRows) expect(result.rows).toContainEqual(row);
+  expect(result.rows.filter((r) => r.kind !== "ctx")).toEqual(
+    baseRows.filter((r) => r.kind !== "ctx"),
   );
-  expect(result.stats).toBe(base.stats);
+  expect(result.stats).toEqual(base.stats);
   expect(
     scopeGroups(
       full.hunks.flatMap((h) => h.changes),

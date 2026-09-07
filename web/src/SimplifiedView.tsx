@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SRow, SimplifiedViewData } from "../../src/analysis/types";
 import { DecoratedLine } from "./decor";
-import { TokenSpans, useHighlightedLines, useSparseTokens } from "./highlight";
+import { TokenSpans, useHighlightedLines, useSimplifiedTokens } from "./highlight";
 import { useStrings } from "./i18n";
 import { wordDiffRanges, type WordDiff } from "./worddiff";
 
@@ -105,17 +105,7 @@ export function SimplifiedView({
     const t = setTimeout(() => setFlashIdx(null), 1700);
     return () => clearTimeout(t);
   }, [flashIdx, jump]);
-  const [oldLines, newLines] = useMemo(() => {
-    const old = new Map<number, string>();
-    const next = new Map<number, string>();
-    for (const row of data.rows) {
-      if (row.kind === "fold") continue;
-      if (row.oldLn != null) old.set(row.oldLn, row.text);
-      if (row.newLn != null) next.set(row.newLn, row.text);
-    }
-    return [old, next];
-  }, [data]);
-  const tokens = useSparseTokens(oldLines, newLines, lang);
+  const tokens = useSimplifiedTokens(data.rows, lang);
 
   // 词级高亮：按 pair id 求配对行的差异区间（零交互呈现签名/规则的 delta）
   const pairDiffs = useMemo(() => {

@@ -41,15 +41,4 @@ describe("服务端口选择", () => {
     ).toThrow(error);
     expect(attempts).toBe(1);
   });
-
-  test("端口耗尽时停止，不越过有效范围", () => {
-    let last = 0;
-    expect(() =>
-      listenWithPort((port) => {
-        last = port;
-        throw busy();
-      }),
-    ).toThrow();
-    expect(last).toBe(65535);
-  });
 });

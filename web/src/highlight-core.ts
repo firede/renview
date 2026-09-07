@@ -1,3 +1,4 @@
+import type { SRow } from "../../src/analysis/types";
 import {
   isDelete,
   isInsert,
@@ -173,4 +174,25 @@ export async function highlightSparseLines(
     start = end;
   }
   return out;
+}
+
+/** 简化视图按原始行号拆分两侧，折叠内容不参与可见行高亮。 */
+export async function highlightSimplifiedRows(
+  rows: SRow[],
+  lang: string,
+  theme: ResolvedTheme,
+  mode: HighlightMode = "interactive",
+) {
+  const oldLines = new Map<number, string>();
+  const newLines = new Map<number, string>();
+  for (const row of rows) {
+    if (row.kind === "fold") continue;
+    if (row.oldLn != null) oldLines.set(row.oldLn, row.text);
+    if (row.newLn != null) newLines.set(row.newLn, row.text);
+  }
+  const [old, next] = await Promise.all([
+    highlightSparseLines(oldLines, lang, theme, mode),
+    highlightSparseLines(newLines, lang, theme, mode),
+  ]);
+  return { old, new: next };
 }

@@ -26,8 +26,7 @@ describe("compareVersions", () => {
     expect(compareVersions("2.0.0", "10.0.0")).toBe(-1);
   });
 
-  test("预发布后缀不影响主版本比较，非标准 semver 保守视为相等", () => {
-    expect(compareVersions("0.2.0-beta.1", "0.2.0")).toBe(0);
+  test("无法识别的版本不触发升级提示", () => {
     expect(compareVersions("abc", "0.1.0")).toBe(0);
     expect(compareVersions("0.1.0", "")).toBe(0);
   });

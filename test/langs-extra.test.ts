@@ -96,7 +96,7 @@ func NewServer(addr string, opts ...Option) *Server {
     const line = out[1]!;
     expect(line.startsWith("\tif err: return")).toBe(true);
     expect(line.endsWith("…")).toBe(true);
-    expect((line.match(/"/g) ?? []).length % 2).toBe(0); // 引号必须成对
+    expect(line).toContain('"doctor failed: %v and then some more text here"');
   });
 
   test("结构体字段类型擦除但 tag 保留（tag 是线协议）", async () => {

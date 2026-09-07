@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { parseDiff } from "react-diff-view";
-import { highlightDiff, highlightSparseLines, highlightText } from "../web/src/highlight-core";
+import {
+  highlightDiff,
+  highlightSparseLines,
+  highlightSimplifiedRows,
+  highlightText,
+} from "../web/src/highlight-core";
 
 function diffAt(line: number) {
   return parseDiff(`diff --git a/a.ts b/a.ts
@@ -45,34 +50,39 @@ describe("稀疏 diff 高亮", () => {
   });
 });
 
-for (const theme of ["light", "dark"] as const) {
-  test(`折叠缺口后的代码不继承前段注释色（${theme}）`, async () => {
-    const code = "  upgradeManualHint: `Manual upgrade: ${INSTALL_CMD}`,";
-    const tokens = await highlightSparseLines(
-      new Map([
-        [1, "/**"],
-        [2, " * English copy"],
-        [52, code],
-      ]),
-      "typescript",
-      theme,
-      "deterministic",
-    );
-    const expected = await highlightText(code, "typescript", theme, "deterministic");
-    expect(tokens[51]).toEqual(expected![0]!);
-    expect(new Set(tokens[51]!.map((t) => t.color)).size).toBeGreaterThan(1);
-    expect(tokens[2]).toBeUndefined();
-  });
+test("简化行高亮保留两侧内容，折叠缺口与删除行不污染新增代码", async () => {
+  const oldCode = '  upgradeManualHint: "Manual upgrade",';
+  const newCode = "  upgradeManualHint: `Manual upgrade: ${INSTALL_CMD}`,";
+  const tokens = await highlightSimplifiedRows(
+    [
+      { kind: "ctx", text: "/**", oldLn: 1, newLn: 1 },
+      { kind: "ctx", text: " * English copy", oldLn: 2, newLn: 2 },
+      { kind: "fold", count: 1, oldLines: [" */"], newLines: [" */"], oldLns: [3], newLns: [3] },
+      { kind: "del", text: oldCode, oldLn: 51 },
+      { kind: "del", text: "/* removed comment", oldLn: 52 },
+      { kind: "add", text: newCode, newLn: 52 },
+      { kind: "add", text: "const value = 1;", newLn: 53 },
+    ],
+    "typescript",
+    "light",
+    "deterministic",
+  );
+  expect(tokens.old[50]?.map((t) => t.content).join("")).toBe(oldCode);
+  expect(tokens.new[51]?.map((t) => t.content).join("")).toBe(newCode);
+  expect(new Set(tokens.new[51]!.map((t) => t.color)).size).toBeGreaterThan(1);
+  expect(new Set(tokens.new[52]!.map((t) => t.color)).size).toBeGreaterThan(1);
+  expect(tokens.old[2]).toBeUndefined();
+  expect(tokens.new[2]).toBeUndefined();
+});
 
-  test(`连续行保留跨行注释状态（${theme}）`, async () => {
-    const source = ["/**", " * English copy", " */", "const value = 1;"];
-    const tokens = await highlightSparseLines(
-      new Map(source.map((line, i) => [i + 10, line])),
-      "typescript",
-      theme,
-      "deterministic",
-    );
-    const expected = await highlightText(source.join("\n"), "typescript", theme, "deterministic");
-    expect(tokens.slice(9)).toEqual(expected!);
-  });
-}
+test("连续行保留跨行注释状态", async () => {
+  const source = ["/**", " * English copy", " */", "const value = 1;"];
+  const tokens = await highlightSparseLines(
+    new Map(source.map((line, i) => [i + 10, line])),
+    "typescript",
+    "dark",
+    "deterministic",
+  );
+  const expected = await highlightText(source.join("\n"), "typescript", "dark", "deterministic");
+  expect(tokens.slice(9)).toEqual(expected!);
+});

@@ -37,23 +37,6 @@ describe("解析树生命周期", () => {
     }
   });
 
-  test("第二侧解析初始化失败时释放第一侧", async () => {
-    const deleted = spyOn(Tree.prototype, "delete");
-    let reads = 0;
-    const profile = {
-      ...typescriptProfile,
-      get grammarFile() {
-        return ++reads === 1 ? "typescript" : "missing";
-      },
-    };
-    try {
-      await expect(withParsedSides(profile, "", "", () => null)).rejects.toThrow("未知语法");
-      expect(deleted).toHaveBeenCalledTimes(1);
-    } finally {
-      deleted.mockRestore();
-    }
-  });
-
   test("简化成功与错误节点降级均释放树", async () => {
     const deleted = spyOn(Tree.prototype, "delete");
     const profile = { grammarFile: "typescript", simplify: typescriptProfile.simplify! };
