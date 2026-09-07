@@ -19,11 +19,12 @@ import type {
   FileStatus,
   ReviewContext,
 } from "../../src/analysis/types";
-import { BrowseView, type JumpTarget } from "./BrowseView";
+import { BrowseView } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { useStrings } from "./i18n";
 import {
-  IconOpenExternal,
+  IconExpandAll,
+  IconCollapseAll,
   IconPanelLeft,
   IconRefresh,
   IconSplit,
@@ -80,16 +81,6 @@ function displayPath(file: FileData): string {
 function splitPath(p: string): { dir: string; base: string } {
   const i = p.lastIndexOf("/");
   return i >= 0 ? { dir: p.slice(0, i + 1), base: p.slice(i + 1) } : { dir: "", base: p };
-}
-
-/** 跳转到查看器时的定位行：优先简化视图首个变更行，其次首个有新侧区间的单元 */
-function viewerLineOf(entry: FileEntry | null): number {
-  const row = entry?.simplified?.rows.find(
-    (r) => (r.kind === "ctx" || r.kind === "del" || r.kind === "add") && r.newLn != null,
-  );
-  if (row && (row.kind === "ctx" || row.kind === "del" || row.kind === "add") && row.newLn != null)
-    return row.newLn;
-  return entry?.projection?.units.find((u) => u.newRange)?.newRange?.[0] ?? 1;
 }
 
 function fileStats(f: FileData): { adds: number; dels: number } {
@@ -232,14 +223,12 @@ export function App() {
   const [viewType, setViewType] = useState<ViewType>("unified");
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"review" | "browse">("review");
-  const [jump, setJump] = useState<JumpTarget | null>(null);
   const [sidebarHidden, setSidebarHidden] = useState(false);
   /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
   const [unitJump, setUnitJump] = useState<LineJump | null>(null);
 
   const reviewPane = useRef<HTMLDivElement>(null);
   const reviewScroll = useRef(0);
-  const [returnToReview, setReturnToReview] = useState(false);
   const [expansions, setExpansions] = useState<Array<[number, number]>>([]);
 
   useLayoutEffect(() => {
@@ -257,53 +246,6 @@ export function App() {
     reviewScroll.current =
       reviewPane.current?.querySelector<HTMLElement>(".content")?.scrollTop ?? 0;
     setMode("browse");
-  };
-
-  // 按当前屏幕中央的代码行打开对应版本；删除行打开旧侧源码。
-  const openInViewer = () => {
-    if (!context) return;
-    const content = reviewPane.current?.querySelector<HTMLElement>(".content");
-    const bounds = content?.getBoundingClientRect();
-    const middle = bounds ? (bounds.top + bounds.bottom) / 2 : 0;
-    const candidates = [
-      ...(content?.querySelectorAll<HTMLElement>(
-        "[data-new-line], [data-old-line], [id^='rvn-'], [id^='rvo-']",
-      ) ?? []),
-    ]
-      .filter((el) => {
-        if (el.getBoundingClientRect().height <= 0) return false;
-        const codes = el.matches("[data-new-line], [data-old-line]")
-          ? el.querySelectorAll(".scode")
-          : el.closest(".diff-line")?.querySelectorAll(".diff-code");
-        return (
-          el.classList.contains("vfold-head") ||
-          [...(codes ?? [])].some((code) => code.textContent?.trim())
-        );
-      })
-      .sort(
-        (a, b) =>
-          Math.abs(a.getBoundingClientRect().top - middle) -
-            Math.abs(b.getBoundingClientRect().top - middle) ||
-          Number(Boolean(b.dataset.newLine || b.id.startsWith("rvn-"))) -
-            Number(Boolean(a.dataset.newLine || a.id.startsWith("rvn-"))),
-      );
-    const el = candidates[0];
-    const newLn = Number(el?.dataset.newLine || (el?.id.startsWith("rvn-") ? el.id.slice(4) : 0));
-    const oldLn = Number(el?.dataset.oldLine || (el?.id.startsWith("rvo-") ? el.id.slice(4) : 0));
-    const file = newLn
-      ? context.newFile
-      : oldLn
-        ? context.oldFile
-        : (context.newFile ?? context.oldFile);
-    if (!file) return;
-    setJump({
-      path: file.path,
-      line: newLn || oldLn || viewerLineOf(selectedEntry),
-      file,
-      version: file === context.oldFile ? s.beforeChange : s.afterChange,
-    });
-    setReturnToReview(true);
-    leaveReview();
   };
 
   // 变更单元导航：定位到单元内的实际变更；nonce 保证重复点击同一单元也触发
@@ -382,19 +324,44 @@ export function App() {
         : selectedEntry?.simplified,
     [selectedEntry, selectedFile, expandedFile, context],
   );
-  const expand = (start: number, end: number) => {
+  const updateExpansions = (ranges: Array<[number, number]>) => {
     const content = reviewPane.current?.querySelector<HTMLElement>(".content");
     const top = content?.getBoundingClientRect().top ?? 0;
     const anchor = [
       ...(content?.querySelectorAll<HTMLElement>(
         "[data-new-line], [data-old-line], [id^='rvn-'], [id^='rvo-']",
       ) ?? []),
-    ].find((el) => el.getBoundingClientRect().top >= top + 48);
-    const offset = anchor?.getBoundingClientRect().top;
+    ]
+      .filter((el) => {
+        if (el.getBoundingClientRect().height <= 0) return false;
+        if (ranges.length) return true;
+        // 收起时选择仍在默认 diff 中的行，避免定位到即将消失的上下文。
+        const newLn = Number(el.dataset.newLine || (el.id.startsWith("rvn-") ? el.id.slice(4) : 0));
+        const oldLn = Number(el.dataset.oldLine || (el.id.startsWith("rvo-") ? el.id.slice(4) : 0));
+        return selectedFile?.hunks.some(
+          (h) =>
+            (newLn > 0 && newLn >= h.newStart && newLn < h.newStart + h.newLines) ||
+            (oldLn > 0 && oldLn >= h.oldStart && oldLn < h.oldStart + h.oldLines),
+        );
+      })
+      .sort(
+        (a, b) =>
+          Math.abs(a.getBoundingClientRect().top - top - 48) -
+          Math.abs(b.getBoundingClientRect().top - top - 48),
+      )[0];
+    const offset = anchor
+      ? Math.max(
+          top,
+          Math.min(
+            anchor.getBoundingClientRect().top,
+            (content?.getBoundingClientRect().bottom ?? top + 48) - 24,
+          ),
+        )
+      : undefined;
     const id = anchor?.id;
     const anchorNew = anchor?.dataset.newLine;
     const anchorOld = anchor?.dataset.oldLine;
-    setExpansions((prev) => [...prev, [start, end]]);
+    setExpansions(ranges);
     requestAnimationFrame(() => {
       const next = anchorNew
         ? content?.querySelector<HTMLElement>(`[data-new-line="${anchorNew}"]`)
@@ -407,6 +374,9 @@ export function App() {
         content.scrollTop += next.getBoundingClientRect().top - offset;
     });
   };
+  const expand = (start: number, end: number) => updateExpansions([...expansions, [start, end]]);
+  const expandAllContext = () =>
+    updateExpansions([...expansions, ...gaps.map((g): [number, number] => [g.start, g.end])]);
   const beforeRow = (row: import("../../src/analysis/types").SRow, i: number) => {
     const oldLn = rowLine(row, "old");
     const newLn = rowLine(row, "new");
@@ -509,7 +479,6 @@ export function App() {
             className={mode === "review" ? "active" : ""}
             onClick={() => {
               setMode("review");
-              setReturnToReview(false);
             }}
           >
             {s.modeChanges}
@@ -518,16 +487,6 @@ export function App() {
             {s.modeBrowse}
           </button>
         </span>
-        {mode === "browse" && returnToReview && (
-          <button
-            onClick={() => {
-              setMode("review");
-              setReturnToReview(false);
-            }}
-          >
-            ← {s.returnToReview}
-          </button>
-        )}
         <span className="topbar-detail">
           <span className="repo" title={payload.repoRoot}>
             {payload.repoRoot}
@@ -553,9 +512,7 @@ export function App() {
           </>
         )}
       </header>
-      {mode === "browse" && (
-        <BrowseView jump={jump} onJumpDone={() => setJump(null)} sidebarHidden={sidebarHidden} />
-      )}
+      {mode === "browse" && <BrowseView sidebarHidden={sidebarHidden} />}
       <div ref={reviewPane} className="review-pane" hidden={mode !== "review"}>
         {files.length === 0 ? (
           <div className="center-note">{s.noChanges}</div>
@@ -627,15 +584,27 @@ export function App() {
               <>
                 <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
                   <span className="file-title">{displayPath(selectedFile)}</span>
-                  {(context?.newFile?.source != null || context?.oldFile?.source != null) && (
-                    <button
-                      className="icon-btn"
-                      title={s.openInViewer}
-                      aria-label={s.openInViewer}
-                      onClick={openInViewer}
-                    >
-                      <IconOpenExternal />
-                    </button>
+                  {(gaps.length > 0 || expansions.length > 0) && (
+                    <span className="context-actions">
+                      <button
+                        className="icon-btn"
+                        title={s.expandAll}
+                        aria-label={s.expandAll}
+                        disabled={gaps.length === 0}
+                        onClick={expandAllContext}
+                      >
+                        <IconExpandAll />
+                      </button>
+                      <button
+                        className="icon-btn"
+                        title={s.collapseAll}
+                        aria-label={s.collapseAll}
+                        disabled={expansions.length === 0}
+                        onClick={() => updateExpansions([])}
+                      >
+                        <IconCollapseAll />
+                      </button>
+                    </span>
                   )}
                   {selectedEntry?.degradedReason &&
                     selectedEntry.degradedReason !== "no-profile" && (

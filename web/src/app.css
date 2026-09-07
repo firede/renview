@@ -37,7 +37,8 @@
   /* 持久定位的行号底色，独立于代码增删色 */
   --located-gutter-bg: #593a20;
   /* 投影态文件工具条底色（扫一眼识别简化视图） */
-  --toolbar-projected-bg: #131a26;
+  --toolbar-projected-bg: #27241c;
+  --toolbar-projected-border: #514632;
   /* 代码字体唯一 token：配置 font_family 即覆写此处；默认值须与 src/config.ts 的 DEFAULT_FONT_FAMILY 保持一致 */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   /* 代码阅读区字号唯一 token（配置 font_size 覆写）；行高取字号恒定 5/3 倍——任意字号下松紧一致，加法模型（字号+N）在大字号下会显得拥挤 */
@@ -82,7 +83,8 @@
   --sig: #9a6700;
   --body-chg: #0550ae;
   --located-gutter-bg: #ffe0b2;
-  --toolbar-projected-bg: #ddf4ff;
+  --toolbar-projected-bg: #f3ecdc;
+  --toolbar-projected-border: #d6c6a4;
 }
 
 * {
@@ -959,7 +961,7 @@ body {
 /* 投影态的文件工具条底色：扫一眼即知处于简化视图 */
 .file-toolbar.projected {
   background: var(--toolbar-projected-bg);
-  border-bottom-color: var(--accent-faint);
+  border-bottom-color: var(--toolbar-projected-border);
 }
 
 /* 拖拽手柄：负边距骑跨分隔线（净占 0 宽/高，视觉无接缝），hover 时中线提亮；双击复位。
@@ -1122,4 +1124,15 @@ button.icon-btn.spinning svg {
   font-family: var(--font-mono);
   font-size: var(--font-size-code);
   overflow-wrap: anywhere;
+}
+
+.context-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.context-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }

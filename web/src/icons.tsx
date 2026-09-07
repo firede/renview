@@ -48,13 +48,18 @@ export function IconRefresh(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** 在查看器中打开（跳离当前上下文） */
-export function IconOpenExternal(props: SVGProps<SVGSVGElement>) {
+/** 收起上下文，与展开图标保持相同描边与尺寸。 */
+export function IconCollapseAll(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M15 3h6v6" />
-      <path d="m21 3-9 9" />
-      <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+      <path d="M12 22v-6" />
+      <path d="M12 8V2" />
+      <path d="M4 12H2" />
+      <path d="M10 12H8" />
+      <path d="M16 12h-2" />
+      <path d="M22 12h-2" />
+      <path d="m15 19-3-3-3 3" />
+      <path d="m15 5-3 3-3-3" />
     </Icon>
   );
 }

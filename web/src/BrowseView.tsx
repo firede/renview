@@ -18,15 +18,7 @@ interface FilesPayload {
 interface FilePayload {
   ok: boolean;
   file?: ViewerFile;
-  version?: string;
   error?: string;
-}
-
-export interface JumpTarget {
-  path: string;
-  line: number;
-  file?: ViewerFile;
-  version?: string;
 }
 
 function splitPath(p: string): { dir: string; base: string } {
@@ -38,65 +30,28 @@ function splitPath(p: string): { dir: string; base: string } {
  * 只读查看器：浏览仓库文件，默认展示简化（伪代码）视图，可一键切回源码。
  * 简化行与源码 1:1 对齐，行号即锚点（大纲与 diff 跳转都靠它定位）。
  */
-export function BrowseView({
-  jump,
-  onJumpDone,
-  sidebarHidden,
-}: {
-  jump: JumpTarget | null;
-  onJumpDone: () => void;
-  sidebarHidden: boolean;
-}) {
+export function BrowseView({ sidebarHidden }: { sidebarHidden: boolean }) {
   const s = useStrings();
   const fileList = useResource<FilesPayload>("/api/files");
   const files = fileList.data?.files ?? null;
   const [filter, setFilter] = useState("");
-  const [path, setPath] = useState<string | null>(jump?.path ?? null);
-  const [version, setVersion] = useState(jump?.version);
-  const [pinnedFile, setPinnedFile] = useState<ViewerFile | null>(jump?.file ?? null);
-  const selectPath = (path: string) => {
-    setPinnedFile(null);
-    setVersion(undefined);
-    setPath(path);
-  };
+  const [path, setPath] = useState<string | null>(null);
   const fileResource = useResource<FilePayload>(
-    path && !pinnedFile ? `/api/file?path=${encodeURIComponent(path)}` : null,
+    path ? `/api/file?path=${encodeURIComponent(path)}` : null,
   );
-  const data = pinnedFile ?? fileResource.data?.file ?? null;
+  const data = fileResource.data?.file ?? null;
   const loading = fileResource.loading;
   const [showSource, setShowSource] = useState(false);
-  const [scrollTo, setScrollTo] = useState<number | null>(jump?.line ?? null);
   /** 一次性闪烁的源码行范围（视觉引导，1.7s 后消退）；[start, end]，1-based */
   const [flash, setFlash] = useState<[number, number] | null>(null);
   /** 持久定位提示的源码行范围：行号加粗常驻，点击代码区或切换文件取消 */
   const [located, setLocated] = useState<[number, number] | null>(null);
 
-  // 来自 diff 视图的跳转：定位到文件与变更行
-  useEffect(() => {
-    if (!jump) return;
-    setPath(jump.path);
-    setPinnedFile(jump.file ?? null);
-    setVersion(jump.version);
-    setScrollTo(jump.line);
-    setShowSource(false);
-    onJumpDone();
-  }, [jump, onJumpDone]);
-
-  // 清理必须先于跳转定位，避免数据到达后把刚设置的定位再次清空。
+  // 切换文件时清除上一文件的定位。
   useEffect(() => {
     setLocated(null);
     setFlash(null);
   }, [path]);
-
-  // 数据到达后滚动到目标行（视图模式按源码行号映射到显示行）
-  useEffect(() => {
-    if (data?.path === path && scrollTo != null) {
-      const anchor = viewAnchor(data, scrollTo, showSource);
-      if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "center" });
-      locateRange([scrollTo, scrollTo]);
-      setScrollTo(null);
-    }
-  }, [data, path, scrollTo, showSource]);
 
   /** 大纲/跳转定位：源码行号 → 当前模式的元素 id */
   function viewAnchor(d: ViewerFile, ln: number, sourceMode: boolean): string | null {
@@ -184,7 +139,7 @@ export function BrowseView({
                         <button
                           key={f}
                           className={`file-item ${f === path ? "selected" : ""}`}
-                          onClick={() => selectPath(f)}
+                          onClick={() => setPath(f)}
                         >
                           <span className="file-path" title={f}>
                             {dir && <span className="file-dir">{dir}</span>}
@@ -198,7 +153,7 @@ export function BrowseView({
                     )}
                   </>
                 ) : (
-                  files && <FileTree paths={files} selected={path} onSelect={selectPath} />
+                  files && <FileTree paths={files} selected={path} onSelect={setPath} />
                 )}
               </>
             ),
@@ -215,7 +170,6 @@ export function BrowseView({
         <>
           <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
             <span className="file-title">{path}</span>
-            {version && <span className="dim">{version}</span>}
             {loading && <span className="dim">{s.loading}</span>}
             {data?.degradedReason && (
               <span className="dim">{s.viewerDegradeLabel[data.degradedReason]}</span>
