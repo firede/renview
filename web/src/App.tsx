@@ -48,8 +48,10 @@ import {
 } from "./reviewContext";
 import { UnitList } from "./UnitList";
 import { useResource } from "./useResource";
+import { useViewerSource } from "./viewerSource";
 
 interface DiffPayload {
+  snapshot?: string;
   ok: boolean;
   repoRoot?: string;
   diffArgs?: string[];
@@ -213,10 +215,12 @@ function RawDiff({
 
 export function App() {
   const s = useStrings();
-  const resource = useResource<DiffPayload>("/api/diff");
+  const source = useViewerSource();
+  const resource = useResource<DiffPayload>(source.url("diff"), source.refreshOnFocus);
   const payload = resource.data;
   const refreshing = resource.loading;
   const load = () => {
+    if (source.onRefresh) return source.onRefresh();
     resource.refresh();
     contextResource.refresh();
   };
@@ -270,8 +274,8 @@ export function App() {
   useEffect(() => {
     if (!payload?.ok || firstLoaded.current) return;
     firstLoaded.current = true;
-    if (files.length === 0) setMode("browse");
-  }, [payload, files.length]);
+    if (files.length === 0 && source.allowBrowse !== false) setMode("browse");
+  }, [payload, files.length, source.allowBrowse]);
 
   // 服务端 files 与前端 parseDiff 解析同一文本，顺序一致，按下标对应
   const entries = useMemo(() => payload?.files ?? [], [payload]);
@@ -295,14 +299,32 @@ export function App() {
     items.findIndex(({ file }) => fileKey(file) === selected),
   );
   const selectedFile = items[safeSelected]?.file ?? null;
-  const selectedEntry = items[safeSelected]?.entry ?? null;
-  const contextResource = useResource<ReviewContext & { ok: boolean; error?: string }>(
-    selectedFile ? `/api/review-file?path=${encodeURIComponent(displayPath(selectedFile))}` : null,
+  const listedEntry = items[safeSelected]?.entry ?? null;
+  const contextResource = useResource<
+    Omit<ReviewContext, "diff"> & {
+      diff?: string;
+      snapshot?: string;
+      entry?: FileEntry;
+      ok: boolean;
+      error?: string;
+    }
+  >(
+    selectedFile
+      ? source.url("review-file", {
+          path: displayPath(selectedFile),
+          ...(payload?.snapshot ? { snapshot: payload.snapshot } : {}),
+        })
+      : null,
+    source.refreshOnFocus,
   );
   const context =
-    contextResource.data?.ok && contextResource.data.diff === payload?.diff
-      ? contextResource.data
+    contextResource.data?.ok &&
+    (payload?.snapshot
+      ? contextResource.data.snapshot === payload.snapshot
+      : contextResource.data.diff === payload?.diff)
+      ? { ...contextResource.data, diff: payload?.diff ?? "" }
       : null;
+  const selectedEntry = context?.entry ?? listedEntry;
   useEffect(() => setExpansions([]), [selectedFile]);
   const expandedFile = useMemo(
     () =>
@@ -454,6 +476,7 @@ export function App() {
       <div className="load-error" role="alert">
         <h1>{unreachable ? s.serverGoneTitle : s.loadFailedTitle}</h1>
         {!unreachable && <pre>{error}</pre>}
+        {source.errorActions}
       </div>
     );
   if (!payload) return <div className="center-note">{s.loading}</div>;
@@ -461,6 +484,7 @@ export function App() {
   return (
     <div className="layout">
       <header className="topbar">
+        {source.headerStart}
         <span className="brand">renview</span>
         <Tooltip content={`${s.toggleSidebar} · ${s.shortcutB}`}>
           <button
@@ -471,25 +495,29 @@ export function App() {
             <IconPanelLeft />
           </button>
         </Tooltip>
-        <span className="seg">
-          <button
-            className={mode === "review" ? "active" : ""}
-            onClick={() => {
-              setMode("review");
-            }}
-          >
-            {s.modeChanges}
-          </button>
-          <button className={mode === "browse" ? "active" : ""} onClick={leaveReview}>
-            {s.modeBrowse}
-          </button>
-        </span>
-        <span className="topbar-detail">
-          <Tooltip content={payload.repoRoot}>
-            <span className="repo">{payload.repoRoot}</span>
-          </Tooltip>
-          <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
-        </span>
+        {source.allowBrowse !== false && (
+          <span className="seg">
+            <button
+              className={mode === "review" ? "active" : ""}
+              onClick={() => {
+                setMode("review");
+              }}
+            >
+              {s.modeChanges}
+            </button>
+            <button className={mode === "browse" ? "active" : ""} onClick={leaveReview}>
+              {s.modeBrowse}
+            </button>
+          </span>
+        )}
+        {source.header ?? (
+          <span className="topbar-detail">
+            <Tooltip content={payload.repoRoot}>
+              <span className="repo">{payload.repoRoot}</span>
+            </Tooltip>
+            <code className="args">git diff {payload.diffArgs?.join(" ")}</code>
+          </span>
+        )}
         <span className="spacer" />
         {mode === "review" && (
           <>
@@ -497,20 +525,25 @@ export function App() {
               {s.fileCount(files.length)} <em className="add">+{totals.adds}</em>{" "}
               <em className="del">−{totals.dels}</em>
             </span>
-            <Tooltip content={s.refresh}>
-              <button
-                className={`icon-btn${refreshing ? " spinning" : ""}`}
-                aria-label={s.refresh}
-                onClick={() => void load()}
-                disabled={refreshing}
-              >
-                <IconRefresh />
-              </button>
-            </Tooltip>
+            {source.allowRefresh !== false && (
+              <Tooltip content={s.refresh}>
+                <button
+                  className={`icon-btn${refreshing ? " spinning" : ""}`}
+                  aria-label={s.refresh}
+                  onClick={() => void load()}
+                  disabled={refreshing}
+                >
+                  <IconRefresh />
+                </button>
+              </Tooltip>
+            )}
           </>
         )}
+        {source.headerActions}
       </header>
-      {mode === "browse" && <BrowseView sidebarHidden={sidebarHidden} />}
+      {mode === "browse" && (
+        <BrowseView sidebarHidden={sidebarHidden} snapshot={payload.snapshot} />
+      )}
       <div ref={reviewPane} className="review-pane" hidden={mode !== "review"}>
         {files.length === 0 ? (
           <div className="center-note">{s.noChanges}</div>
@@ -581,7 +614,10 @@ export function App() {
           >
             {selectedFile && (
               <>
-                <div className={`file-toolbar${!showRaw ? " projected" : ""}`}>
+                <div
+                  aria-busy={contextResource.loading}
+                  className={`file-toolbar${!showRaw ? " projected" : ""}${contextResource.loading ? " loading" : ""}`}
+                >
                   <span className="file-title">{displayPath(selectedFile)}</span>
                   {(gaps.length > 0 || expansions.length > 0) && (
                     <span className="context-actions">
@@ -667,7 +703,9 @@ export function App() {
                 {contextResource.error && (
                   <div className="error pad">
                     {s.loadError(contextResource.error)}{" "}
-                    <button onClick={contextResource.refresh}>{s.refresh}</button>
+                    <button onClick={source.onRefresh ?? contextResource.refresh}>
+                      {s.refresh}
+                    </button>
                   </div>
                 )}
                 {contextResource.data?.ok && !context && (

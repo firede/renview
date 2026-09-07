@@ -99,3 +99,5 @@ bun run dev HEAD~5
 | `bun run gen:demo`  | 更新官网演示数据             |
 
 开发约定见 [AGENTS.md](AGENTS.md)，产品取舍见 [产品决策](.agents/truth/product.md)。
+
+Web 应用的本地开发见 [app/README.md](app/README.md)。

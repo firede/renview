@@ -1,12 +1,8 @@
 import { resolve, sep } from "node:path";
 import parseDiff from "parse-diff";
-import { foldDescriber } from "./analysis/foldescribe";
 import { profileForPath } from "./analysis/langs";
-import { changedLinesOf, type ParsedFile } from "./analysis/map";
-import { analyzeParsed, outlineOf, withParsedSides } from "./analysis/project";
-import { buildSimplifiedRows, simplifyTree } from "./analysis/simplify";
-import { buildViewRows } from "./analysis/view";
-import type { FileEntry, FileStatus, ViewerFile } from "./analysis/types";
+import type { ParsedFile } from "./analysis/map";
+import { analyzeFile, viewerFile } from "./analysis/service";
 import { configPath, createConfigLoader, type LoadedConfig } from "./config";
 import { getReviewDiff, getSideContent, listFiles, resolveDiffArgs, resolveSides } from "./git";
 import { messages, type Locale } from "./i18n";
@@ -16,9 +12,6 @@ import { listenWithPort } from "./port";
 export interface ServerOptions {
   port?: number;
 }
-
-/** 超过该大小的文件不做投影分析，直接退回原始 diff */
-const MAX_ANALYZE_BYTES = 500_000;
 
 export async function startServer(root: string, gitArgs: string[], opts: ServerOptions) {
   const diffArgs = await resolveDiffArgs(root, gitArgs);
@@ -168,102 +161,19 @@ export async function handleReviewFile(
   }
 }
 
-/** 查看器与审阅上下文共用同一套源码分析。 */
-async function viewerFile(path: string, source: string, locale: Locale): Promise<ViewerFile> {
-  const profile = profileForPath(path);
-  const file: ViewerFile = {
-    path,
-    language: profile?.id ?? null,
-    source: null,
-    simplified: null,
-    view: null,
-    outline: [],
-  };
-  if (source.slice(0, 8192).includes("\0")) {
-    file.degradedReason = "binary";
-    return file;
-  }
-  file.source = source;
-  if (!profile) {
-    file.degradedReason = "no-profile";
-    return file;
-  }
-  if (source.length > MAX_ANALYZE_BYTES) {
-    file.degradedReason = "too-large";
-    return file;
-  }
-  try {
-    await withParsedSides(profile, null, source, (_, side) => {
-      if (side!.tree.rootNode.hasError) throw new Error("解析失败");
-      file.outline = outlineOf(profile, side!.tree, locale);
-      if (profile.simplify) {
-        const r = simplifyTree(side!.tree, source, profile.simplify);
-        file.simplified = r.lines;
-        file.view = buildViewRows(profile, side!.tree, source, r.lines, locale, r.erasures);
-      }
-    });
-  } catch {
-    file.degradedReason = "parse-error";
-  }
-  return file;
-}
-
 async function buildFileEntry(
   root: string,
   sides: Awaited<ReturnType<typeof resolveSides>>,
   f: ParsedFile,
   locale: Locale,
-): Promise<FileEntry> {
-  const oldPath = f.from === "/dev/null" ? null : f.from;
-  const newPath = f.to === "/dev/null" ? null : f.to;
-  const status: FileStatus = !oldPath
-    ? "add"
-    : !newPath
-      ? "delete"
-      : oldPath !== newPath
-        ? "rename"
-        : "modify";
-  const entry: FileEntry = { oldPath, newPath, status, projection: null };
-
-  const profile = profileForPath(newPath ?? oldPath ?? "");
-  if (!profile) {
-    entry.degradedReason = "no-profile";
-    return entry;
-  }
-
-  try {
-    const [oldSource, newSource] = await Promise.all([
-      oldPath ? getSideContent(root, sides.oldSide, oldPath) : null,
-      newPath ? getSideContent(root, sides.newSide, newPath) : null,
-    ]);
-    if (oldSource == null && newSource == null) {
-      entry.degradedReason = "no-source";
-      return entry;
-    }
-    if (
-      (oldSource?.length ?? 0) > MAX_ANALYZE_BYTES ||
-      (newSource?.length ?? 0) > MAX_ANALYZE_BYTES
-    ) {
-      entry.degradedReason = "too-large";
-      return entry;
-    }
-    const { oldLines, newLines } = changedLinesOf(f);
-    // 每侧只 parse 一次：投影与简化共用同一棵 CST
-    await withParsedSides(profile, oldSource, newSource, (oldSide, newSide) => {
-      entry.projection = analyzeParsed(profile, oldSide, newSide, oldLines, newLines, locale);
-      if (profile.simplify) {
-        entry.simplified = buildSimplifiedRows(
-          f,
-          oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
-          newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
-          foldDescriber(profile, oldSide, newSide, locale),
-        );
-      }
-    });
-  } catch {
-    entry.degradedReason = "parse-error";
-  }
-  return entry;
+) {
+  if (!profileForPath(f.to === "/dev/null" ? (f.from ?? "") : (f.to ?? "")))
+    return analyzeFile(f, null, null, locale);
+  const [oldSource, newSource] = await Promise.all([
+    f.from && f.from !== "/dev/null" ? getSideContent(root, sides.oldSide, f.from) : null,
+    f.to && f.to !== "/dev/null" ? getSideContent(root, sides.newSide, f.to) : null,
+  ]);
+  return analyzeFile(f, oldSource, newSource, locale);
 }
 
 function serveStatic(pathname: string, locale: Locale): Response {

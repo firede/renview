@@ -26,9 +26,14 @@ let parserReady: Promise<void> | null = null;
 const languages = new Map<string, Promise<Language>>();
 const parsers = new Map<string, Parser>();
 
+/** 普通 bundle 的资源路径相对模块，CLI 内嵌资源则保留 Bun 给出的绝对路径。 */
+function wasmFile(path: string) {
+  return Bun.file(path.startsWith(".") ? new URL(path, import.meta.url) : path);
+}
+
 function initParser(): Promise<void> {
   parserReady ??= (async () => {
-    const wasmBinary = await Bun.file(treeSitterWasm).arrayBuffer();
+    const wasmBinary = await wasmFile(treeSitterWasm).arrayBuffer();
     await Parser.init({ wasmBinary });
   })();
   return parserReady;
@@ -41,7 +46,7 @@ async function loadLanguage(grammar: string): Promise<Language> {
     p = (async () => {
       const file = GRAMMAR_WASM[grammar];
       if (!file) throw new Error(`未知语法: ${grammar}`);
-      const bytes = new Uint8Array(await Bun.file(file).arrayBuffer());
+      const bytes = new Uint8Array(await wasmFile(file).arrayBuffer());
       return Language.load(bytes);
     })();
     languages.set(grammar, p);

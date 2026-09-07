@@ -1202,3 +1202,24 @@ button.icon-btn.spinning svg {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* 请求期间仅以文件信息条背景提示，不改变代码区与控件布局。 */
+.file-toolbar.loading {
+  background-image: linear-gradient(90deg, transparent, var(--accent-bg), transparent);
+  background-size: 200% 100%;
+  animation: file-loading 1.4s linear infinite;
+}
+@keyframes file-loading {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .file-toolbar.loading {
+    animation: none;
+    background-color: var(--accent-muted);
+  }
+}

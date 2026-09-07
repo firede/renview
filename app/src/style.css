@@ -1,0 +1,117 @@
+.app-home {
+  width: min(680px, calc(100% - 40px));
+  margin: clamp(80px, 25vh, 240px) auto 48px;
+  text-align: center;
+}
+.app-home h1 {
+  margin: 0 0 36px;
+  font-size: clamp(40px, 7vw, 56px);
+  line-height: 1.1;
+  letter-spacing: -2.5px;
+  font-weight: 600;
+}
+.pr-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.pr-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 8px 7px 20px;
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  background: var(--bg);
+  box-shadow: 0 3px 14px #00000006;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.pr-input:hover {
+  box-shadow: 0 3px 16px #00000010;
+}
+.pr-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+.pr-search-icon {
+  flex-shrink: 0;
+  color: var(--fg-dim);
+}
+.pr-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  color: var(--fg);
+  background: transparent;
+  border: 0;
+  outline: none;
+  font: inherit;
+  font-size: 15px;
+}
+.pr-input input::placeholder {
+  color: var(--fg-dim);
+}
+.pr-input button {
+  padding: 10px 20px;
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  color: white;
+  background: var(--accent);
+  border: 0;
+  border-radius: 24px;
+  cursor: pointer;
+}
+.pr-input button:hover {
+  filter: brightness(1.1);
+}
+.pr-input button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+.app-note {
+  color: var(--fg-dim);
+  margin: 22px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+@media (max-width: 480px) {
+  .pr-input {
+    gap: 8px;
+    padding-left: 14px;
+  }
+  .pr-input input {
+    font-size: 13px;
+  }
+  .pr-input button {
+    padding: 10px 14px;
+  }
+}
+.app-home a,
+.app-detail a {
+  color: var(--fg);
+  text-decoration: none;
+}
+.app-home a:hover,
+.app-detail a:hover {
+  text-decoration: underline;
+}
+.app-error {
+  color: var(--del);
+}
+.app-detail {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+.app-detail > a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

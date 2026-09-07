@@ -10,3 +10,14 @@ wasm/
 *.log
 .playwright-cli/
 /local
+
+app/dist/
+app/.tanstack/
+app/src/routeTree.gen.ts
+data/
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key

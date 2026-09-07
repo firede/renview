@@ -16,12 +16,15 @@
     "gen:demo": "bun run scripts/gen-demo.ts",
     "build": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run scripts/build.ts",
     "test": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun test",
-    "typecheck": "bun run build:web && bun run gen:assets && tsc --noEmit",
+    "typecheck": "bun run build:web && bun run gen:assets && bun run build:app && tsc --noEmit",
     "prepare": "simple-git-hooks",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix --deny-warnings",
     "fmt": "oxfmt --write",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "dev:app": "bun run sync:wasm && cd app && bun --bun vite",
+    "build:app": "bun run sync:wasm && bun run scripts/build-app.ts",
+    "start:app": "bun app/serve.ts"
   },
   "simple-git-hooks": {
     "pre-push": "bun run test && bun run typecheck",
@@ -29,6 +32,8 @@
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
+    "@tanstack/react-router": "^1.170.33",
+    "@tanstack/react-start": "^1.168.50",
     "parse-diff": "0.12.0",
     "react": "^19",
     "react-diff-view": "^3",

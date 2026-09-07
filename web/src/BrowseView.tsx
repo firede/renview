@@ -9,6 +9,7 @@ import { useStrings } from "./i18n";
 import { OutlinePanel } from "./Outline";
 import { SideSections, SplitPane } from "./SplitPane";
 import { useResource } from "./useResource";
+import { useViewerSource } from "./viewerSource";
 
 interface FilesPayload {
   ok: boolean;
@@ -31,14 +32,26 @@ function splitPath(p: string): { dir: string; base: string } {
  * 只读查看器：浏览仓库文件，默认展示简化（伪代码）视图，可一键切回源码。
  * 简化行与源码 1:1 对齐，行号即锚点（大纲与 diff 跳转都靠它定位）。
  */
-export function BrowseView({ sidebarHidden }: { sidebarHidden: boolean }) {
+export function BrowseView({
+  sidebarHidden,
+  snapshot,
+}: {
+  sidebarHidden: boolean;
+  snapshot?: string;
+}) {
   const s = useStrings();
-  const fileList = useResource<FilesPayload>("/api/files");
+  const source = useViewerSource();
+  const parameters: Record<string, string> = snapshot ? { snapshot } : {};
+  const fileList = useResource<FilesPayload>(
+    source.url("files", parameters),
+    source.refreshOnFocus,
+  );
   const files = fileList.data?.files ?? null;
   const [filter, setFilter] = useState("");
   const [path, setPath] = useState<string | null>(null);
   const fileResource = useResource<FilePayload>(
-    path ? `/api/file?path=${encodeURIComponent(path)}` : null,
+    path ? source.url("file", { ...parameters, path }) : null,
+    source.refreshOnFocus,
   );
   const data = fileResource.data?.file ?? null;
   const loading = fileResource.loading;
@@ -128,7 +141,7 @@ export function BrowseView({ sidebarHidden }: { sidebarHidden: boolean }) {
                 {fileList.error && (
                   <div className="error pad note" role="alert">
                     {s.loadError(fileList.error)}
-                    <button onClick={fileList.refresh}>{s.refresh}</button>
+                    <button onClick={source.onRefresh ?? fileList.refresh}>{s.refresh}</button>
                   </div>
                 )}
                 {filter.trim() ? (
@@ -202,7 +215,7 @@ export function BrowseView({ sidebarHidden }: { sidebarHidden: boolean }) {
           {fileResource.error && (
             <div className="error pad note" role="alert">
               {s.loadError(fileResource.error)}
-              <button onClick={fileResource.refresh}>{s.refresh}</button>
+              <button onClick={source.onRefresh ?? fileResource.refresh}>{s.refresh}</button>
             </div>
           )}
           {data?.source == null && data && <div className="dim pad note">{s.notTextViewable}</div>}

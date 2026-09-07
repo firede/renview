@@ -229,3 +229,21 @@ export function IconExpandAll(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+/** 返回首页 */
+export function IconHome() {
+  return (
+    <Icon>
+      <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />
+    </Icon>
+  );
+}
+
+/** 退出登录 */
+export function IconLogout() {
+  return (
+    <Icon>
+      <path d="M9 21H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5M9 12h12m-4-4 4 4-4 4" />
+    </Icon>
+  );
+}
