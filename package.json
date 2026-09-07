@@ -1,6 +1,6 @@
 {
   "name": "renview",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "homepage": "https://view.bandwidth.ren",
   "description": "帮助人类降低认知负担的代码审核工具",
   "license": "MIT",
