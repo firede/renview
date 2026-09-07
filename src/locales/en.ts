@@ -1,4 +1,5 @@
 import type { Messages } from "../i18n";
+import { INSTALL_CMD } from "../links";
 
 /**
  * English copy, written as if the tool were designed in English from day one:
@@ -48,7 +49,7 @@ Examples:
     upgradeViaScript: (v) => `Upgrading to v${v} via the install script…`,
     upgradeViaPm: (pm, v) => `Upgrading to v${v} via ${pm}…`,
     upgradeFailed: (d) => `Upgrade failed: ${d}`,
-    upgradeManualHint: "Manual upgrade: curl -fsSL https://renview.6636.tech/install | bash",
+    upgradeManualHint: `Manual upgrade: ${INSTALL_CMD}`,
   },
   config: {
     tomlParseFailed: (d) => `Failed to parse TOML (${d}); using defaults`,

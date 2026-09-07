@@ -1,4 +1,5 @@
 import type { Messages } from "../i18n";
+import { INSTALL_CMD } from "../links";
 
 /** 简体中文（现有文案的原位迁移，保持既有措辞） */
 export const zhCN: Messages = {
@@ -45,7 +46,7 @@ export const zhCN: Messages = {
     upgradeViaScript: (v) => `正在通过安装脚本升级到 v${v}…`,
     upgradeViaPm: (pm, v) => `正在通过 ${pm} 升级到 v${v}…`,
     upgradeFailed: (d) => `升级失败: ${d}`,
-    upgradeManualHint: "手动升级: curl -fsSL https://renview.6636.tech/install | bash",
+    upgradeManualHint: `手动升级: ${INSTALL_CMD}`,
   },
   config: {
     tomlParseFailed: (d) => `TOML 解析失败（${d}），已使用默认配置`,

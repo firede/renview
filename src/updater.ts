@@ -8,9 +8,10 @@ import { dirname, join } from "node:path";
 import pkg from "../package.json";
 import { configPath } from "./config";
 import type { Messages } from "./i18n";
+import { INSTALL_SCRIPT_URL } from "./links";
 
 /** 官网承载的安装脚本地址（upgrade 对脚本安装方式重跑它） */
-export const INSTALL_SCRIPT_URL = "https://renview.6636.tech/install";
+export { INSTALL_SCRIPT_URL } from "./links";
 
 function registry(env: NodeJS.ProcessEnv = process.env): string {
   return (env.RENVIEW_REGISTRY ?? "https://registry.npmjs.org").replace(/\/+$/, "");

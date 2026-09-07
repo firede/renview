@@ -1,5 +1,6 @@
 ---
 // / 是跳转页：记住的选择 > 浏览器语言，跳到 /cn 或 /en
+import { SITE } from "../lib/copy";
 ---
 
 <!doctype html>
@@ -8,8 +9,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <link rel="alternate" hreflang="zh-CN" href="https://renview.6636.tech/cn/" />
-    <link rel="alternate" hreflang="en" href="https://renview.6636.tech/en/" />
+    <link rel="alternate" hreflang="zh-CN" href={`${SITE}/cn/`} />
+    <link rel="alternate" hreflang="en" href={`${SITE}/en/`} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>renview</title>
   </head>

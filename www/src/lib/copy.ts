@@ -1,4 +1,5 @@
 /** 官网双语文案。两语言按各自原生习惯撰写，不逐字对译。 */
+import pkg from "../../package.json";
 
 export type Lang = "cn" | "en";
 
@@ -148,5 +149,5 @@ export const en: Copy = {
   copied: "Copied",
 };
 
-export const INSTALL_CMD = "curl -fsSL https://renview.6636.tech/install | bash";
-export const SITE = "https://renview.6636.tech";
+export const SITE = pkg.homepage;
+export const INSTALL_CMD = `curl -fsSL ${SITE}/install | bash`;

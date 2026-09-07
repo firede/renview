@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # renview installer
-#   curl -fsSL https://renview.6636.tech/install | bash
+#   curl -fsSL https://view.bandwidth.ren/install | bash
 #
 # Options:
 #   -v, --version <ver>    Install a specific version (env: RENVIEW_VERSION)

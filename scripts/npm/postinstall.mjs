@@ -14,14 +14,14 @@ import { fileURLToPath } from "node:url";
 const pkgDir = path.dirname(fileURLToPath(import.meta.url));
 const binPath = path.join(pkgDir, "bin", "renview.exe");
 const require = createRequire(import.meta.url);
-const version = require("./package.json").version;
+const { version, homepage } = require("./package.json");
 
 const OS = { darwin: "darwin", linux: "linux", win32: "windows" };
 const CPU = { arm64: "arm64", x64: "x64" };
 
 function fail(message) {
   console.error(`renview: ${message}`);
-  console.error("renview: 也可以改用安装脚本：curl -fsSL https://renview.6636.tech/install | bash");
+  console.error(`renview: Alternatively, install with: curl -fsSL ${homepage}/install | bash`);
   process.exit(1);
 }
 

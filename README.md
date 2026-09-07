@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-curl -fsSL https://renview.6636.tech/install | bash   # macOS / Linux / Git Bash 下的 Windows
+curl -fsSL https://view.bandwidth.ren/install | bash   # macOS / Linux / Git Bash 下的 Windows
 # 或
 npm install -g renview                                # bun / pnpm / yarn 全局安装亦可
 ```

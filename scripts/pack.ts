@@ -16,6 +16,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import pkg from "../package.json";
+import { INSTALL_CMD } from "../src/links";
 
 const TARGETS = [
   "darwin-arm64",
@@ -111,7 +112,7 @@ writeFileSync(
   `#!/usr/bin/env node
 // postinstall 未运行时的占位桩：bin 链接先指向这里，postinstall 会把它替换成真正的原生二进制
 console.error("renview: the postinstall script did not run, so the binary is missing.");
-console.error("Reinstall without --ignore-scripts, or use: curl -fsSL https://renview.6636.tech/install | bash");
+console.error(${JSON.stringify(`Reinstall without --ignore-scripts, or use: ${INSTALL_CMD}`)});
 process.exit(1);
 `,
 );
@@ -124,6 +125,7 @@ writeFileSync(
     {
       name: "renview",
       version,
+      homepage: pkg.homepage,
       description: pkg.description,
       license: "MIT",
       bin: { renview: "./bin/renview.exe" },
