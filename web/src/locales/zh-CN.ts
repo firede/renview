@@ -4,6 +4,7 @@ import type { Strings } from "../i18n";
 export const zhCN: Strings = {
   loading: "加载中…",
   loadError: (error) => `出错了：${error}`,
+  loadFailedTitle: "无法加载变更",
   serverGoneTitle: "renview 服务已断开",
   modeChanges: "变更",
   modeBrowse: "浏览",

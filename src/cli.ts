@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import pkg from "../package.json";
 import { configPath, createConfigLoader } from "./config";
-import { findRepoRoot } from "./git";
+import { findRepoRoot, getDiff, resolveDiffArgs } from "./git";
 import { messages, type Messages } from "./i18n";
 import { startServer } from "./server";
 import { checkForUpdate, upgrade } from "./updater";
@@ -87,7 +87,16 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const server = await startServer(root, opts.gitArgs, { port: opts.port });
+  const diffArgs = await resolveDiffArgs(root, opts.gitArgs);
+  // 使用与 API 相同的命令预检；无效 revision 或参数不应先打开浏览器。
+  try {
+    await getDiff(root, diffArgs, config.language);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+
+  const server = await startServer(root, diffArgs, { port: opts.port });
   const url = `http://127.0.0.1:${server.port}`;
   console.log(m.cli.started(url));
   console.log(m.cli.repo(root));

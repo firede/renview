@@ -447,21 +447,16 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (resource.error)
+  const error = resource.error ?? (payload && !payload.ok ? payload.error : null);
+  const unreachable = resource.unreachable || (payload && !payload.ok && payload.unreachable);
+  if (error || unreachable)
     return (
-      <div className="center-note error" role="alert">
-        <div>{resource.unreachable ? s.serverGoneTitle : s.loadError(resource.error)}</div>
-        <button onClick={load} disabled={refreshing}>
-          {s.refresh}
-        </button>
+      <div className="load-error" role="alert">
+        <h1>{unreachable ? s.serverGoneTitle : s.loadFailedTitle}</h1>
+        {!unreachable && <pre>{error}</pre>}
       </div>
     );
   if (!payload) return <div className="center-note">{s.loading}</div>;
-  if (!payload.ok && payload.unreachable) {
-    return <div className="center-note gone">{s.serverGoneTitle}</div>;
-  }
-  if (!payload.ok)
-    return <div className="center-note error">{s.loadError(payload.error ?? "")}</div>;
 
   return (
     <div className="layout">

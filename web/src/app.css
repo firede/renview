@@ -333,16 +333,6 @@ body {
   height: 100%;
 }
 
-.center-note.error {
-  color: var(--del);
-}
-
-/* 服务断开状态：正常色稍大字号的单行状态，不加引导文案 */
-.center-note.gone {
-  color: var(--fg);
-  font-size: 14px;
-}
-
 /* react-diff-view 主题适配（颜色全走 token） */
 .diff {
   background: var(--bg);
@@ -1174,4 +1164,38 @@ button.icon-btn.spinning svg {
   overflow-wrap: anywhere;
   white-space: pre-line;
   box-shadow: 0 3px 10px #0002;
+}
+
+/* 错误信息整体居中，详情作为可选内容自然参与布局。 */
+.load-error {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.load-error h1 {
+  margin: 0;
+  text-align: center;
+  color: var(--fg);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.load-error pre {
+  width: min(712px, 100%);
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

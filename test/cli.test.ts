@@ -105,3 +105,53 @@ test("从仓库外以相对子目录启动，API 使用目标仓库和区间", a
     rmSync(dir, { recursive: true, force: true });
   }
 }, 10000);
+
+test("无效 diff 参数在启动服务前退出，终端保留 Git 错误且不输出堆栈", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "renview-cli-invalid-diff-"));
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", dir]);
+  Bun.spawnSync([
+    "git",
+    "-C",
+    dir,
+    "-c",
+    "user.name=测试",
+    "-c",
+    "user.email=test@example.com",
+    "commit",
+    "--allow-empty",
+    "-qm",
+    "初始化",
+  ]);
+  try {
+    for (const args of [["main...HE"], ["--not-a-real-diff-option"]]) {
+      const proc = Bun.spawn([process.execPath, cli, "-C", dir, "--no-open", ...args], {
+        env: {
+          ...process.env,
+          XDG_CONFIG_HOME: dir,
+          RENVIEW_DISABLE_UPDATE_CHECK: "1",
+          LC_ALL: "en_US.UTF-8",
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const timer = setTimeout(() => proc.kill(), 3000);
+      try {
+        const [code, output, error] = await Promise.all([
+          proc.exited,
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+        ]);
+        expect(code).toBe(1);
+        expect(output).not.toContain("http://");
+        expect(error).toContain("git diff failed:");
+        expect(error).not.toContain("at main");
+      } finally {
+        clearTimeout(timer);
+        proc.kill();
+        await proc.exited;
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 10000);
