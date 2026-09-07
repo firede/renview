@@ -15,8 +15,8 @@ function diffAt(line: number) {
 
 describe("稀疏 diff 高亮", () => {
   test("百万行文件末尾的少量变更只高亮实际内容并保留行号", async () => {
-    const far = await highlightDiff(diffAt(1_000_000).hunks, "typescript", "dark");
-    const near = await highlightDiff(diffAt(1).hunks, "typescript", "dark");
+    const far = await highlightDiff(diffAt(1_000_000).hunks, "typescript", "dark", "deterministic");
+    const near = await highlightDiff(diffAt(1).hunks, "typescript", "dark", "deterministic");
     expect(Object.keys(far.old)).toHaveLength(2);
     expect(Object.keys(far.new)).toHaveLength(2);
     expect(far.old[999_999]).toEqual(near.old[0]);
@@ -36,7 +36,7 @@ describe("稀疏 diff 高亮", () => {
 -const old = 2;
 +const next = 3;
 `)[0]!;
-    const tokens = await highlightDiff(f.hunks, "typescript", "light");
+    const tokens = await highlightDiff(f.hunks, "typescript", "light", "deterministic");
     const text = (nodes: (typeof tokens.old)[number]) => nodes?.map((n) => n.value).join("");
     expect(text(tokens.old[99])).toBe("const old = 2;");
     expect(text(tokens.new[100])).toBe("const next = 3;");

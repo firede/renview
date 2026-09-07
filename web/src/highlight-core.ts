@@ -8,6 +8,7 @@ import {
 } from "react-diff-view";
 import type { HighlighterCore } from "shiki/core";
 import type { ResolvedTheme } from "./theme";
+import { HIGHLIGHT_POLICY, type HighlightMode } from "./highlight-policy";
 
 /** 一行的高亮 token（shiki 输出精简为渲染所需字段） */
 export interface HToken {
@@ -78,6 +79,7 @@ export async function highlightText(
   text: string,
   lang: string,
   theme: ResolvedTheme,
+  mode: HighlightMode = "interactive",
 ): Promise<HToken[][] | null> {
   const loader = LANG_LOADERS[lang];
   if (!loader) return null;
@@ -90,7 +92,11 @@ export async function highlightText(
     await h.loadLanguage((await loader()).default as never);
     loadedLangs.add(lang);
   }
-  const { tokens } = h.codeToTokens(text, { lang: lang as never, theme: THEME_NAME[theme] });
+  const { tokens } = h.codeToTokens(text, {
+    lang: lang as never,
+    theme: THEME_NAME[theme],
+    ...HIGHLIGHT_POLICY[mode],
+  });
   return tokens.map((line) =>
     line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle })),
   );
@@ -114,6 +120,7 @@ export async function highlightDiff(
   hunks: HunkData[],
   lang: string,
   theme: ResolvedTheme,
+  mode: HighlightMode = "interactive",
 ): Promise<HunkTokens> {
   const oldByLine = new Map<number, string>();
   const newByLine = new Map<number, string>();
@@ -135,7 +142,7 @@ export async function highlightDiff(
     if (byLine.size === 0) return out;
     const entries = [...byLine];
     const text = entries.map(([, content]) => content).join("\n");
-    const lines = await highlightText(text, lang, theme);
+    const lines = await highlightText(text, lang, theme, mode);
     if (!lines) return out;
     for (let i = 0; i < entries.length; i++) {
       const t = lines[i];
