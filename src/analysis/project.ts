@@ -177,16 +177,23 @@ export function analyzeParsed(
   });
 
   // 声明之外的变更（import、顶层表达式等）归入兜底单元，保证任何变更都可审
-  const coveredOld = deduped.flatMap((u) => (u.oldRange ? [u.oldRange] : []));
-  const coveredNew = deduped.flatMap((u) => (u.newRange ? [u.newRange] : []));
-  const strayOld = strayLines(oldLines, coveredOld);
-  const strayNew = strayLines(newLines, coveredNew);
+  const coveredOld = olds.map(rangeOf);
+  const coveredNew = news.map(rangeOf);
+  // 已过滤的声明不再回流到兜底单元；空行保留在原始 diff 中，不构成审阅入口。
+  const nonBlank = (source: string | null, lines: Set<number>) => {
+    const text = source?.split("\n") ?? [];
+    return new Set([...lines].filter((ln) => text[ln - 1]?.trim()));
+  };
+  const meaningfulOld = nonBlank(oldSource, oldLines);
+  const meaningfulNew = nonBlank(newSource, newLines);
+  const strayOld = strayLines(meaningfulOld, coveredOld);
+  const strayNew = strayLines(meaningfulNew, coveredNew);
   if (strayOld || strayNew) {
     const oldComments = oldTree ? collectCommentRanges(oldTree.rootNode) : [];
     const newComments = newTree ? collectCommentRanges(newTree.rootNode) : [];
     const commentOnly =
-      (!strayOld || strayAllInComments(oldLines, coveredOld, oldComments)) &&
-      (!strayNew || strayAllInComments(newLines, coveredNew, newComments));
+      (!strayOld || strayAllInComments(meaningfulOld, coveredOld, oldComments)) &&
+      (!strayNew || strayAllInComments(meaningfulNew, coveredNew, newComments));
     deduped.push({
       id: `other:${strayOld?.[0] ?? strayNew?.[0] ?? 0}`,
       kind: "other",

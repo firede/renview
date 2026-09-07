@@ -296,3 +296,34 @@ export class OrderService {
     expect(p.units[0]!.name).toBe("g");
   });
 });
+
+test("声明外空行增删不产生兜底条目", async () => {
+  const p = await analyzeFile(
+    typescriptProfile,
+    "const x = 1;\n\n",
+    "const x = 1;\n",
+    lines(2),
+    lines(),
+    "zh-CN",
+  );
+  expect(p.units).toEqual([]);
+});
+
+test("声明内纯格式变更不会回流为兜底条目", async () => {
+  const p = await analyzeFile(
+    typescriptProfile,
+    "const x = 1;\n",
+    "const x  =  1;\n",
+    lines(1),
+    lines(1),
+    "zh-CN",
+  );
+  expect(p.units).toEqual([]);
+});
+
+test("注释夹杂空行仍归为注释变更且锚点非空", async () => {
+  const p = await analyzeFile(typescriptProfile, "", "\n// 说明\n", lines(), lines(1, 2), "zh-CN");
+  expect(p.units).toHaveLength(1);
+  expect(p.units[0]!.newRange).toEqual([2, 2]);
+  expect(p.units[0]!.name).toBe("注释变更");
+});

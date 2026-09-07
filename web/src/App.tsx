@@ -25,6 +25,7 @@ import {
 } from "./icons";
 import { SideSections, SplitPane } from "./SplitPane";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
+import { findRowIndex } from "./navigation";
 import { UnitList } from "./UnitList";
 import { useResource } from "./useResource";
 
@@ -95,34 +96,16 @@ function rawAnchorId(c: ChangeData): string | undefined {
 
 /** 跳转目标行 → 原始 diff 行锚：该侧首个不早于目标的渲染行；目标晚于所有行时落最后一行 */
 function findRawAnchor(file: FileData, jump: LineJump): string | null {
-  const preferNew = jump.newLn != null;
-  const target = jump.newLn ?? jump.oldLn;
-  if (target == null) return null;
-  let best: { ln: number; id: string } | null = null;
-  let prev: { ln: number; id: string } | null = null;
-  for (const h of file.hunks) {
-    for (const c of h.changes) {
-      const ln = preferNew
-        ? isInsert(c)
-          ? c.lineNumber
-          : isNormal(c)
-            ? c.newLineNumber
-            : null
-        : isDelete(c)
-          ? c.lineNumber
-          : isNormal(c)
-            ? c.oldLineNumber
-            : null;
-      if (ln == null) continue;
-      const id = rawAnchorId(c)!;
-      if (ln >= target) {
-        if (!best || ln < best.ln) best = { ln, id };
-      } else if (!prev || ln > prev.ln) {
-        prev = { ln, id };
-      }
-    }
-  }
-  return (best ?? prev)?.id ?? null;
+  const changes = file.hunks.flatMap((h) => h.changes);
+  const rows = changes.map((c) =>
+    isInsert(c)
+      ? { kind: "add" as const, text: c.content, newLn: c.lineNumber }
+      : isDelete(c)
+        ? { kind: "del" as const, text: c.content, oldLn: c.lineNumber }
+        : { kind: "ctx" as const, text: c.content, oldLn: c.oldLineNumber, newLn: c.newLineNumber },
+  );
+  const idx = findRowIndex(rows, jump);
+  return idx == null ? null : (rawAnchorId(changes[idx]!) ?? null);
 }
 
 /** 原始 diff 视图：带行锚定与单元跳转（滚动 + 行号加粗常驻；不加闪烁动画——tr 上的背景动画与 td 底色冲突） */
@@ -195,9 +178,16 @@ export function App() {
     setMode("browse");
   };
 
-  // 变更单元导航：定位到单元起始行（新侧优先，removed 单元落旧侧）；nonce 保证重复点击同一单元也触发
+  // 变更单元导航：定位到单元内的实际变更；nonce 保证重复点击同一单元也触发
   const jumpToUnit = (u: ChangeUnit) => {
-    setUnitJump({ nonce: Date.now(), newLn: u.newRange?.[0], oldLn: u.oldRange?.[0] });
+    setUnitJump({
+      nonce: Date.now(),
+      newLn: u.newRange?.[0],
+      oldLn: u.oldRange?.[0],
+      newRange: u.newRange,
+      oldRange: u.oldRange,
+      unitId: u.id,
+    });
   };
 
   const files = useMemo<FileData[]>(
@@ -395,7 +385,11 @@ export function App() {
               bottom={{
                 title: s.sectionUnits,
                 body: (
-                  <UnitList units={selectedEntry?.projection?.units ?? null} onJump={jumpToUnit} />
+                  <UnitList
+                    selectedId={unitJump?.unitId}
+                    units={selectedEntry?.projection?.units ?? null}
+                    onJump={jumpToUnit}
+                  />
                 ),
               }}
             />

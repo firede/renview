@@ -53,8 +53,10 @@ function MemberDelta({ unit }: { unit: ChangeUnit }) {
 export function UnitList({
   units,
   onJump,
+  selectedId,
 }: {
   units: ChangeUnit[] | null;
+  selectedId?: string;
   onJump: (unit: ChangeUnit) => void;
 }) {
   const s = useStrings();
@@ -67,6 +69,7 @@ export function UnitList({
           <button
             key={u.id}
             className="unit-item"
+            aria-pressed={selectedId === u.id}
             title={
               u.change === "signature" && u.oldSignature && u.signature
                 ? `${u.oldSignature}\n→ ${u.signature}`

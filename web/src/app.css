@@ -803,15 +803,17 @@ body {
 /* 跳转目标的范围提示（闪烁一次后消退） */
 @keyframes flash-range {
   from {
-    background: var(--flash-bg);
+    outline-color: var(--accent);
   }
   to {
-    background: transparent;
+    outline-color: transparent;
   }
 }
 
 .srow.flash,
 .vfold-head.flash {
+  outline: 1px solid transparent;
+  outline-offset: -1px;
   animation: flash-range 1.6s ease-out;
 }
 
@@ -1012,4 +1014,16 @@ button.icon-btn svg {
 
 button.icon-btn.spinning svg {
   animation: rv-spin 0.9s linear infinite;
+}
+
+.unit-item[aria-pressed="true"] {
+  box-shadow: inset 2px 0 var(--accent);
+  background: var(--accent-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .srow.flash,
+  .vfold-head.flash {
+    animation: none;
+  }
 }

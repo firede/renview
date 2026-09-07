@@ -373,10 +373,8 @@ export function buildSimplifiedRows(
       const blockAdds: VisibleRow[] = [];
       const used = new Array<boolean>(adds.length).fill(false);
       for (const d of dels) {
-        // 空行不进折叠，直接以普通空行呈现（与空白上下文行作视觉间隔一致）
+        // 空行增删不携带可审阅内容；原始 diff 仍保留。
         if (orig(d).trim() === "") {
-          rows.push({ kind: "del", text: "", oldLn: d.ln });
-          visible++;
           continue;
         }
         const ds = simpOld(d.ln!);
@@ -398,8 +396,6 @@ export function buildSimplifiedRows(
       adds.forEach((a, idx) => {
         if (used[idx]) return;
         if (orig(a).trim() === "") {
-          rows.push({ kind: "add", text: "", newLn: a.ln });
-          visible++;
           return;
         }
         const as = simpNew(a.ln!);
