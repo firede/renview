@@ -41,13 +41,13 @@ export interface Copy {
 export const cn: Copy = {
   htmlLang: "zh-CN",
   title: "renview — 把注意力留给抽象",
-  description: "agent 时代的代码审阅工具，把 diff 呈现在值得判断的层面。",
+  description: "看清代码的关键变化，把注意力留给抽象。",
   nav: { demo: "演示", why: "不同", usage: "用法", install: "安装" },
   langSwitch: { label: "EN", href: "/en/", note: "English 版本" },
   hero: {
-    eyebrow: "agent 时代的代码审阅",
+    eyebrow: "看清代码的关键变化",
     h1: "把注意力留给抽象。",
-    sub: "你审的是实现是否贴合业务建模、是不是你想要的。代码级的对错交给 agent。",
+    sub: "Agent 很擅长写代码，但是否贴合业务建模，是不是你想要的？还得你亲自来把关。",
   },
   why: {
     title: "和传统 review 工具的不同",
@@ -82,7 +82,7 @@ export const cn: Copy = {
   install: {
     title: "一条命令，装完即用",
     platforms: "macOS · Linux · Windows（Git Bash）",
-    mirror: "下载走 npm registry，网络受限可设 RENVIEW_REGISTRY=https://registry.npmmirror.com",
+    mirror: "可通过 RENVIEW_REGISTRY 配置 npm 镜像源",
   },
   footer: {
     tagline: "renview — 帮人类读懂 agent 写的代码。",
@@ -95,14 +95,13 @@ export const cn: Copy = {
 export const en: Copy = {
   htmlLang: "en",
   title: "renview — Judge the abstraction",
-  description:
-    "Code review for agent-driven development. Every diff presented at the layer where your judgment matters.",
+  description: "See the changes that matter. Keep your attention on the abstraction.",
   nav: { demo: "Demo", why: "Why", usage: "Usage", install: "Install" },
   langSwitch: { label: "中文", href: "/cn/", note: "中文版" },
   hero: {
-    eyebrow: "Built for agent-driven development",
+    eyebrow: "See the changes that matter",
     h1: "Judge the abstraction.",
-    sub: "Does the implementation match the business model, and is it what you asked for? That judgment is yours. Code-level correctness belongs to the agent.",
+    sub: "Agents are good at writing code. But does it fit your business model? Is it what you wanted? That still takes your review.",
   },
   why: {
     title: "How it differs from classic review tools",
