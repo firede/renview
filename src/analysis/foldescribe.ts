@@ -19,17 +19,27 @@ export function foldDescriber(
   const hook = profile.typeDeclMembers;
   if (!hook) return null;
 
-  /** 覆盖该行的最内层可提取成员的声明（前序遍历，更深匹配后覆盖） */
-  function findDecl(side: ParsedSide, ln: number): { node: Node; info: TypeDeclMembers } | null {
-    let best: { node: Node; info: TypeDeclMembers } | null = null;
-    const walk = (n: Node) => {
-      if (ln < n.startPosition.row + 1 || ln > n.endPosition.row + 1) return;
-      const info = hook!(n, locale);
-      if (info) best = { node: n, info };
-      for (const c of n.namedChildren) walk(c);
+  type Decl = { node: Node; info: TypeDeclMembers };
+  const indices = new Map<ParsedSide, Array<Decl | undefined>>();
+
+  /** 每侧按需建立一次行索引；前序写入，保留同一行上最内层声明的归属。 */
+  function declarations(side: ParsedSide) {
+    let rows = indices.get(side);
+    if (rows) return rows;
+    rows = [];
+    const walk = (node: Node) => {
+      const info = hook!(node, locale);
+      if (info) {
+        const decl = { node, info };
+        for (let ln = node.startPosition.row + 1; ln <= node.endPosition.row + 1; ln++) {
+          rows![ln] = decl;
+        }
+      }
+      for (const child of node.namedChildren) walk(child);
     };
     walk(side.tree.rootNode);
-    return best;
+    indices.set(side, rows);
+    return rows;
   }
 
   return (oldLns, newLns) => {
@@ -39,18 +49,27 @@ export function foldDescriber(
     const lns = useNew ? newLns : oldLns;
     if (!side || lns.length === 0) return null;
 
-    let decl: { node: Node; info: TypeDeclMembers } | null = null;
+    const rows = declarations(side);
+    let decl: Decl | null = null;
     for (const ln of lns) {
-      const hit = findDecl(side, ln);
+      const hit = rows[ln];
       if (!hit) return null;
       if (!decl) decl = hit;
       else if (decl.node.id !== hit.node.id) return null; // 跨声明混合，回落行数摘要
     }
     if (!decl) return null;
 
-    const involved = decl.info.members.filter((m) =>
-      lns.some((ln) => ln >= m.range[0] && ln <= m.range[1]),
-    );
+    const sorted = [...lns].sort((a, b) => a - b);
+    const involved = decl.info.members.filter((m) => {
+      let lo = 0;
+      let hi = sorted.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (sorted[mid]! < m.range[0]) lo = mid + 1;
+        else hi = mid;
+      }
+      return lo < sorted.length && sorted[lo]! <= m.range[1];
+    });
     return messages(locale).analysis.foldedTypeMembers(
       decl.info.name,
       involved.length > 0

@@ -141,3 +141,62 @@ class User:
     expect(foldSummaryOf(rows)).toBe("Cfg: retries (type/format changes)");
   });
 });
+
+test("大声明及多个折叠组复用成员提取结果", async () => {
+  const source = `interface Model {\n${Array.from({ length: 2000 }, (_, i) => `field${i}: string;`).join("\n")}\n}`;
+  const side = await parseSide(typescriptProfile, source);
+  const calls = new Map<number, number>();
+  try {
+    const describe = foldDescriber(
+      {
+        ...typescriptProfile,
+        typeDeclMembers(node, locale) {
+          calls.set(node.id, (calls.get(node.id) ?? 0) + 1);
+          return typescriptProfile.typeDeclMembers!(node, locale);
+        },
+      },
+      null,
+      side,
+      "zh-CN",
+    )!;
+    expect(
+      describe(
+        [],
+        Array.from({ length: 2000 }, (_, i) => i + 2),
+      ),
+    ).toContain("Model");
+    expect(describe([], [2001])).toContain("field1999");
+    expect(Math.max(...calls.values())).toBe(1);
+  } finally {
+    side.tree.delete();
+  }
+});
+
+test("行索引保留最内层声明，跨声明折叠回落", async () => {
+  const side = await parseSide(
+    typescriptProfile,
+    "class Outer {\n field = 1;\n method() {\n return 2;\n }\n}\nclass Other {}\n",
+  );
+  try {
+    const describe = foldDescriber(
+      {
+        ...typescriptProfile,
+        typeDeclMembers(node) {
+          if (node.type === "class_declaration" || node.type === "method_definition") {
+            return { name: node.childForFieldName("name")!.text, members: [] };
+          }
+          return null;
+        },
+      },
+      null,
+      side,
+      "zh-CN",
+    )!;
+    expect(describe([], [4])).toContain("method");
+    expect(describe([], [2])).toContain("Outer");
+    expect(describe([], [2, 4])).toBeNull();
+    expect(describe([], [2, 7])).toBeNull();
+  } finally {
+    side.tree.delete();
+  }
+});
