@@ -123,7 +123,7 @@ export async function withParsedSides<T>(
 /**
  * 分析单个文件已解析的新旧版本，产出投影。
  * 配对基于全量声明（而非仅触碰的），避免"纯删除行导致新侧未触碰"被误判为 removed。
- * 触碰但归一化文本无变化的声明不产生单元（过滤纯注释/格式噪音）。
+ * 触碰但归一化文本无变化的声明不产生单元；声明内注释变化仍保留所属声明的审阅入口。
  */
 export function analyzeParsed(
   profile: LanguageProfile,
