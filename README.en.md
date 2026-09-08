@@ -44,13 +44,15 @@ renview
 
 By default, renview shows all uncommitted changes, including staged changes, unstaged changes, and untracked files.
 
-| Task                                                            | Command                     |
-| --------------------------------------------------------------- | --------------------------- |
-| Review staged changes only                                      | `renview --staged`          |
-| Review branch changes since the common ancestor                 | `renview main...HEAD`       |
-| Compare the working tree with three commits ago, limited to src | `renview HEAD~3 -- src/`    |
-| Use another repository                                          | `renview -C ../project`     |
-| Set the port without opening a browser                          | `renview -p 8080 --no-open` |
+| Task                                                            | Command                         |
+| --------------------------------------------------------------- | ------------------------------- |
+| Review staged changes only                                      | `renview diff --staged`         |
+| Review branch changes since the common ancestor                 | `renview diff main...HEAD`      |
+| Compare the working tree with three commits ago, limited to src | `renview diff HEAD~3 -- src/`   |
+| Use another repository                                          | `renview -C ../project`         |
+| Set the port without opening a browser                          | `renview --port 8080 --no-open` |
+
+`renview` is equivalent to `renview diff`. Put tool options (`--port`, `--no-open`, `-C`) before the command. Arguments after `diff` are passed unchanged to `git diff`, with `--` separating paths. Add `diff` to older commands such as `renview main...HEAD` and `renview --staged`; use `--port` instead of `-p` for the port.
 
 Staged and commit-range reviews exclude working-tree drafts. Revision and path arguments follow `git diff`; run `renview --help` for tool options.
 
@@ -86,7 +88,7 @@ Requires Bun. The first build of the GDScript parser also requires Docker to be 
 
 ```bash
 bun install
-bun run dev HEAD~5
+bun run dev diff HEAD~5
 ```
 
 Open the URL printed in the terminal to view the development server.

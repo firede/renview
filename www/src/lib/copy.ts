@@ -74,9 +74,9 @@ export const cn: Copy = {
     title: "在任意 git 仓库里运行",
     rows: [
       { cmd: "renview", note: "审阅未提交变更（含未跟踪新文件）" },
-      { cmd: "renview --staged", note: "审阅已暂存变更" },
-      { cmd: "renview main...HEAD", note: "审阅分支区间" },
-      { cmd: "renview HEAD~3 -- src/", note: "指定区间与路径" },
+      { cmd: "renview diff --staged", note: "审阅已暂存变更" },
+      { cmd: "renview diff main...HEAD", note: "审阅分支区间" },
+      { cmd: "renview diff HEAD~3 -- src/", note: "指定区间与路径" },
     ],
   },
   install: {
@@ -131,9 +131,9 @@ export const en: Copy = {
     title: "Run it in any git repo",
     rows: [
       { cmd: "renview", note: "review uncommitted changes (untracked files included)" },
-      { cmd: "renview --staged", note: "review staged changes" },
-      { cmd: "renview main...HEAD", note: "review a branch range" },
-      { cmd: "renview HEAD~3 -- src/", note: "pin a range and paths" },
+      { cmd: "renview diff --staged", note: "review staged changes" },
+      { cmd: "renview diff main...HEAD", note: "review a branch range" },
+      { cmd: "renview diff HEAD~3 -- src/", note: "pin a range and paths" },
     ],
   },
   install: {

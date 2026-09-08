@@ -21,14 +21,12 @@ async function main(): Promise<void> {
   const { config } = await createConfigLoader(configPath())();
   const m = messages(config.language);
 
-  const argv = process.argv.slice(2);
-  // upgrade 是子命令而非 diff 参数，拦截在仓库检测之前（不要求在 git 仓库内）
-  if (argv[0] === "upgrade") {
-    await upgrade(argv[1], m);
+  const opts = parseArgs(process.argv.slice(2), m);
+  // 升级不依赖仓库，在目录检测前分流。
+  if (opts.command === "upgrade") {
+    await upgrade(opts.version, m);
     return;
   }
-
-  const opts = parseArgs(argv, m);
 
   const cwd = resolve(opts.cwd ?? process.cwd());
   if (!(await stat(cwd).catch(() => null))?.isDirectory()) {
@@ -61,4 +59,9 @@ async function main(): Promise<void> {
   if (opts.open) openBrowser(url);
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}

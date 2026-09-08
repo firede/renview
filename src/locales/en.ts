@@ -9,28 +9,36 @@ export const en: Messages = {
   cli: {
     help: `renview — a code review tool built to lower human cognitive load
 
-Usage: renview [options] [<git diff args>...]
+Usage: renview [options]
+       renview [options] diff [<git diff args>...]
        renview upgrade [version]
 
 Commands:
+  diff [args...]        Review Git changes (default with no command)
   upgrade [version]     Upgrade to the latest (or a specific) version
 
 Options:
   -C, --cwd <path>   Use a working directory (default: current directory)
-  -p, --port <port>   Use a specific local port (default: 17171, increments if busy)
+      --port <port>   Use a specific local port (default: 17171, increments if busy)
       --no-open       Do not open the browser automatically
   -h, --help          Show this help
   -v, --version       Show version
 
+Tool options go before the command; everything after diff is passed to git diff.
 With no git diff arguments, shows working tree changes against HEAD (including untracked files).
 
 Examples:
-  renview                    Review uncommitted changes
-  renview --staged           Review staged changes
-  renview main...HEAD        Review a branch range
-  renview HEAD~3 -- src/     Review a range, limited to given paths
-  renview -C ../project      Review another repository
+  renview                        Review uncommitted changes
+  renview diff --staged          Review staged changes
+  renview diff main...HEAD       Review a branch range
+  renview diff HEAD~3 -- src/    Review a range, limited to given paths
+  renview -C ../project          Review another repository
 `,
+    unknownCommand: (v) =>
+      `Unknown command: ${v}.${v === "up" ? " Did you mean renview upgrade?" : " Use renview diff <args> to review Git changes."} See renview --help.`,
+    unknownOption: (v) =>
+      `Unknown option: ${v}. Tool options go before the command; Git options go after renview diff. See renview --help.`,
+    upgradeUsage: "Usage: renview upgrade [version]",
     missingCwd: "--cwd / -C requires a directory path.",
     invalidCwd: (path) => `Cannot access directory: ${path}`,
     invalidPort: (v) => `Invalid port: ${v}`,

@@ -44,13 +44,15 @@ renview
 
 默认审阅全部未提交变更，包括已暂存、未暂存和未跟踪的新文件。
 
-| 场景                                      | 命令                        |
-| ----------------------------------------- | --------------------------- |
-| 只看已暂存变更                            | `renview --staged`          |
-| 查看分支相对共同祖先的变更                | `renview main...HEAD`       |
-| 对比三个提交前与当前工作区，只看 src 目录 | `renview HEAD~3 -- src/`    |
-| 指定仓库目录                              | `renview -C ../project`     |
-| 指定端口，不自动打开浏览器                | `renview -p 8080 --no-open` |
+| 场景                                      | 命令                            |
+| ----------------------------------------- | ------------------------------- |
+| 只看已暂存变更                            | `renview diff --staged`         |
+| 查看分支相对共同祖先的变更                | `renview diff main...HEAD`      |
+| 对比三个提交前与当前工作区，只看 src 目录 | `renview diff HEAD~3 -- src/`   |
+| 指定仓库目录                              | `renview -C ../project`         |
+| 指定端口，不自动打开浏览器                | `renview --port 8080 --no-open` |
+
+`renview` 等同于 `renview diff`。工具选项（如 `--port`、`--no-open`、`-C`）放在子命令前，`diff` 后的参数原样传给 `git diff`，`--` 用于分隔路径。旧写法 `renview main...HEAD`、`renview --staged` 改为增加 `diff` 子命令；端口使用 `--port`，不再支持 `-p`。
 
 审阅已暂存变更或提交区间时，不混入工作区草稿。比较版本与筛选路径沿用 `git diff` 的参数，用 `renview --help` 查看工具选项。
 
@@ -86,7 +88,7 @@ update_check = false
 
 ```bash
 bun install
-bun run dev HEAD~5
+bun run dev diff HEAD~5
 ```
 
 开发服务启动后，在浏览器打开终端显示的地址。

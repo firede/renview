@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "../src/cli-args";
+import pkg from "../package.json";
 import { messages } from "../src/i18n";
 
 const m = messages("en");
@@ -10,7 +11,9 @@ const cli = resolve(import.meta.dir, "../src/cli.ts");
 
 test("目录选项支持长短形式、等号和空格路径，保留 diff 参数", () => {
   for (const args of [["--cwd", "../my repo"], ["-C", "../my repo"], ["--cwd=../my repo"]]) {
-    expect(parseArgs([...args, "--no-open", "main...HEAD", "--", "src/"], m)).toEqual({
+    expect(parseArgs([...args, "--no-open", "diff", "main...HEAD", "--", "src/"], m)).toEqual({
+      command: "diff",
+      version: undefined,
       cwd: "../my repo",
       open: false,
       port: undefined,
@@ -18,7 +21,7 @@ test("目录选项支持长短形式、等号和空格路径，保留 diff 参�
     });
   }
   expect(parseArgs([], m).cwd).toBeUndefined();
-  expect(parseArgs(["--", "--cwd", "-C", "--help"], m).gitArgs).toEqual([
+  expect(parseArgs(["diff", "--", "--cwd", "-C", "--help"], m).gitArgs).toEqual([
     "--",
     "--cwd",
     "-C",
@@ -77,12 +80,15 @@ test("从仓库外以相对子目录启动，API 使用目标仓库和区间", a
     "-qm",
     "初始化",
   ]);
-  const proc = Bun.spawn([process.execPath, cli, "-C", "my repo/src", "--no-open", "main...HEAD"], {
-    cwd: dir,
-    env: { ...process.env, XDG_CONFIG_HOME: dir, RENVIEW_DISABLE_UPDATE_CHECK: "1" },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    [process.execPath, cli, "-C", "my repo/src", "--no-open", "diff", "main...HEAD"],
+    {
+      cwd: dir,
+      env: { ...process.env, XDG_CONFIG_HOME: dir, RENVIEW_DISABLE_UPDATE_CHECK: "1" },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
   const timer = setTimeout(() => proc.kill(), 5000);
   try {
     let output = "";
@@ -124,7 +130,7 @@ test("无效 diff 参数在启动服务前退出，终端保留 Git 错误且不
   ]);
   try {
     for (const args of [["main...HE"], ["--not-a-real-diff-option"]]) {
-      const proc = Bun.spawn([process.execPath, cli, "-C", dir, "--no-open", ...args], {
+      const proc = Bun.spawn([process.execPath, cli, "-C", dir, "--no-open", "diff", ...args], {
         env: {
           ...process.env,
           XDG_CONFIG_HOME: dir,
@@ -155,3 +161,64 @@ test("无效 diff 参数在启动服务前退出，终端保留 Git 错误且不
     rmSync(dir, { recursive: true, force: true });
   }
 }, 10000);
+
+test("裸命令与显式 diff 相同，子命令后保留 Git 选项和同名分支", () => {
+  expect(parseArgs([], m)).toEqual(parseArgs(["diff"], m));
+  const args = ["-p", "upgrade", "--", "--no-open", "--help", "-C"];
+  expect(parseArgs(["--port", "8080", "--no-open", "diff", ...args], m)).toEqual({
+    command: "diff",
+    version: undefined,
+    port: 8080,
+    open: false,
+    cwd: undefined,
+    gitArgs: args,
+  });
+  expect(parseArgs(["diff", "up"], m).gitArgs).toEqual(["up"]);
+});
+
+test("未知命令和旧写法不再作为 Git 参数，升级参数不被吞掉", () => {
+  expect(() => parseArgs(["up"], m)).toThrow("Did you mean renview upgrade?");
+  expect(() => parseArgs(["main...HEAD"], m)).toThrow("Unknown command");
+  for (const args of [["--staged"], ["-p", "8080"], ["--", "src/"]]) {
+    expect(() => parseArgs(args, m)).toThrow("Unknown option");
+  }
+  expect(parseArgs(["upgrade"], m).command).toBe("upgrade");
+  expect(parseArgs(["upgrade", "0.0.11"], m).version).toBe("0.0.11");
+  expect(() => parseArgs(["upgrade", "0.0.11", "extra"], m)).toThrow("Usage:");
+});
+
+test("仓库外的命令错误和帮助不触发 Git 检测或升级", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "renview-cli-commands-"));
+  try {
+    for (const [args, code, expected] of [
+      [["up"], 1, "Did you mean renview upgrade?"],
+      [["upgrade", "0.0.11", "extra"], 1, "Usage:"],
+      [["upgrade", "--help"], 0, "Usage:"],
+      [["--help"], 0, "diff [<git diff args>...]"],
+      [["--version"], 0, pkg.version],
+    ] as const) {
+      const proc = Bun.spawn([process.execPath, cli, ...args], {
+        cwd: dir,
+        env: {
+          ...process.env,
+          XDG_CONFIG_HOME: dir,
+          LC_ALL: "en_US.UTF-8",
+          RENVIEW_DISABLE_UPDATE_CHECK: "1",
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const [actual, stdout, stderr] = await Promise.all([
+        proc.exited,
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ]);
+      expect(actual).toBe(code);
+      expect(stdout + stderr).toContain(expected);
+      expect(stdout + stderr).not.toContain("Not inside a git repository");
+      expect(stderr).not.toContain("at main");
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

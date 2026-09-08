@@ -64,6 +64,9 @@ export function resolveLocale(
 export interface Messages {
   cli: {
     help: string;
+    unknownCommand: (value: string) => string;
+    unknownOption: (value: string) => string;
+    upgradeUsage: string;
     invalidPort: (value: string) => string;
     notInRepo: string;
     missingCwd: string;

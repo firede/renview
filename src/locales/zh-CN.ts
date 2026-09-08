@@ -6,28 +6,36 @@ export const zhCN: Messages = {
   cli: {
     help: `renview — 帮助人类降低认知负担的代码审核工具
 
-用法: renview [选项] [<git diff 参数>...]
+用法: renview [选项]
+      renview [选项] diff [<git diff 参数>...]
       renview upgrade [版本]
 
 子命令:
+  diff [参数...]        审阅 Git 变更（无子命令时的默认行为）
   upgrade [版本]        升级到最新（或指定）版本
 
 选项:
   -C, --cwd <路径>   指定工作目录（默认当前目录）
-  -p, --port <端口>   指定本地服务端口（默认 17171，占用时递增）
+      --port <端口>   指定本地服务端口（默认 17171，占用时递增）
       --no-open       不自动打开浏览器
   -h, --help          显示帮助
   -v, --version       显示版本
 
+工具选项放在子命令前，diff 后的参数原样传给 git diff。
 未提供 git diff 参数时，默认展示 working tree 相对 HEAD 的变更（含 untracked 新文件）。
 
 示例:
-  renview                    审阅当前未提交变更
-  renview --staged           审阅已暂存变更
-  renview main...HEAD        审阅分支区间
-  renview HEAD~3 -- src/     审阅指定区间与路径
-  renview -C ../project      审阅其他仓库
+  renview                        审阅当前未提交变更
+  renview diff --staged          审阅已暂存变更
+  renview diff main...HEAD       审阅分支区间
+  renview diff HEAD~3 -- src/    审阅指定区间与路径
+  renview -C ../project          审阅其他仓库
 `,
+    unknownCommand: (v) =>
+      `未知命令: ${v}。${v === "up" ? "你是否想运行 renview upgrade？" : "审阅 Git 变更请使用 renview diff <参数>。"}运行 renview --help 查看帮助。`,
+    unknownOption: (v) =>
+      `未知选项: ${v}。工具选项放在子命令前，Git 选项放在 renview diff 后。运行 renview --help 查看帮助。`,
+    upgradeUsage: "用法: renview upgrade [版本]",
     missingCwd: "--cwd / -C 需要提供目录路径。",
     invalidCwd: (path) => `无法访问目录: ${path}`,
     invalidPort: (v) => `无效端口: ${v}`,
