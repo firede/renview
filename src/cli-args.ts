@@ -11,7 +11,8 @@ interface CliOptions {
 }
 
 export function parseArgs(argv: string[], m: Messages): CliOptions {
-  let gitArgs: string[] = [];
+  const gitArgs: string[] = [];
+  let inDiff = false;
   let command: CliOptions["command"] = "diff";
   let version: string | undefined;
   let port: number | undefined;
@@ -19,12 +20,16 @@ export function parseArgs(argv: string[], m: Messages): CliOptions {
   let cwd: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "diff") {
-      // 子命令后完整交给 Git，保留其选项和路径分隔符语义。
-      gitArgs = argv.slice(i + 1);
+    if (inDiff && a === "--") {
+      // 路径分隔符后的内容不再解析，连同分隔符交给 Git。
+      gitArgs.push(...argv.slice(i));
       break;
     }
-    if (a === "upgrade") {
+    if (!inDiff && a === "diff") {
+      inDiff = true;
+      continue;
+    }
+    if (!inDiff && a === "upgrade") {
       command = "upgrade";
       const args = argv.slice(i + 1);
       if (args.length === 1 && (args[0] === "--help" || args[0] === "-h")) {
@@ -35,7 +40,7 @@ export function parseArgs(argv: string[], m: Messages): CliOptions {
       version = args[0];
       break;
     }
-    if (a === "-C" || a === "--cwd" || a?.startsWith("--cwd=")) {
+    if (a === "--cwd" || a?.startsWith("--cwd=")) {
       const value = a.startsWith("--cwd=") ? a.slice(6) : argv[++i];
       if (!value || (!a.startsWith("--cwd=") && value.startsWith("-"))) {
         console.error(m.cli.missingCwd);
@@ -51,6 +56,8 @@ export function parseArgs(argv: string[], m: Messages): CliOptions {
       port = v;
     } else if (a === "--no-open") {
       open = false;
+    } else if (inDiff) {
+      gitArgs.push(a);
     } else if (a === "-h" || a === "--help") {
       console.log(m.cli.help);
       process.exit(0);

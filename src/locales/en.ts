@@ -18,13 +18,13 @@ Commands:
   upgrade [version]     Upgrade to the latest (or a specific) version
 
 Options:
-  -C, --cwd <path>   Use a working directory (default: current directory)
+      --cwd <path>    Use a working directory (default: current directory)
       --port <port>   Use a specific local port (default: 17171, increments if busy)
       --no-open       Do not open the browser automatically
   -h, --help          Show this help
   -v, --version       Show version
 
-Tool options go before the command; everything after diff is passed to git diff.
+--cwd, --port and --no-open may precede or follow diff; other diff arguments go to git diff. Arguments after -- are paths.
 With no git diff arguments, shows working tree changes against HEAD (including untracked files).
 
 Examples:
@@ -32,14 +32,14 @@ Examples:
   renview diff --staged          Review staged changes
   renview diff main...HEAD       Review a branch range
   renview diff HEAD~3 -- src/    Review a range, limited to given paths
-  renview -C ../project          Review another repository
+  renview --cwd ../project       Review another repository
 `,
     unknownCommand: (v) =>
       `Unknown command: ${v}.${v === "up" ? " Did you mean renview upgrade?" : " Use renview diff <args> to review Git changes."} See renview --help.`,
     unknownOption: (v) =>
-      `Unknown option: ${v}. Tool options go before the command; Git options go after renview diff. See renview --help.`,
+      `Unknown option: ${v}. Git options go after renview diff. See renview --help.`,
     upgradeUsage: "Usage: renview upgrade [version]",
-    missingCwd: "--cwd / -C requires a directory path.",
+    missingCwd: "--cwd requires a directory path.",
     invalidCwd: (path) => `Cannot access directory: ${path}`,
     invalidPort: (v) => `Invalid port: ${v}`,
     notInRepo: "Not inside a git repository.",

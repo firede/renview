@@ -49,10 +49,10 @@ renview
 | 只看已暂存变更                            | `renview diff --staged`         |
 | 查看分支相对共同祖先的变更                | `renview diff main...HEAD`      |
 | 对比三个提交前与当前工作区，只看 src 目录 | `renview diff HEAD~3 -- src/`   |
-| 指定仓库目录                              | `renview -C ../project`         |
+| 指定仓库目录                              | `renview --cwd ../project`      |
 | 指定端口，不自动打开浏览器                | `renview --port 8080 --no-open` |
 
-`renview` 等同于 `renview diff`。工具选项（如 `--port`、`--no-open`、`-C`）放在子命令前，`diff` 后的参数原样传给 `git diff`，`--` 用于分隔路径。旧写法 `renview main...HEAD`、`renview --staged` 改为增加 `diff` 子命令；端口使用 `--port`，不再支持 `-p`。
+`renview` 等同于 `renview diff`。工具选项 `--cwd`、`--port`、`--no-open` 可放在 `diff` 前后，其余 `diff` 参数原样传给 `git diff`；`--` 及其后的路径保持原样。`-C` 仅作为 Git 的复制检测选项，不再用于指定仓库目录。旧写法 `renview main...HEAD`、`renview --staged` 改为增加 `diff` 子命令；端口使用 `--port`，不再支持 `-p`。
 
 审阅已暂存变更或提交区间时，不混入工作区草稿。比较版本与筛选路径沿用 `git diff` 的参数，用 `renview --help` 查看工具选项。
 

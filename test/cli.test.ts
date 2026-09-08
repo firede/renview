@@ -9,8 +9,8 @@ import { messages } from "../src/i18n";
 const m = messages("en");
 const cli = resolve(import.meta.dir, "../src/cli.ts");
 
-test("目录选项支持长短形式、等号和空格路径，保留 diff 参数", () => {
-  for (const args of [["--cwd", "../my repo"], ["-C", "../my repo"], ["--cwd=../my repo"]]) {
+test("目录选项支持等号和空格路径，保留 diff 参数", () => {
+  for (const args of [["--cwd", "../my repo"], ["--cwd=../my repo"]]) {
     expect(parseArgs([...args, "--no-open", "diff", "main...HEAD", "--", "src/"], m)).toEqual({
       command: "diff",
       version: undefined,
@@ -35,11 +35,14 @@ test("缺失目录、无效目录与非仓库目录明确失败", async () => {
   try {
     for (const args of [
       ["--cwd"],
-      ["-C", "--no-open"],
+      ["--cwd", "--no-open"],
       ["--cwd="],
-      ["-C", join(dir, "missing")],
-      ["-C", join(dir, "file")],
-      ["-C", dir],
+      ["diff", "HEAD~5", "--cwd"],
+      ["diff", "--cwd", "--no-open"],
+      ["diff", "--cwd="],
+      ["--cwd", join(dir, "missing")],
+      ["--cwd", join(dir, "file")],
+      ["--cwd", dir],
     ]) {
       const proc = Bun.spawn([process.execPath, cli, ...args], {
         env: {
@@ -81,7 +84,7 @@ test("从仓库外以相对子目录启动，API 使用目标仓库和区间", a
     "初始化",
   ]);
   const proc = Bun.spawn(
-    [process.execPath, cli, "-C", "my repo/src", "--no-open", "diff", "main...HEAD"],
+    [process.execPath, cli, "diff", "main...HEAD", "--cwd", "my repo/src", "--no-open"],
     {
       cwd: dir,
       env: { ...process.env, XDG_CONFIG_HOME: dir, RENVIEW_DISABLE_UPDATE_CHECK: "1" },
@@ -130,7 +133,7 @@ test("无效 diff 参数在启动服务前退出，终端保留 Git 错误且不
   ]);
   try {
     for (const args of [["main...HE"], ["--not-a-real-diff-option"]]) {
-      const proc = Bun.spawn([process.execPath, cli, "-C", dir, "--no-open", "diff", ...args], {
+      const proc = Bun.spawn([process.execPath, cli, "--cwd", dir, "--no-open", "diff", ...args], {
         env: {
           ...process.env,
           XDG_CONFIG_HOME: dir,
@@ -179,7 +182,7 @@ test("裸命令与显式 diff 相同，子命令后保留 Git 选项和同名分
 test("未知命令和旧写法不再作为 Git 参数，升级参数不被吞掉", () => {
   expect(() => parseArgs(["up"], m)).toThrow("Did you mean renview upgrade?");
   expect(() => parseArgs(["main...HEAD"], m)).toThrow("Unknown command");
-  for (const args of [["--staged"], ["-p", "8080"], ["--", "src/"]]) {
+  for (const args of [["--staged"], ["-p", "8080"], ["-C", "../repo"], ["--", "src/"]]) {
     expect(() => parseArgs(args, m)).toThrow("Unknown option");
   }
   expect(parseArgs(["upgrade"], m).command).toBe("upgrade");
@@ -220,5 +223,28 @@ test("仓库外的命令错误和帮助不触发 Git 检测或升级", async () 
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("工具选项可放在 diff 前后，Git 选项与路径顺序保持不变", () => {
+  for (const cwd of [["--cwd", "../my repo"], ["--cwd=../my repo"]]) {
+    const options = [...cwd, "--port", "8080", "--no-open"];
+    const gitArgs = [
+      "HEAD~5",
+      "-C",
+      "--find-copies",
+      "diff",
+      "upgrade",
+      "--help",
+      "--",
+      "--cwd",
+      "--port",
+      "--no-open",
+    ];
+    const expected = parseArgs([...options, "diff", ...gitArgs], m);
+    expect(parseArgs(["diff", ...options, ...gitArgs], m)).toEqual(expected);
+    expect(parseArgs(["diff", "HEAD~5", ...options, ...gitArgs.slice(1)], m)).toEqual(expected);
+    expect(expected.gitArgs).toEqual(gitArgs);
+    expect(expected.cwd).toBe("../my repo");
   }
 });
