@@ -2,7 +2,8 @@ import { $ } from "bun";
 import { join } from "node:path";
 import { lstat } from "node:fs/promises";
 import { mapConcurrent } from "./concurrency";
-import { readSourceFile, readSourceStream, SourceTooLargeError } from "./source";
+import { readSourceStream, SourceTooLargeError } from "./source";
+import { readRepoSource, safeRepoPath } from "./repo-path";
 import { messages, type Locale } from "./i18n";
 
 /** git 空树的固定 hash，用于仓库尚无提交时作为对比基准 */
@@ -205,12 +206,9 @@ export async function getSideContent(
   side: SideSpec,
   path: string,
 ): Promise<string | null> {
+  if (!safeRepoPath(root, path)) return null;
   try {
-    if (side.type === "worktree") {
-      const f = Bun.file(join(root, path));
-      if (!(await f.exists())) return null;
-      return await readSourceFile(join(root, path));
-    }
+    if (side.type === "worktree") return await readRepoSource(root, path);
     const spec = side.type === "index" ? `:${path}` : `${side.rev}:${path}`;
     const proc = Bun.spawn(["git", "-C", root, "show", spec], { stdout: "pipe", stderr: "ignore" });
     try {

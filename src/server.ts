@@ -1,4 +1,3 @@
-import { resolve, sep } from "node:path";
 import parseDiff from "parse-diff";
 import { profileForPath } from "./analysis/langs";
 import type { ParsedFile } from "./analysis/map";
@@ -16,7 +15,8 @@ import { messages, type Locale } from "./i18n";
 import { webAssets } from "./webassets.gen";
 import { listenWithPort } from "./port";
 import { mapConcurrent } from "./concurrency";
-import { readSourceFile, SourceTooLargeError } from "./source";
+import { SourceTooLargeError } from "./source";
+import { safeRepoPath, readRepoSource, InvalidRepoPathError } from "./repo-path";
 
 export interface ServerOptions {
   port?: number;
@@ -115,20 +115,6 @@ async function handleFiles(root: string, locale: Locale): Promise<Response> {
   }
 }
 
-/** 查看器路径安全检查：拒绝绝对路径、.. 穿越与 .git，必须落在仓库内 */
-function safeRepoPath(root: string, path: string): string | null {
-  const parts = path.split(/[\\/]/);
-  if (
-    path.startsWith("/") ||
-    /^[A-Za-z]:/.test(path) ||
-    parts.some((p) => p === ".." || p === ".git")
-  ) {
-    return null;
-  }
-  const abs = resolve(root, path);
-  return abs.startsWith(root + sep) ? abs : null;
-}
-
 /** 查看器单文件：worktree 内容 + 一次 parse 产出大纲与简化行 */
 export async function handleFile(
   root: string,
@@ -140,17 +126,13 @@ export async function handleFile(
   const abs = safeRepoPath(root, path);
   if (!abs) return Response.json({ ok: false, error: m.invalidPath }, { status: 400 });
   try {
-    const f = Bun.file(abs);
-    if (!(await f.exists()))
-      return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
-    const head = new Uint8Array(await f.slice(0, 8192).arrayBuffer());
-    const file = head.includes(0)
-      ? unavailableViewerFile(path, "binary")
-      : await viewerFile(path, await readSourceFile(abs), locale);
+    const file = await viewerFile(path, await readRepoSource(root, path), locale);
     return Response.json({ ok: true, file });
   } catch (error) {
     if (error instanceof SourceTooLargeError)
       return Response.json({ ok: true, file: unavailableViewerFile(path, "too-large") });
+    if (error instanceof InvalidRepoPathError)
+      return Response.json({ ok: false, error: m.invalidPath }, { status: 400 });
     const code = (error as NodeJS.ErrnoException).code;
     const status =
       code === "ENOENT" || code === "ENOTDIR"
