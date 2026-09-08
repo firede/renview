@@ -1,9 +1,14 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
 import { messages } from "../src/i18n";
-import { checkForUpdate, compareVersions, detectInstallMethod } from "../src/updater";
+import {
+  checkForUpdate,
+  compareVersions,
+  detectInstallMethod,
+  runScriptInstaller,
+} from "../src/updater";
 
 const tmpdirs: string[] = [];
 
@@ -120,5 +125,128 @@ describe("checkForUpdate 被动提示", () => {
     const env = { XDG_CONFIG_HOME: dir, RENVIEW_REGISTRY: "http://127.0.0.1:1" };
     const lines = await captureLogs(() => checkForUpdate("0.1.0", messages("en"), env));
     expect(lines).toEqual([]);
+  });
+});
+
+describe("升级脚本生命周期", () => {
+  function mockDownload(run: (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>) {
+    return spyOn(globalThis, "fetch").mockImplementation(run as typeof fetch);
+  }
+
+  test("并发运行使用不同私有目录，保留参数并在结束后清理", async () => {
+    const dir = makeTmp();
+    let release: () => void;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    const download = mockDownload(async () => {
+      if (++calls === 2) release!();
+      await ready;
+      const folders = fs.readdirSync(dir);
+      expect(folders).toHaveLength(2);
+      if (process.platform !== "win32") {
+        for (const folder of folders)
+          expect(fs.statSync(join(dir, folder)).mode & 0o777).toBe(0o700);
+      }
+      return new Response(
+        '[ "$1" = "--version" ] && [ "$2" = "1.2.3" ] && [ "$3" = "--no-modify-path" ]',
+      );
+    });
+    try {
+      expect(
+        await Promise.all([runScriptInstaller("1.2.3", dir), runScriptInstaller("1.2.3", dir)]),
+      ).toEqual([0, 0]);
+      expect(fs.readdirSync(dir)).toEqual([]);
+    } finally {
+      download.mockRestore();
+    }
+  });
+
+  test("HTTP、下载、响应体失败均清理临时目录", async () => {
+    for (const failure of ["http", "fetch", "body"]) {
+      const dir = makeTmp();
+      const download = mockDownload(async () => {
+        if (failure === "fetch") throw new Error("下载失败");
+        if (failure === "http") return new Response(null, { status: 503 });
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new Error("响应体失败"));
+            },
+          }),
+        );
+      });
+      try {
+        await expect(runScriptInstaller("1.2.3", dir)).rejects.toThrow();
+        expect(fs.readdirSync(dir)).toEqual([]);
+      } finally {
+        download.mockRestore();
+      }
+    }
+  });
+
+  test("写入与启动失败清理目录，子进程非零退出保留退出码", async () => {
+    const dir = makeTmp();
+    const download = mockDownload(async () => new Response("exit 7"));
+    try {
+      const write = spyOn(Bun, "write").mockRejectedValueOnce(new Error("写入失败"));
+      try {
+        await expect(runScriptInstaller("1.2.3", dir)).rejects.toThrow("写入失败");
+      } finally {
+        write.mockRestore();
+      }
+      expect(fs.readdirSync(dir)).toEqual([]);
+      const spawn = spyOn(Bun, "spawn").mockImplementationOnce(() => {
+        throw new Error("启动失败");
+      });
+      try {
+        await expect(runScriptInstaller("1.2.3", dir)).rejects.toThrow("启动失败");
+      } finally {
+        spawn.mockRestore();
+      }
+      expect(fs.readdirSync(dir)).toEqual([]);
+      expect(await runScriptInstaller("1.2.3", dir)).toBe(7);
+      expect(fs.readdirSync(dir)).toEqual([]);
+    } finally {
+      download.mockRestore();
+    }
+  });
+
+  test("下载超时覆盖响应体读取，取消后清理目录", async () => {
+    const dir = makeTmp();
+    let bodyStarted = false;
+    const server = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch() {
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              bodyStarted = true;
+              controller.enqueue(new TextEncoder().encode("# 尚未传完"));
+            },
+          }),
+        );
+      },
+    });
+    const fetchOriginal = globalThis.fetch;
+    const timeoutOriginal = AbortSignal.timeout;
+    const signal = timeoutOriginal(100);
+    const timeout = spyOn(AbortSignal, "timeout").mockImplementationOnce(() => signal);
+    const download = mockDownload((_url, options) =>
+      fetchOriginal(`http://127.0.0.1:${server.port}`, options),
+    );
+    try {
+      await expect(runScriptInstaller("1.2.3", dir)).rejects.toThrow();
+      expect(bodyStarted).toBe(true);
+      expect(signal.aborted).toBe(true);
+      expect(timeout).toHaveBeenCalledWith(15_000);
+      expect(fs.readdirSync(dir)).toEqual([]);
+    } finally {
+      download.mockRestore();
+      timeout.mockRestore();
+      server.stop(true);
+    }
   });
 });

@@ -4,6 +4,7 @@
  * fire-and-forget，任何失败静默，绝不阻塞启动；升级动作为用户显式触发的 `renview upgrade`。
  */
 import { homedir, tmpdir } from "node:os";
+import { mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import pkg from "../package.json";
 import { configPath } from "./config";
@@ -113,6 +114,24 @@ async function runInherited(cmd: string[]): Promise<number> {
   return proc.exited;
 }
 
+/** 私有目录存放下载脚本；先完成清理，再由调用方处理退出与报错。 */
+export async function runScriptInstaller(
+  version: string,
+  temporaryRoot = tmpdir(),
+): Promise<number> {
+  const directory = await mkdtemp(join(temporaryRoot, "renview-install-"));
+  try {
+    const res = await fetch(INSTALL_SCRIPT_URL, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const scriptPath = join(directory, "install.sh");
+    await Bun.write(scriptPath, await res.text());
+    // 安装目录与 PATH 已在首次安装时配置，重跑脚本跳过这两步。
+    return await runInherited(["bash", scriptPath, "--version", version, "--no-modify-path"]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
 /** `renview upgrade [版本]`：不指定版本时取 registry latest；按安装方式分流升级 */
 export async function upgrade(target: string | undefined, m: Messages): Promise<void> {
   if (target && !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(target)) {
@@ -138,13 +157,8 @@ export async function upgrade(target: string | undefined, m: Messages): Promise<
   let code: number;
   if (method === "script") {
     console.log(m.cli.upgradeViaScript(version));
-    const scriptPath = join(tmpdir(), `renview-install-${process.pid}.sh`);
     try {
-      const res = await fetch(INSTALL_SCRIPT_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await Bun.write(scriptPath, await res.text());
-      // 安装目录与 PATH 已在首次安装时配置，重跑脚本跳过这两步
-      code = await runInherited(["bash", scriptPath, "--version", version, "--no-modify-path"]);
+      code = await runScriptInstaller(version);
     } catch (e) {
       console.error(m.cli.upgradeFailed(e instanceof Error ? e.message : String(e)));
       console.error(m.cli.upgradeManualHint);
