@@ -1,3 +1,4 @@
+import { MAX_SOURCE_BYTES } from "../source";
 import { foldDescriber } from "./foldescribe";
 import { profileForPath } from "./langs";
 import { changedLinesOf, type ParsedFile } from "./map";
@@ -10,12 +11,30 @@ import type { Locale } from "../i18n";
 /** 文件过大时保留原始视图，避免昂贵的语法分析。 */
 export const MAX_ANALYZE_BYTES = 500_000;
 
+/** 全文不可用时保留路径与降级原因，前端不渲染空白或截断源码。 */
+export function unavailableViewerFile(
+  path: string,
+  degradedReason: "too-large" | "binary",
+): ViewerFile {
+  return {
+    path,
+    language: profileForPath(path)?.id ?? null,
+    source: null,
+    simplified: null,
+    view: null,
+    outline: [],
+    degradedReason,
+  };
+}
+
 /** 查看器与审阅上下文共用同一套源码分析。 */
 export async function viewerFile(
   path: string,
   source: string,
   locale: Locale,
 ): Promise<ViewerFile> {
+  if (Buffer.byteLength(source, "utf8") > MAX_SOURCE_BYTES)
+    return unavailableViewerFile(path, "too-large");
   const profile = profileForPath(path);
   const file: ViewerFile = {
     path,

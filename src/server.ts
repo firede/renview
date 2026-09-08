@@ -2,7 +2,7 @@ import { resolve, sep } from "node:path";
 import parseDiff from "parse-diff";
 import { profileForPath } from "./analysis/langs";
 import type { ParsedFile } from "./analysis/map";
-import { analyzeFile, viewerFile } from "./analysis/service";
+import { analyzeFile, viewerFile, unavailableViewerFile } from "./analysis/service";
 import { configPath, createConfigLoader, type LoadedConfig } from "./config";
 import {
   createReviewDiffReader,
@@ -16,6 +16,7 @@ import { messages, type Locale } from "./i18n";
 import { webAssets } from "./webassets.gen";
 import { listenWithPort } from "./port";
 import { mapConcurrent } from "./concurrency";
+import { readSourceFile, SourceTooLargeError } from "./source";
 
 export interface ServerOptions {
   port?: number;
@@ -129,22 +130,43 @@ function safeRepoPath(root: string, path: string): string | null {
 }
 
 /** 查看器单文件：worktree 内容 + 一次 parse 产出大纲与简化行 */
-async function handleFile(root: string, path: string | null, locale: Locale): Promise<Response> {
+export async function handleFile(
+  root: string,
+  path: string | null,
+  locale: Locale,
+): Promise<Response> {
   const m = messages(locale).api;
   if (!path) return Response.json({ ok: false, error: m.missingPath }, { status: 400 });
   const abs = safeRepoPath(root, path);
   if (!abs) return Response.json({ ok: false, error: m.invalidPath }, { status: 400 });
-
-  const f = Bun.file(abs);
-  if (!(await f.exists())) {
-    return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
+  try {
+    const f = Bun.file(abs);
+    if (!(await f.exists()))
+      return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
+    const head = new Uint8Array(await f.slice(0, 8192).arrayBuffer());
+    const file = head.includes(0)
+      ? unavailableViewerFile(path, "binary")
+      : await viewerFile(path, await readSourceFile(abs), locale);
+    return Response.json({ ok: true, file });
+  } catch (error) {
+    if (error instanceof SourceTooLargeError)
+      return Response.json({ ok: true, file: unavailableViewerFile(path, "too-large") });
+    const code = (error as NodeJS.ErrnoException).code;
+    const status =
+      code === "ENOENT" || code === "ENOTDIR"
+        ? 404
+        : code === "EACCES" || code === "EPERM"
+          ? 403
+          : 500;
+    return Response.json(
+      {
+        ok: false,
+        error:
+          status === 404 ? m.fileNotFound : error instanceof Error ? error.message : String(error),
+      },
+      { status },
+    );
   }
-
-  const head = new Uint8Array(await f.slice(0, 8192).arrayBuffer());
-  return Response.json({
-    ok: true,
-    file: await viewerFile(path, head.includes(0) ? "\0" : await f.text(), locale),
-  });
 }
 
 /** 只读取当前 diff 中的路径和版本，避免接受任意 revision 参数。 */
@@ -164,8 +186,13 @@ export async function handleReviewFile(
     if (!f) return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
     const read = async (path: string | undefined, side: typeof sides.oldSide) => {
       if (!path || path === "/dev/null") return null;
-      const source = await getSideContent(root, side, path);
-      return source == null ? null : viewerFile(path, source, locale);
+      try {
+        const source = await getSideContent(root, side, path);
+        return source == null ? null : viewerFile(path, source, locale);
+      } catch (error) {
+        if (error instanceof SourceTooLargeError) return unavailableViewerFile(path, "too-large");
+        throw error;
+      }
     };
     const [oldFile, newFile] = await Promise.all([
       read(f.from, sides.oldSide),
@@ -188,11 +215,16 @@ async function buildFileEntry(
 ) {
   if (!profileForPath(f.to === "/dev/null" ? (f.from ?? "") : (f.to ?? "")))
     return analyzeFile(f, null, null, locale);
-  const [oldSource, newSource] = await Promise.all([
-    f.from && f.from !== "/dev/null" ? getSideContent(root, sides.oldSide, f.from) : null,
-    f.to && f.to !== "/dev/null" ? getSideContent(root, sides.newSide, f.to) : null,
-  ]);
-  return analyzeFile(f, oldSource, newSource, locale);
+  try {
+    const [oldSource, newSource] = await Promise.all([
+      f.from && f.from !== "/dev/null" ? getSideContent(root, sides.oldSide, f.from) : null,
+      f.to && f.to !== "/dev/null" ? getSideContent(root, sides.newSide, f.to) : null,
+    ]);
+    return analyzeFile(f, oldSource, newSource, locale);
+  } catch (error) {
+    if (!(error instanceof SourceTooLargeError)) throw error;
+    return { ...(await analyzeFile(f, null, null, locale)), degradedReason: "too-large" as const };
+  }
 }
 
 function serveStatic(pathname: string, locale: Locale): Response {

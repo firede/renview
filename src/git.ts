@@ -2,6 +2,7 @@ import { $ } from "bun";
 import { join } from "node:path";
 import { lstat } from "node:fs/promises";
 import { mapConcurrent } from "./concurrency";
+import { readSourceFile, readSourceStream, SourceTooLargeError } from "./source";
 import { messages, type Locale } from "./i18n";
 
 /** git 空树的固定 hash，用于仓库尚无提交时作为对比基准 */
@@ -198,7 +199,7 @@ export async function resolveSides(
     : { oldSide: { type: "index" }, newSide: { type: "worktree" } };
 }
 
-/** 读取 diff 某一侧的文件全文；失败（如该侧不存在此文件）返回 null */
+/** 有界读取 diff 某一侧全文；不存在时返回 null，超限抛出明确的降级信号。 */
 export async function getSideContent(
   root: string,
   side: SideSpec,
@@ -208,12 +209,19 @@ export async function getSideContent(
     if (side.type === "worktree") {
       const f = Bun.file(join(root, path));
       if (!(await f.exists())) return null;
-      return await f.text();
+      return await readSourceFile(join(root, path));
     }
     const spec = side.type === "index" ? `:${path}` : `${side.rev}:${path}`;
-    const r = await $`git -C ${root} show ${spec}`.quiet().nothrow();
-    return r.exitCode === 0 ? r.text() : null;
-  } catch {
+    const proc = Bun.spawn(["git", "-C", root, "show", spec], { stdout: "pipe", stderr: "ignore" });
+    try {
+      const text = await readSourceStream(proc.stdout);
+      return (await proc.exited) === 0 ? text : null;
+    } finally {
+      if (proc.exitCode == null) proc.kill();
+      await proc.exited;
+    }
+  } catch (error) {
+    if (error instanceof SourceTooLargeError) throw error;
     return null;
   }
 }

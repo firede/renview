@@ -20,3 +20,11 @@ test("共享全文分析保留二进制和超大文件降级", async () => {
   expect((await viewerFile("a.ts", "\0binary", "en")).source).toBeNull();
   expect((await viewerFile("a.ts", "x".repeat(500_001), "en")).degradedReason).toBe("too-large");
 });
+
+test("全文上限按 UTF-8 字节数生效，超限不保留源码", async () => {
+  const file = await viewerFile("a.txt", "中".repeat(700_000), "en");
+  expect(file.source).toBeNull();
+  expect(file.degradedReason).toBe("too-large");
+  const medium = "x".repeat(500_001);
+  expect((await viewerFile("a.ts", medium, "en")).source).toBe(medium);
+});

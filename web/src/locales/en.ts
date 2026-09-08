@@ -60,7 +60,7 @@ export const en: Strings = {
   viewerDegradeLabel: {
     "no-profile": "Source",
     "parse-error": "Showing source (parse failed)",
-    "too-large": "Showing source (file too large)",
+    "too-large": "File too large",
     binary: "Binary file",
   },
   filterFiles: "Filter files…",

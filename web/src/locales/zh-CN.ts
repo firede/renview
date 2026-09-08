@@ -62,7 +62,7 @@ export const zhCN: Strings = {
     // no-profile 不是失败，用户无从行动，仅显示"源码"表明投影态
     "no-profile": "源码",
     "parse-error": "已显示源码（解析失败）",
-    "too-large": "已显示源码（文件过大）",
+    "too-large": "文件过大",
     binary: "二进制文件",
   },
   filterFiles: "过滤文件…",
