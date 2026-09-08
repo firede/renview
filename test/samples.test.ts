@@ -54,6 +54,24 @@ describe("samples/demo 变更集", () => {
     );
   });
 
+  test("演示数据沿用产品接口，保留全文上下文和正确路径", async () => {
+    const { demoData } = await import("../www/src/lib/demo-data.gen");
+    for (const data of Object.values(demoData)) {
+      expect(data.diff.files.map((f) => f.newPath)).toEqual(manifest.order!);
+      for (const entry of data.diff.files) {
+        const path = entry.newPath ?? entry.oldPath!;
+        const review = data.reviews[path];
+        expect(review.entry).toEqual(entry);
+        expect(review.diff).toBe(data.diff.diff);
+        expect(review.snapshot).toBe(data.diff.snapshot);
+        expect(review.newFile?.degradedReason).toBeUndefined();
+        expect(review.newFile?.path).toBe(path);
+      }
+      expect(data.reviews["src/notify.go"].oldFile?.source).toStartWith("package notify");
+      expect(data.reviews["src/gift.ts"].oldFile).toBeNull();
+    }
+  });
+
   test("www 演示数据新鲜度：demo-data.gen.ts 与重生成一致", async () => {
     const { generateDemoModule } = await import("../scripts/gen-demo");
     expect(await generateDemoModule()).toBe(readFileSync("www/src/lib/demo-data.gen.ts", "utf8"));

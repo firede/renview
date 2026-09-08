@@ -228,7 +228,8 @@ export function App() {
   const [viewType, setViewType] = useState<ViewType>("unified");
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"review" | "browse">("review");
-  const [sidebarHidden, setSidebarHidden] = useState(false);
+  // 窄屏先留出阅读空间，侧栏仍可通过顶栏按钮展开。
+  const [sidebarHidden, setSidebarHidden] = useState(() => window.innerWidth < 640);
   /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
   const [unitJump, setUnitJump] = useState<LineJump | null>(null);
 

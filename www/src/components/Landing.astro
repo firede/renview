@@ -1,6 +1,6 @@
 ---
 import type { Lang } from "../lib/copy";
-import { cn, en, INSTALL_CMD, SITE } from "../lib/copy";
+import { cn, en, INSTALL_CMD, SITE, APP_URL } from "../lib/copy";
 import Demo from "./Demo.astro";
 
 interface Props {
@@ -11,7 +11,7 @@ const { lang } = Astro.props;
 const t = lang === "cn" ? cn : en;
 const otherLang = lang === "cn" ? "en" : "cn";
 const canonical = `${SITE}/${lang}/`;
-const ogImage = `${SITE}/demo/simplified-dark.png`;
+const ogImage = `${SITE}/demo/preview.jpg`;
 ---
 
 <!doctype html>
@@ -64,6 +64,7 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
 
       <section id="demo" class="demo">
         <Demo lang={lang} />
+
       </section>
 
       <section id="why" class="why">
@@ -108,6 +109,16 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
         </div>
         <p class="meta">{t.install.platforms}</p>
         {t.install.mirror && <p class="meta">{t.install.mirror}</p>}
+      </section>
+      <section class="online">
+        <h2>{t.online.label}</h2>
+        <form class="online-try" action={APP_URL} method="get">
+          <div class="pr-input">
+            <input id="demo-pr" name="pr" type="url" required placeholder={t.online.placeholder} aria-label={t.online.placeholder} />
+            <button type="submit">{t.online.submit}</button>
+          </div>
+        </form>
+        <p class="meta">{t.online.note}</p>
       </section>
     </main>
 
@@ -318,6 +329,15 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
     margin: 0 auto 36px;
   }
 
+  .online-try { width: min(100%, 600px); margin: 10px 0 18px; }
+  .pr-input { display: flex; gap: 10px; }
+  .pr-input input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; font-size: 14px; }
+  .pr-input input::placeholder { color: var(--fg-dim); }
+  .pr-input input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pr-input button { flex: none; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-active); color: var(--fg); padding: 5px 16px; font: inherit; font-size: 13px; cursor: pointer; }
+  .pr-input button:hover { border-color: var(--fg-dim); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
   /* 命令框 */
   .cmd-box {
     display: inline-flex;
@@ -444,9 +464,12 @@ const ogImage = `${SITE}/demo/simplified-dark.png`;
 
   /* 安装 */
   .install .cmd-box {
+    width: min(100%, 600px);
     margin: 10px 0 18px;
   }
-  .install .meta {
+  .install .cmd-box code { flex: 1; min-width: 0; }
+  .install .meta,
+  .online .meta {
     color: var(--fg-dim);
     font-size: 13px;
     margin: 6px 0;

@@ -1,0 +1,24 @@
+---
+export function getStaticPaths() {
+  return ["cn", "en"].map(lang => ({ params: { lang } }));
+}
+const language = Astro.params.lang === "cn" ? "zh-CN" : "en";
+---
+<!doctype html>
+<html lang={language}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>renview Demo</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>import "../../../../web/src/demo";</script>
+  </body>
+</html>
+
+<style is:global>
+  /* 嵌入页不叠加第二个开发工具栏。 */
+  astro-dev-toolbar { display: none; }
+</style>

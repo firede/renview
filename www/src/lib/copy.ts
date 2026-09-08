@@ -8,6 +8,7 @@ export interface Copy {
   title: string;
   description: string;
   nav: { demo: string; why: string; usage: string; install: string };
+  online: { label: string; placeholder: string; submit: string; note: string };
   langSwitch: { label: string; href: string; note: string };
   hero: {
     eyebrow: string;
@@ -43,10 +44,16 @@ export const cn: Copy = {
   title: "renview — 把注意力留给抽象",
   description: "看清代码的关键变化，把注意力留给抽象。",
   nav: { demo: "演示", why: "不同", usage: "用法", install: "安装" },
+  online: {
+    label: "在线体验",
+    placeholder: "粘贴公开 GitHub PR 地址",
+    submit: "查看",
+    note: "在线版功能精简，仅支持公开 GitHub 仓库的 PR",
+  },
   langSwitch: { label: "EN", href: "/en/", note: "English 版本" },
   hero: {
     eyebrow: "看清代码的关键变化",
-    h1: "把注意力留给抽象。",
+    h1: "把注意力留给抽象",
     sub: "Agent 很擅长写代码，但是否贴合业务建模，是不是你想要的？还得你亲自来把关。",
   },
   why: {
@@ -68,7 +75,7 @@ export const cn: Copy = {
   },
   facts: {
     title: "还有",
-    items: ["审 diff 之外，浏览模式用同样的投影读完整文件", "完全本地运行，代码留在本机"],
+    items: ["审 diff 之外，浏览模式用同样的投影读完整文件", "CLI 完全本地运行，代码留在本机"],
   },
   usage: {
     title: "在任意 git 仓库里运行",
@@ -85,7 +92,7 @@ export const cn: Copy = {
     mirror: "可通过 RENVIEW_REGISTRY 配置 npm 镜像源",
   },
   footer: {
-    tagline: "renview — 帮人类读懂 agent 写的代码。",
+    tagline: "renview — 帮人类读懂 agent 写的代码",
     github: "GitHub",
   },
   copy: "复制",
@@ -97,10 +104,16 @@ export const en: Copy = {
   title: "renview — Judge the abstraction",
   description: "See the changes that matter. Keep your attention on the abstraction.",
   nav: { demo: "Demo", why: "Why", usage: "Usage", install: "Install" },
+  online: {
+    label: "Try online",
+    placeholder: "Paste a public GitHub PR URL",
+    submit: "View",
+    note: "The online version has fewer features and supports public GitHub PRs only",
+  },
   langSwitch: { label: "中文", href: "/cn/", note: "中文版" },
   hero: {
     eyebrow: "See the changes that matter",
-    h1: "Judge the abstraction.",
+    h1: "Judge the abstraction",
     sub: "Agents are good at writing code. But does it fit your business model? Is it what you wanted? That still takes your review.",
   },
   why: {
@@ -124,7 +137,7 @@ export const en: Copy = {
     title: "Also",
     items: [
       "Beyond diffs, Browse mode reads whole files through the same projection",
-      "Runs entirely on your machine. Code stays local",
+      "The CLI runs entirely on your machine. Code stays local",
     ],
   },
   usage: {
@@ -141,7 +154,7 @@ export const en: Copy = {
     platforms: "macOS · Linux · Windows (Git Bash)",
   },
   footer: {
-    tagline: "renview — helping humans read what agents write.",
+    tagline: "renview — helping humans read what agents write",
     github: "GitHub",
   },
   copy: "Copy",
@@ -150,3 +163,5 @@ export const en: Copy = {
 
 export const SITE = pkg.homepage;
 export const INSTALL_CMD = `curl -fsSL ${SITE}/install | bash`;
+
+export const APP_URL = "https://renview.bandwidth.ren";

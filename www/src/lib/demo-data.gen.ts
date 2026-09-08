@@ -1,7164 +1,2987 @@
-// 由 scripts/gen-demo.ts 生成（bun run gen:demo），勿手改；新鲜度由 test/samples.test.ts 锁定
+// 由 bun run gen:demo 生成；test/samples.test.ts 校验与产品分析结果一致。
+import type { DemoChangeset } from "../../../web/src/demo-data";
 
-export interface DemoSeg {
-  t: string;
-  dc?: string;
-  lc?: string;
-  hl?: "a" | "d";
-  e?: string;
-  em?: "repl" | "adj" | "mark";
-  mo?: number;
-}
-
-export interface DemoRowLine {
-  k: "ctx" | "del" | "add";
-  o?: number;
-  n?: number;
-  segs: DemoSeg[];
-}
-
-export interface DemoFoldLine {
-  ln: number;
-  segs: DemoSeg[];
-}
-
-export interface DemoRowFold {
-  k: "fold";
-  count: number;
-  summary: string;
-  olds: DemoFoldLine[];
-  news: DemoFoldLine[];
-}
-
-export type DemoRow = DemoRowLine | DemoRowFold;
-
-export interface DemoBadge {
-  kind: string;
-  label: string;
-  count: number;
-}
-
-export interface DemoUnit {
-  name: string;
-  glyph: string;
-  tag: string;
-  tagKind: string;
-  membersAdded: string[];
-  membersRemoved: string[];
-}
-
-export interface DemoFile {
-  path: string;
-  additions: number;
-  deletions: number;
-  badges: DemoBadge[];
-  units: DemoUnit[];
-  simplified: DemoRow[];
-  raw: DemoRowLine[];
-}
-
-export interface DemoChangeset {
-  featured: string;
-  files: DemoFile[];
-}
-
-export const demoData: { "zh-CN": DemoChangeset; en: DemoChangeset } = {
+export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
   "zh-CN": {
-    "featured": "src/pricing.rs",
-    "files": [
-      {
-        "path": "src/pricing.rs",
-        "additions": 7,
-        "deletions": 7,
-        "badges": [
-          {
-            "kind": "signature",
-            "label": "签名",
-            "count": 1
+    "diff": {
+      "ok": true,
+      "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+      "snapshot": "demo",
+      "repoRoot": "samples/demo",
+      "diffArgs": [],
+      "files": [
+        {
+          "oldPath": "src/pricing.rs",
+          "newPath": "src/pricing.rs",
+          "status": "modify",
+          "projection": {
+            "language": "rust",
+            "summary": {
+              "signature": 1,
+              "body": 0,
+              "type-only": 1,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
+              {
+                "id": "/function/total:7",
+                "kind": "function",
+                "name": "total",
+                "container": "",
+                "oldRange": [
+                  7,
+                  13
+                ],
+                "newRange": [
+                  8,
+                  13
+                ],
+                "change": "signature",
+                "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError>",
+                "oldSignature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64"
+              },
+              {
+                "id": "/type/LineItem:0",
+                "kind": "type",
+                "name": "LineItem",
+                "container": "",
+                "oldRange": [
+                  1,
+                  5
+                ],
+                "newRange": [
+                  1,
+                  6
+                ],
+                "change": "type-only",
+                "typeText": "pub struct LineItem {\n    sku: String,\n    price: Decimal,\n    note: Option<String>,\n    qty: u32,\n}",
+                "oldTypeText": "pub struct LineItem {\n    sku: String,\n    price: f64,\n    qty: u32,\n}",
+                "domain": {
+                  "members": [
+                    "sku",
+                    "price",
+                    "note",
+                    "qty"
+                  ],
+                  "added": [
+                    "note"
+                  ],
+                  "removed": []
+                }
+              }
+            ]
           },
-          {
-            "kind": "type-only",
-            "label": "类型",
-            "count": 1
-          }
-        ],
-        "units": [
-          {
-            "name": "total",
-            "glyph": "ƒ",
-            "tag": "签名",
-            "tagKind": "signature",
-            "membersAdded": [],
-            "membersRemoved": []
-          },
-          {
-            "name": "LineItem",
-            "glyph": "T",
-            "tag": "结构",
-            "tagKind": "shape",
-            "membersAdded": [
-              "note"
+          "simplified": {
+            "rows": [
+              {
+                "kind": "ctx",
+                "text": "pub struct LineItem {",
+                "oldLn": 1,
+                "newLn": 1
+              },
+              {
+                "kind": "ctx",
+                "text": "    sku,",
+                "oldLn": 2,
+                "newLn": 2,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": String"
+                  }
+                ]
+              },
+              {
+                "kind": "fold",
+                "count": 1,
+                "oldLines": [
+                  "    price: f64,"
+                ],
+                "newLines": [
+                  "    price: Decimal,"
+                ],
+                "oldLns": [
+                  3
+                ],
+                "newLns": [
+                  3
+                ],
+                "summary": "LineItem：price（类型/格式变更）"
+              },
+              {
+                "kind": "add",
+                "text": "    note,",
+                "newLn": 4,
+                "erases": [
+                  {
+                    "start": 8,
+                    "end": 8,
+                    "original": ": Option<String>"
+                  }
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "    qty,",
+                "oldLn": 4,
+                "newLn": 5,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": u32"
+                  }
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 5,
+                "newLn": 6
+              },
+              {
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 6,
+                "newLn": 7
+              },
+              {
+                "kind": "del",
+                "text": "pub fn total(items, coupon) {",
+                "oldLn": 7,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 28,
+                    "end": 28,
+                    "original": "-> f64"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "del",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+                "oldLn": 8,
+                "erases": [
+                  {
+                    "start": 16,
+                    "end": 16,
+                    "original": ": f64"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "del",
+                "text": "    match coupon {",
+                "oldLn": 9
+              },
+              {
+                "kind": "del",
+                "text": "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+                "oldLn": 10,
+                "pair": 3
+              },
+              {
+                "kind": "del",
+                "text": "        None => subtotal,",
+                "oldLn": 11
+              },
+              {
+                "kind": "del",
+                "text": "    }",
+                "oldLn": 12
+              },
+              {
+                "kind": "add",
+                "text": "pub fn total(items, coupon, currency) {",
+                "newLn": 8,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 36,
+                    "end": 36,
+                    "original": ": &Currency"
+                  },
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "-> Result<Decimal, PricingError>"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "add",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+                "newLn": 9,
+                "erases": [
+                  {
+                    "start": 58,
+                    "end": 58,
+                    "original": ".into()"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "add",
+                "text": "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+                "newLn": 10
+              },
+              {
+                "kind": "add",
+                "text": "    let rate = exchange_rate(currency);",
+                "newLn": 11,
+                "erases": [
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "?"
+                  }
+                ]
+              },
+              {
+                "kind": "add",
+                "text": "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+                "newLn": 12,
+                "pair": 3
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 13,
+                "newLn": 13
+              }
             ],
-            "membersRemoved": []
+            "stats": {
+              "folded": 1,
+              "visible": 12
+            }
           }
-        ],
-        "simplified": [
-          {
-            "k": "ctx",
-            "o": 1,
-            "n": 1,
-            "segs": [
+        },
+        {
+          "oldPath": "src/notify.go",
+          "newPath": "src/notify.go",
+          "status": "modify",
+          "projection": {
+            "language": "go",
+            "summary": {
+              "signature": 0,
+              "body": 1,
+              "type-only": 0,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "struct",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "id": "/function/SendOrderConfirmation:4",
+                "kind": "function",
+                "name": "SendOrderConfirmation",
+                "container": "",
+                "oldRange": [
+                  5,
+                  10
+                ],
+                "newRange": [
+                  5,
+                  14
+                ],
+                "change": "body"
               }
             ]
           },
-          {
-            "k": "ctx",
-            "o": 2,
-            "n": 2,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "import \"fmt\"",
+                "oldLn": 3,
+                "newLn": 3
               },
               {
-                "t": "sku",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": String",
-                "em": "adj"
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 4,
+                "newLn": 4
               },
               {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "fold",
-            "count": 1,
-            "summary": "LineItem：price（类型/格式变更）",
-            "olds": [
-              {
-                "ln": 3,
-                "segs": [
+                "kind": "ctx",
+                "text": "func SendOrderConfirmation(client, order) {",
+                "oldLn": 5,
+                "newLn": 5,
+                "erases": [
                   {
-                    "t": "    price",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 33,
+                    "end": 33,
+                    "original": " *Client"
                   },
                   {
-                    "t": ":",
-                    "dc": "#FF7B72",
-                    "lc": "#CF222E"
+                    "start": 40,
+                    "end": 40,
+                    "original": " Order"
                   },
                   {
-                    "t": " ",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
-                  },
-                  {
-                    "t": "f64",
-                    "dc": "#FFA657",
-                    "lc": "#953800"
-                  },
-                  {
-                    "t": ",",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 42,
+                    "end": 42,
+                    "original": "error"
                   }
                 ]
+              },
+              {
+                "kind": "add",
+                "text": "\terr := validate(order)",
+                "newLn": 6
+              },
+              {
+                "kind": "add",
+                "text": "\tif err: return",
+                "newLn": 7,
+                "erases": [
+                  {
+                    "start": 1,
+                    "end": 15,
+                    "original": "if err != nil {"
+                  }
+                ]
+              },
+              {
+                "kind": "fold",
+                "count": 2,
+                "oldLines": [],
+                "newLines": [
+                  "\t\treturn err",
+                  "\t}"
+                ],
+                "oldLns": [],
+                "newLns": [
+                  8,
+                  9
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "\tif err := client.Connect(); err != nil {",
+                "oldLn": 6,
+                "newLn": 10
+              },
+              {
+                "kind": "ctx",
+                "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+                "oldLn": 7,
+                "newLn": 11
+              },
+              {
+                "kind": "ctx",
+                "text": "\t}",
+                "oldLn": 8,
+                "newLn": 12
               }
             ],
-            "news": [
+            "stats": {
+              "folded": 2,
+              "visible": 2
+            }
+          }
+        },
+        {
+          "oldPath": null,
+          "newPath": "src/gift.ts",
+          "status": "add",
+          "projection": {
+            "language": "typescript",
+            "summary": {
+              "signature": 0,
+              "body": 0,
+              "type-only": 0,
+              "added": 1,
+              "removed": 0
+            },
+            "units": [
               {
-                "ln": 3,
-                "segs": [
+                "id": "/function/giftWrapFee:0",
+                "kind": "function",
+                "name": "giftWrapFee",
+                "container": "",
+                "newRange": [
+                  1,
+                  3
+                ],
+                "change": "added",
+                "signature": "export function giftWrapFee(items: { wrapped?: boolean }[]): number"
+              }
+            ]
+          },
+          "simplified": {
+            "rows": [
+              {
+                "kind": "add",
+                "text": "export function giftWrapFee(items) {",
+                "newLn": 1,
+                "erases": [
                   {
-                    "t": "    price",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 33,
+                    "end": 33,
+                    "original": ": { wrapped?: boolean }[]"
                   },
                   {
-                    "t": ":",
-                    "dc": "#FF7B72",
-                    "lc": "#CF222E"
-                  },
-                  {
-                    "t": " ",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
-                  },
-                  {
-                    "t": "Decimal",
-                    "dc": "#FFA657",
-                    "lc": "#953800"
-                  },
-                  {
-                    "t": ",",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 34,
+                    "end": 34,
+                    "original": ": number"
                   }
                 ]
+              },
+              {
+                "kind": "add",
+                "text": "  return items.filter((it) => it.wrapped).length * 3;",
+                "newLn": 2
+              },
+              {
+                "kind": "add",
+                "text": "}",
+                "newLn": 3
               }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 4,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "note",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": Option<String>",
-                "em": "adj"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 5,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": u32",
-                "em": "adj"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 6,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 7,
-            "segs": []
-          },
-          {
-            "k": "del",
-            "o": 7,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": &[LineItem]",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": Option<&Coupon>",
-                "em": "adj"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "-> f64",
-                "em": "mark",
-                "mo": -0.5
-              },
-              {
-                "t": "{",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 8,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "subtotal",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": f64",
-                "em": "adj"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "d"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "sum",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF",
-                "hl": "d"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "match",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 10,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Some",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "d"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "c) ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": "percent ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "d"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 11,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "None",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal,",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 12,
-            "segs": [
-              {
-                "t": "    }",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 8,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": &[LineItem]",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": Option<&Coupon>",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "currency",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a",
-                "e": ": &Currency",
-                "em": "adj"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "-> Result<Decimal, PricingError>",
-                "em": "mark",
-                "mo": -0.5
-              },
-              {
-                "t": "{",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ".into()",
-                "em": "adj"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "fold",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF",
-                "hl": "a"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "a"
-              },
-              {
-                "t": "::",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": "ZERO",
-                "dc": "#79C0FF",
-                "lc": "#0550AE",
-                "hl": "a"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": "acc, x",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": " acc ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "+",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": " x",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": ");",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 10,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " discount ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "percent)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "unwrap_or_default",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 11,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " rate ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "exchange_rate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(currency)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "?",
-                "em": "mark"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 12,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Ok",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "a"
-              },
-              {
-                "t": "(subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "discount",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": " rate)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 13,
-            "n": 13,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 0,
+              "visible": 3
+            }
           }
-        ],
-        "raw": [
-          {
-            "k": "ctx",
-            "o": 1,
-            "n": 1,
-            "segs": [
+        }
+      ]
+    },
+    "reviews": {
+      "src/pricing.rs": {
+        "ok": true,
+        "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+        "snapshot": "demo",
+        "entry": {
+          "oldPath": "src/pricing.rs",
+          "newPath": "src/pricing.rs",
+          "status": "modify",
+          "projection": {
+            "language": "rust",
+            "summary": {
+              "signature": 1,
+              "body": 0,
+              "type-only": 1,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "id": "/function/total:7",
+                "kind": "function",
+                "name": "total",
+                "container": "",
+                "oldRange": [
+                  7,
+                  13
+                ],
+                "newRange": [
+                  8,
+                  13
+                ],
+                "change": "signature",
+                "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError>",
+                "oldSignature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64"
               },
               {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "struct",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "id": "/type/LineItem:0",
+                "kind": "type",
+                "name": "LineItem",
+                "container": "",
+                "oldRange": [
+                  1,
+                  5
+                ],
+                "newRange": [
+                  1,
+                  6
+                ],
+                "change": "type-only",
+                "typeText": "pub struct LineItem {\n    sku: String,\n    price: Decimal,\n    note: Option<String>,\n    qty: u32,\n}",
+                "oldTypeText": "pub struct LineItem {\n    sku: String,\n    price: f64,\n    qty: u32,\n}",
+                "domain": {
+                  "members": [
+                    "sku",
+                    "price",
+                    "note",
+                    "qty"
+                  ],
+                  "added": [
+                    "note"
+                  ],
+                  "removed": []
+                }
               }
             ]
           },
-          {
-            "k": "ctx",
-            "o": 2,
-            "n": 2,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "    sku",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "pub struct LineItem {",
+                "oldLn": 1,
+                "newLn": 1
               },
               {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "kind": "ctx",
+                "text": "    sku,",
+                "oldLn": 2,
+                "newLn": 2,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": String"
+                  }
+                ]
               },
               {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "fold",
+                "count": 1,
+                "oldLines": [
+                  "    price: f64,"
+                ],
+                "newLines": [
+                  "    price: Decimal,"
+                ],
+                "oldLns": [
+                  3
+                ],
+                "newLns": [
+                  3
+                ],
+                "summary": "LineItem：price（类型/格式变更）"
               },
               {
-                "t": "String",
-                "dc": "#FFA657",
-                "lc": "#953800"
+                "kind": "add",
+                "text": "    note,",
+                "newLn": 4,
+                "erases": [
+                  {
+                    "start": 8,
+                    "end": 8,
+                    "original": ": Option<String>"
+                  }
+                ]
               },
               {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "    qty,",
+                "oldLn": 4,
+                "newLn": 5,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": u32"
+                  }
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 5,
+                "newLn": 6
+              },
+              {
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 6,
+                "newLn": 7
+              },
+              {
+                "kind": "del",
+                "text": "pub fn total(items, coupon) {",
+                "oldLn": 7,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 28,
+                    "end": 28,
+                    "original": "-> f64"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "del",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+                "oldLn": 8,
+                "erases": [
+                  {
+                    "start": 16,
+                    "end": 16,
+                    "original": ": f64"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "del",
+                "text": "    match coupon {",
+                "oldLn": 9
+              },
+              {
+                "kind": "del",
+                "text": "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+                "oldLn": 10,
+                "pair": 3
+              },
+              {
+                "kind": "del",
+                "text": "        None => subtotal,",
+                "oldLn": 11
+              },
+              {
+                "kind": "del",
+                "text": "    }",
+                "oldLn": 12
+              },
+              {
+                "kind": "add",
+                "text": "pub fn total(items, coupon, currency) {",
+                "newLn": 8,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 36,
+                    "end": 36,
+                    "original": ": &Currency"
+                  },
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "-> Result<Decimal, PricingError>"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "add",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+                "newLn": 9,
+                "erases": [
+                  {
+                    "start": 58,
+                    "end": 58,
+                    "original": ".into()"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "add",
+                "text": "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+                "newLn": 10
+              },
+              {
+                "kind": "add",
+                "text": "    let rate = exchange_rate(currency);",
+                "newLn": 11,
+                "erases": [
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "?"
+                  }
+                ]
+              },
+              {
+                "kind": "add",
+                "text": "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+                "newLn": 12,
+                "pair": 3
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 13,
+                "newLn": 13
               }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 3,
-            "segs": [
-              {
-                "t": "    price",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 3,
-            "segs": [
-              {
-                "t": "    price",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 4,
-            "segs": [
-              {
-                "t": "    note",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Option",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "String",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ">,",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 5,
-            "segs": [
-              {
-                "t": "    qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "u32",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 6,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 7,
-            "segs": []
-          },
-          {
-            "k": "del",
-            "o": 7,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "[",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "], coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Option",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Coupon",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ">) ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "->",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 8,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "sum",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "match",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 10,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Some",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "(c) ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "percent ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": "),",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 11,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "None",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal,",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 12,
-            "segs": [
-              {
-                "t": "    }",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 8,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "[",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "], coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Option",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Coupon",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ">, currency",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Currency",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "->",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Result",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "PricingError",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "> {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "into",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "())",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "fold",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "::",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "ZERO",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "acc, x",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " acc ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "+",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " x);",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 10,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " discount ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "percent)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "unwrap_or_default",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 11,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " rate ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "exchange_rate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(currency)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "?",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 12,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Ok",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "(subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " discount ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " rate)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 13,
-            "n": 13,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 1,
+              "visible": 12
+            }
           }
-        ]
+        },
+        "oldFile": {
+          "path": "src/pricing.rs",
+          "language": "rust",
+          "source": "pub struct LineItem {\n    sku: String,\n    price: f64,\n    qty: u32,\n}\n\npub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n    match coupon {\n        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n        None => subtotal,\n    }\n}\n",
+          "simplified": [
+            "pub struct LineItem {",
+            "    sku,",
+            "    price,",
+            "    qty,",
+            "}",
+            "",
+            "pub fn total(items, coupon) {",
+            "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+            "    match coupon {",
+            "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+            "        None => subtotal,",
+            "    }",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "fold",
+              "text": "struct LineItem { sku, price, qty }",
+              "srcRange": [
+                1,
+                5
+              ],
+              "original": [
+                "pub struct LineItem {",
+                "    sku: String,",
+                "    price: f64,",
+                "    qty: u32,",
+                "}"
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 6
+            },
+            {
+              "kind": "line",
+              "text": "pub fn total(items, coupon) {",
+              "src": 7,
+              "erases": [
+                {
+                  "start": 18,
+                  "end": 18,
+                  "original": ": &[LineItem]"
+                },
+                {
+                  "start": 26,
+                  "end": 26,
+                  "original": ": Option<&Coupon>"
+                },
+                {
+                  "start": 28,
+                  "end": 28,
+                  "original": "-> f64"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+              "src": 8,
+              "erases": [
+                {
+                  "start": 16,
+                  "end": 16,
+                  "original": ": f64"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    match coupon {",
+              "src": 9
+            },
+            {
+              "kind": "line",
+              "text": "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+              "src": 10
+            },
+            {
+              "kind": "line",
+              "text": "        None => subtotal,",
+              "src": 11
+            },
+            {
+              "kind": "line",
+              "text": "    }",
+              "src": 12
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 13
+            }
+          ],
+          "outline": [
+            {
+              "kind": "type",
+              "name": "LineItem",
+              "container": "",
+              "typeLevel": true,
+              "range": [
+                1,
+                5
+              ]
+            },
+            {
+              "kind": "function",
+              "name": "total",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                7,
+                13
+              ],
+              "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64"
+            }
+          ]
+        },
+        "newFile": {
+          "path": "src/pricing.rs",
+          "language": "rust",
+          "source": "pub struct LineItem {\n    sku: String,\n    price: Decimal,\n    note: Option<String>,\n    qty: u32,\n}\n\npub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n    let rate = exchange_rate(currency)?;\n    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n}\n",
+          "simplified": [
+            "pub struct LineItem {",
+            "    sku,",
+            "    price,",
+            "    note,",
+            "    qty,",
+            "}",
+            "",
+            "pub fn total(items, coupon, currency) {",
+            "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+            "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+            "    let rate = exchange_rate(currency);",
+            "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "fold",
+              "text": "struct LineItem { sku, price, note, qty }",
+              "srcRange": [
+                1,
+                6
+              ],
+              "original": [
+                "pub struct LineItem {",
+                "    sku: String,",
+                "    price: Decimal,",
+                "    note: Option<String>,",
+                "    qty: u32,",
+                "}"
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 7
+            },
+            {
+              "kind": "line",
+              "text": "pub fn total(items, coupon, currency) {",
+              "src": 8,
+              "erases": [
+                {
+                  "start": 18,
+                  "end": 18,
+                  "original": ": &[LineItem]"
+                },
+                {
+                  "start": 26,
+                  "end": 26,
+                  "original": ": Option<&Coupon>"
+                },
+                {
+                  "start": 36,
+                  "end": 36,
+                  "original": ": &Currency"
+                },
+                {
+                  "start": 38,
+                  "end": 38,
+                  "original": "-> Result<Decimal, PricingError>"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+              "src": 9,
+              "erases": [
+                {
+                  "start": 58,
+                  "end": 58,
+                  "original": ".into()"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+              "src": 10
+            },
+            {
+              "kind": "line",
+              "text": "    let rate = exchange_rate(currency);",
+              "src": 11,
+              "erases": [
+                {
+                  "start": 38,
+                  "end": 38,
+                  "original": "?"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+              "src": 12
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 13
+            }
+          ],
+          "outline": [
+            {
+              "kind": "type",
+              "name": "LineItem",
+              "container": "",
+              "typeLevel": true,
+              "range": [
+                1,
+                6
+              ]
+            },
+            {
+              "kind": "function",
+              "name": "total",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                8,
+                13
+              ],
+              "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError>"
+            }
+          ]
+        }
       },
-      {
-        "path": "src/notify.go",
-        "additions": 4,
-        "deletions": 0,
-        "badges": [
-          {
-            "kind": "body",
-            "label": "实现",
-            "count": 1
-          }
-        ],
-        "units": [
-          {
-            "name": "SendOrderConfirmation",
-            "glyph": "ƒ",
-            "tag": "实现",
-            "tagKind": "body",
-            "membersAdded": [],
-            "membersRemoved": []
-          }
-        ],
-        "simplified": [
-          {
-            "k": "ctx",
-            "o": 3,
-            "n": 3,
-            "segs": [
+      "src/notify.go": {
+        "ok": true,
+        "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+        "snapshot": "demo",
+        "entry": {
+          "oldPath": "src/notify.go",
+          "newPath": "src/notify.go",
+          "status": "modify",
+          "projection": {
+            "language": "go",
+            "summary": {
+              "signature": 0,
+              "body": 1,
+              "type-only": 0,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "import",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "fmt",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
+                "id": "/function/SendOrderConfirmation:4",
+                "kind": "function",
+                "name": "SendOrderConfirmation",
+                "container": "",
+                "oldRange": [
+                  5,
+                  10
+                ],
+                "newRange": [
+                  5,
+                  14
+                ],
+                "change": "body"
               }
             ]
           },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 4,
-            "segs": []
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 5,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "func",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "kind": "ctx",
+                "text": "import \"fmt\"",
+                "oldLn": 3,
+                "newLn": 3
               },
               {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 4,
+                "newLn": 4
               },
               {
-                "t": "SendOrderConfirmation",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "client",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "e": " *Client",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "order",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "e": " Order",
-                "em": "adj"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "error",
-                "em": "mark",
-                "mo": -0.5
-              },
-              {
-                "t": "{",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 6,
-            "segs": [
-              {
-                "t": "\terr ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "validate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(order)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 7,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "e": "if err != nil {",
-                "em": "repl"
-              },
-              {
-                "t": " err: ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": "if err != nil {",
-                "em": "repl"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "e": "if err != nil {",
-                "em": "repl"
-              }
-            ]
-          },
-          {
-            "k": "fold",
-            "count": 2,
-            "summary": "2 行类型/格式性变更已折叠",
-            "olds": [],
-            "news": [
-              {
-                "ln": 8,
-                "segs": [
+                "kind": "ctx",
+                "text": "func SendOrderConfirmation(client, order) {",
+                "oldLn": 5,
+                "newLn": 5,
+                "erases": [
                   {
-                    "t": "\t\t",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 33,
+                    "end": 33,
+                    "original": " *Client"
                   },
                   {
-                    "t": "return",
-                    "dc": "#FF7B72",
-                    "lc": "#CF222E"
+                    "start": 40,
+                    "end": 40,
+                    "original": " Order"
                   },
                   {
-                    "t": " err",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 42,
+                    "end": 42,
+                    "original": "error"
                   }
                 ]
               },
               {
-                "ln": 9,
-                "segs": [
+                "kind": "add",
+                "text": "\terr := validate(order)",
+                "newLn": 6
+              },
+              {
+                "kind": "add",
+                "text": "\tif err: return",
+                "newLn": 7,
+                "erases": [
                   {
-                    "t": "\t}",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 1,
+                    "end": 15,
+                    "original": "if err != nil {"
                   }
                 ]
+              },
+              {
+                "kind": "fold",
+                "count": 2,
+                "oldLines": [],
+                "newLines": [
+                  "\t\treturn err",
+                  "\t}"
+                ],
+                "oldLns": [],
+                "newLns": [
+                  8,
+                  9
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "\tif err := client.Connect(); err != nil {",
+                "oldLn": 6,
+                "newLn": 10
+              },
+              {
+                "kind": "ctx",
+                "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+                "oldLn": 7,
+                "newLn": 11
+              },
+              {
+                "kind": "ctx",
+                "text": "\t}",
+                "oldLn": 8,
+                "newLn": 12
               }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 10,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " client.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Connect",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(); err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "!=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "nil",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 7,
-            "n": 11,
-            "segs": [
-              {
-                "t": "\t\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " fmt.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Errorf",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"connect: ",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "%w",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": ", err)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 8,
-            "n": 12,
-            "segs": [
-              {
-                "t": "\t}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 2,
+              "visible": 2
+            }
           }
-        ],
-        "raw": [
-          {
-            "k": "ctx",
-            "o": 3,
-            "n": 3,
-            "segs": [
-              {
-                "t": "import",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "fmt",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 4,
-            "segs": []
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 5,
-            "segs": [
-              {
-                "t": "func",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "SendOrderConfirmation",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "client",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Client",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "order",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Order",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "error",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 6,
-            "segs": [
-              {
-                "t": "\terr ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "validate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(order)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 7,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "!=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "nil",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 8,
-            "segs": [
-              {
-                "t": "\t\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 9,
-            "segs": [
-              {
-                "t": "\t}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 10,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " client.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Connect",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(); err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "!=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "nil",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 7,
-            "n": 11,
-            "segs": [
-              {
-                "t": "\t\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " fmt.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Errorf",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"connect: ",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "%w",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": ", err)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 8,
-            "n": 12,
-            "segs": [
-              {
-                "t": "\t}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          }
-        ]
+        },
+        "oldFile": {
+          "path": "src/notify.go",
+          "language": "go",
+          "source": "package notify\n\nimport \"fmt\"\n\nfunc SendOrderConfirmation(client *Client, order Order) error {\n\tif err := client.Connect(); err != nil {\n\t\treturn fmt.Errorf(\"connect: %w\", err)\n\t}\n\treturn client.Send(order.ReceiptEmail, renderReceipt(order))\n}\n",
+          "simplified": [
+            "package notify",
+            "",
+            "import \"fmt\"",
+            "",
+            "func SendOrderConfirmation(client, order) {",
+            "\tif err := client.Connect(); err != nil {",
+            "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+            "\t}",
+            "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "line",
+              "text": "package notify",
+              "src": 1
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 2
+            },
+            {
+              "kind": "fold",
+              "text": "import × 1（fmt）",
+              "srcRange": [
+                3,
+                3
+              ],
+              "original": [
+                "import \"fmt\""
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 4
+            },
+            {
+              "kind": "line",
+              "text": "func SendOrderConfirmation(client, order) {",
+              "src": 5,
+              "erases": [
+                {
+                  "start": 33,
+                  "end": 33,
+                  "original": " *Client"
+                },
+                {
+                  "start": 40,
+                  "end": 40,
+                  "original": " Order"
+                },
+                {
+                  "start": 42,
+                  "end": 42,
+                  "original": "error"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "\tif err := client.Connect(); err != nil {",
+              "src": 6
+            },
+            {
+              "kind": "line",
+              "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+              "src": 7
+            },
+            {
+              "kind": "line",
+              "text": "\t}",
+              "src": 8
+            },
+            {
+              "kind": "line",
+              "text": "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+              "src": 9
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 10
+            }
+          ],
+          "outline": [
+            {
+              "kind": "function",
+              "name": "SendOrderConfirmation",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                5,
+                10
+              ],
+              "signature": "func SendOrderConfirmation(client *Client, order Order) error"
+            }
+          ]
+        },
+        "newFile": {
+          "path": "src/notify.go",
+          "language": "go",
+          "source": "package notify\n\nimport \"fmt\"\n\nfunc SendOrderConfirmation(client *Client, order Order) error {\n\terr := validate(order)\n\tif err != nil {\n\t\treturn err\n\t}\n\tif err := client.Connect(); err != nil {\n\t\treturn fmt.Errorf(\"connect: %w\", err)\n\t}\n\treturn client.Send(order.ReceiptEmail, renderReceipt(order))\n}\n",
+          "simplified": [
+            "package notify",
+            "",
+            "import \"fmt\"",
+            "",
+            "func SendOrderConfirmation(client, order) {",
+            "\terr := validate(order)",
+            "\tif err: return",
+            "",
+            "",
+            "\tif err := client.Connect(); err != nil {",
+            "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+            "\t}",
+            "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "line",
+              "text": "package notify",
+              "src": 1
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 2
+            },
+            {
+              "kind": "fold",
+              "text": "import × 1（fmt）",
+              "srcRange": [
+                3,
+                3
+              ],
+              "original": [
+                "import \"fmt\""
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 4
+            },
+            {
+              "kind": "line",
+              "text": "func SendOrderConfirmation(client, order) {",
+              "src": 5,
+              "erases": [
+                {
+                  "start": 33,
+                  "end": 33,
+                  "original": " *Client"
+                },
+                {
+                  "start": 40,
+                  "end": 40,
+                  "original": " Order"
+                },
+                {
+                  "start": 42,
+                  "end": 42,
+                  "original": "error"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "\terr := validate(order)",
+              "src": 6
+            },
+            {
+              "kind": "line",
+              "text": "\tif err: return",
+              "src": 7,
+              "erases": [
+                {
+                  "start": 1,
+                  "end": 15,
+                  "original": "if err != nil {"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "\tif err := client.Connect(); err != nil {",
+              "src": 10
+            },
+            {
+              "kind": "line",
+              "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+              "src": 11
+            },
+            {
+              "kind": "line",
+              "text": "\t}",
+              "src": 12
+            },
+            {
+              "kind": "line",
+              "text": "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+              "src": 13
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 14
+            }
+          ],
+          "outline": [
+            {
+              "kind": "function",
+              "name": "SendOrderConfirmation",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                5,
+                14
+              ],
+              "signature": "func SendOrderConfirmation(client *Client, order Order) error"
+            }
+          ]
+        }
       },
-      {
-        "path": "src/gift.ts",
-        "additions": 3,
-        "deletions": 0,
-        "badges": [
-          {
-            "kind": "added",
-            "label": "新增",
-            "count": 1
-          }
-        ],
-        "units": [
-          {
-            "name": "giftWrapFee",
-            "glyph": "ƒ",
-            "tag": "新增",
-            "tagKind": "added",
-            "membersAdded": [],
-            "membersRemoved": []
-          }
-        ],
-        "simplified": [
-          {
-            "k": "add",
-            "n": 1,
-            "segs": [
+      "src/gift.ts": {
+        "ok": true,
+        "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+        "snapshot": "demo",
+        "entry": {
+          "oldPath": null,
+          "newPath": "src/gift.ts",
+          "status": "add",
+          "projection": {
+            "language": "typescript",
+            "summary": {
+              "signature": 0,
+              "body": 0,
+              "type-only": 0,
+              "added": 1,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "export",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "function",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "giftWrapFee",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "e": ": { wrapped?: boolean }[]",
-                "em": "adj"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": ": number",
-                "em": "mark",
-                "mo": 0.5
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "id": "/function/giftWrapFee:0",
+                "kind": "function",
+                "name": "giftWrapFee",
+                "container": "",
+                "newRange": [
+                  1,
+                  3
+                ],
+                "change": "added",
+                "signature": "export function giftWrapFee(items: { wrapped?: boolean }[]): number"
               }
             ]
           },
-          {
-            "k": "add",
-            "n": 2,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "  ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "add",
+                "text": "export function giftWrapFee(items) {",
+                "newLn": 1,
+                "erases": [
+                  {
+                    "start": 33,
+                    "end": 33,
+                    "original": ": { wrapped?: boolean }[]"
+                  },
+                  {
+                    "start": 34,
+                    "end": 34,
+                    "original": ": number"
+                  }
+                ]
               },
               {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "kind": "add",
+                "text": "  return items.filter((it) => it.wrapped).length * 3;",
+                "newLn": 2
               },
               {
-                "t": " items.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "filter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "((",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "it",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it.wrapped).",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "length",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "3",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "add",
+                "text": "}",
+                "newLn": 3
               }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 3,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 0,
+              "visible": 3
+            }
           }
-        ],
-        "raw": [
-          {
-            "k": "add",
-            "n": 1,
-            "segs": [
-              {
-                "t": "export",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "function",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "giftWrapFee",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " { ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "wrapped",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "?:",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "boolean",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " }[])",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "number",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 2,
-            "segs": [
-              {
-                "t": "  ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "filter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "((",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "it",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it.wrapped).",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "length",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "3",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 3,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          }
-        ]
+        },
+        "oldFile": null,
+        "newFile": {
+          "path": "src/gift.ts",
+          "language": "typescript",
+          "source": "export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n  return items.filter((it) => it.wrapped).length * 3;\n}\n",
+          "simplified": [
+            "export function giftWrapFee(items) {",
+            "  return items.filter((it) => it.wrapped).length * 3;",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "line",
+              "text": "export function giftWrapFee(items) {",
+              "src": 1,
+              "erases": [
+                {
+                  "start": 33,
+                  "end": 33,
+                  "original": ": { wrapped?: boolean }[]"
+                },
+                {
+                  "start": 34,
+                  "end": 34,
+                  "original": ": number"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "  return items.filter((it) => it.wrapped).length * 3;",
+              "src": 2
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 3
+            }
+          ],
+          "outline": [
+            {
+              "kind": "function",
+              "name": "giftWrapFee",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                1,
+                3
+              ],
+              "signature": "export function giftWrapFee(items: { wrapped?: boolean }[]): number"
+            }
+          ]
+        }
       }
-    ]
+    }
   },
   "en": {
-    "featured": "src/pricing.rs",
-    "files": [
-      {
-        "path": "src/pricing.rs",
-        "additions": 7,
-        "deletions": 7,
-        "badges": [
-          {
-            "kind": "signature",
-            "label": "Signature",
-            "count": 1
+    "diff": {
+      "ok": true,
+      "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+      "snapshot": "demo",
+      "repoRoot": "samples/demo",
+      "diffArgs": [],
+      "files": [
+        {
+          "oldPath": "src/pricing.rs",
+          "newPath": "src/pricing.rs",
+          "status": "modify",
+          "projection": {
+            "language": "rust",
+            "summary": {
+              "signature": 1,
+              "body": 0,
+              "type-only": 1,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
+              {
+                "id": "/function/total:7",
+                "kind": "function",
+                "name": "total",
+                "container": "",
+                "oldRange": [
+                  7,
+                  13
+                ],
+                "newRange": [
+                  8,
+                  13
+                ],
+                "change": "signature",
+                "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError>",
+                "oldSignature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64"
+              },
+              {
+                "id": "/type/LineItem:0",
+                "kind": "type",
+                "name": "LineItem",
+                "container": "",
+                "oldRange": [
+                  1,
+                  5
+                ],
+                "newRange": [
+                  1,
+                  6
+                ],
+                "change": "type-only",
+                "typeText": "pub struct LineItem {\n    sku: String,\n    price: Decimal,\n    note: Option<String>,\n    qty: u32,\n}",
+                "oldTypeText": "pub struct LineItem {\n    sku: String,\n    price: f64,\n    qty: u32,\n}",
+                "domain": {
+                  "members": [
+                    "sku",
+                    "price",
+                    "note",
+                    "qty"
+                  ],
+                  "added": [
+                    "note"
+                  ],
+                  "removed": []
+                }
+              }
+            ]
           },
-          {
-            "kind": "type-only",
-            "label": "Type",
-            "count": 1
-          }
-        ],
-        "units": [
-          {
-            "name": "total",
-            "glyph": "ƒ",
-            "tag": "Signature",
-            "tagKind": "signature",
-            "membersAdded": [],
-            "membersRemoved": []
-          },
-          {
-            "name": "LineItem",
-            "glyph": "T",
-            "tag": "Shape",
-            "tagKind": "shape",
-            "membersAdded": [
-              "note"
+          "simplified": {
+            "rows": [
+              {
+                "kind": "ctx",
+                "text": "pub struct LineItem {",
+                "oldLn": 1,
+                "newLn": 1
+              },
+              {
+                "kind": "ctx",
+                "text": "    sku,",
+                "oldLn": 2,
+                "newLn": 2,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": String"
+                  }
+                ]
+              },
+              {
+                "kind": "fold",
+                "count": 1,
+                "oldLines": [
+                  "    price: f64,"
+                ],
+                "newLines": [
+                  "    price: Decimal,"
+                ],
+                "oldLns": [
+                  3
+                ],
+                "newLns": [
+                  3
+                ],
+                "summary": "LineItem: price (type/format changes)"
+              },
+              {
+                "kind": "add",
+                "text": "    note,",
+                "newLn": 4,
+                "erases": [
+                  {
+                    "start": 8,
+                    "end": 8,
+                    "original": ": Option<String>"
+                  }
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "    qty,",
+                "oldLn": 4,
+                "newLn": 5,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": u32"
+                  }
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 5,
+                "newLn": 6
+              },
+              {
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 6,
+                "newLn": 7
+              },
+              {
+                "kind": "del",
+                "text": "pub fn total(items, coupon) {",
+                "oldLn": 7,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 28,
+                    "end": 28,
+                    "original": "-> f64"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "del",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+                "oldLn": 8,
+                "erases": [
+                  {
+                    "start": 16,
+                    "end": 16,
+                    "original": ": f64"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "del",
+                "text": "    match coupon {",
+                "oldLn": 9
+              },
+              {
+                "kind": "del",
+                "text": "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+                "oldLn": 10,
+                "pair": 3
+              },
+              {
+                "kind": "del",
+                "text": "        None => subtotal,",
+                "oldLn": 11
+              },
+              {
+                "kind": "del",
+                "text": "    }",
+                "oldLn": 12
+              },
+              {
+                "kind": "add",
+                "text": "pub fn total(items, coupon, currency) {",
+                "newLn": 8,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 36,
+                    "end": 36,
+                    "original": ": &Currency"
+                  },
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "-> Result<Decimal, PricingError>"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "add",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+                "newLn": 9,
+                "erases": [
+                  {
+                    "start": 58,
+                    "end": 58,
+                    "original": ".into()"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "add",
+                "text": "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+                "newLn": 10
+              },
+              {
+                "kind": "add",
+                "text": "    let rate = exchange_rate(currency);",
+                "newLn": 11,
+                "erases": [
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "?"
+                  }
+                ]
+              },
+              {
+                "kind": "add",
+                "text": "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+                "newLn": 12,
+                "pair": 3
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 13,
+                "newLn": 13
+              }
             ],
-            "membersRemoved": []
+            "stats": {
+              "folded": 1,
+              "visible": 12
+            }
           }
-        ],
-        "simplified": [
-          {
-            "k": "ctx",
-            "o": 1,
-            "n": 1,
-            "segs": [
+        },
+        {
+          "oldPath": "src/notify.go",
+          "newPath": "src/notify.go",
+          "status": "modify",
+          "projection": {
+            "language": "go",
+            "summary": {
+              "signature": 0,
+              "body": 1,
+              "type-only": 0,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "struct",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "id": "/function/SendOrderConfirmation:4",
+                "kind": "function",
+                "name": "SendOrderConfirmation",
+                "container": "",
+                "oldRange": [
+                  5,
+                  10
+                ],
+                "newRange": [
+                  5,
+                  14
+                ],
+                "change": "body"
               }
             ]
           },
-          {
-            "k": "ctx",
-            "o": 2,
-            "n": 2,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "import \"fmt\"",
+                "oldLn": 3,
+                "newLn": 3
               },
               {
-                "t": "sku",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": String",
-                "em": "adj"
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 4,
+                "newLn": 4
               },
               {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "fold",
-            "count": 1,
-            "summary": "LineItem: price (type/format changes)",
-            "olds": [
-              {
-                "ln": 3,
-                "segs": [
+                "kind": "ctx",
+                "text": "func SendOrderConfirmation(client, order) {",
+                "oldLn": 5,
+                "newLn": 5,
+                "erases": [
                   {
-                    "t": "    price",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 33,
+                    "end": 33,
+                    "original": " *Client"
                   },
                   {
-                    "t": ":",
-                    "dc": "#FF7B72",
-                    "lc": "#CF222E"
+                    "start": 40,
+                    "end": 40,
+                    "original": " Order"
                   },
                   {
-                    "t": " ",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
-                  },
-                  {
-                    "t": "f64",
-                    "dc": "#FFA657",
-                    "lc": "#953800"
-                  },
-                  {
-                    "t": ",",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 42,
+                    "end": 42,
+                    "original": "error"
                   }
                 ]
+              },
+              {
+                "kind": "add",
+                "text": "\terr := validate(order)",
+                "newLn": 6
+              },
+              {
+                "kind": "add",
+                "text": "\tif err: return",
+                "newLn": 7,
+                "erases": [
+                  {
+                    "start": 1,
+                    "end": 15,
+                    "original": "if err != nil {"
+                  }
+                ]
+              },
+              {
+                "kind": "fold",
+                "count": 2,
+                "oldLines": [],
+                "newLines": [
+                  "\t\treturn err",
+                  "\t}"
+                ],
+                "oldLns": [],
+                "newLns": [
+                  8,
+                  9
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "\tif err := client.Connect(); err != nil {",
+                "oldLn": 6,
+                "newLn": 10
+              },
+              {
+                "kind": "ctx",
+                "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+                "oldLn": 7,
+                "newLn": 11
+              },
+              {
+                "kind": "ctx",
+                "text": "\t}",
+                "oldLn": 8,
+                "newLn": 12
               }
             ],
-            "news": [
+            "stats": {
+              "folded": 2,
+              "visible": 2
+            }
+          }
+        },
+        {
+          "oldPath": null,
+          "newPath": "src/gift.ts",
+          "status": "add",
+          "projection": {
+            "language": "typescript",
+            "summary": {
+              "signature": 0,
+              "body": 0,
+              "type-only": 0,
+              "added": 1,
+              "removed": 0
+            },
+            "units": [
               {
-                "ln": 3,
-                "segs": [
+                "id": "/function/giftWrapFee:0",
+                "kind": "function",
+                "name": "giftWrapFee",
+                "container": "",
+                "newRange": [
+                  1,
+                  3
+                ],
+                "change": "added",
+                "signature": "export function giftWrapFee(items: { wrapped?: boolean }[]): number"
+              }
+            ]
+          },
+          "simplified": {
+            "rows": [
+              {
+                "kind": "add",
+                "text": "export function giftWrapFee(items) {",
+                "newLn": 1,
+                "erases": [
                   {
-                    "t": "    price",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 33,
+                    "end": 33,
+                    "original": ": { wrapped?: boolean }[]"
                   },
                   {
-                    "t": ":",
-                    "dc": "#FF7B72",
-                    "lc": "#CF222E"
-                  },
-                  {
-                    "t": " ",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
-                  },
-                  {
-                    "t": "Decimal",
-                    "dc": "#FFA657",
-                    "lc": "#953800"
-                  },
-                  {
-                    "t": ",",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 34,
+                    "end": 34,
+                    "original": ": number"
                   }
                 ]
+              },
+              {
+                "kind": "add",
+                "text": "  return items.filter((it) => it.wrapped).length * 3;",
+                "newLn": 2
+              },
+              {
+                "kind": "add",
+                "text": "}",
+                "newLn": 3
               }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 4,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "note",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": Option<String>",
-                "em": "adj"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 5,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": u32",
-                "em": "adj"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 6,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 7,
-            "segs": []
-          },
-          {
-            "k": "del",
-            "o": 7,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": &[LineItem]",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": Option<&Coupon>",
-                "em": "adj"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "-> f64",
-                "em": "mark",
-                "mo": -0.5
-              },
-              {
-                "t": "{",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 8,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "subtotal",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": f64",
-                "em": "adj"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "d"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "sum",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF",
-                "hl": "d"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "match",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 10,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Some",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "d"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "c) ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": "percent ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "d"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "d"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "d"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 11,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "None",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal,",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 12,
-            "segs": [
-              {
-                "t": "    }",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 8,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": &[LineItem]",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ": Option<&Coupon>",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "currency",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a",
-                "e": ": &Currency",
-                "em": "adj"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "-> Result<Decimal, PricingError>",
-                "em": "mark",
-                "mo": -0.5
-              },
-              {
-                "t": "{",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": ".into()",
-                "em": "adj"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "fold",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF",
-                "hl": "a"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "a"
-              },
-              {
-                "t": "::",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": "ZERO",
-                "dc": "#79C0FF",
-                "lc": "#0550AE",
-                "hl": "a"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": "acc, x",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": " acc ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": "+",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": " x",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": ");",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 10,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " discount ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "percent)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "unwrap_or_default",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 11,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " rate ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "exchange_rate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(currency)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "?",
-                "em": "mark"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 12,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Ok",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "hl": "a"
-              },
-              {
-                "t": "(subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "discount",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "hl": "a"
-              },
-              {
-                "t": " rate)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "hl": "a"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 13,
-            "n": 13,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 0,
+              "visible": 3
+            }
           }
-        ],
-        "raw": [
-          {
-            "k": "ctx",
-            "o": 1,
-            "n": 1,
-            "segs": [
+        }
+      ]
+    },
+    "reviews": {
+      "src/pricing.rs": {
+        "ok": true,
+        "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+        "snapshot": "demo",
+        "entry": {
+          "oldPath": "src/pricing.rs",
+          "newPath": "src/pricing.rs",
+          "status": "modify",
+          "projection": {
+            "language": "rust",
+            "summary": {
+              "signature": 1,
+              "body": 0,
+              "type-only": 1,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "id": "/function/total:7",
+                "kind": "function",
+                "name": "total",
+                "container": "",
+                "oldRange": [
+                  7,
+                  13
+                ],
+                "newRange": [
+                  8,
+                  13
+                ],
+                "change": "signature",
+                "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError>",
+                "oldSignature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64"
               },
               {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "struct",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "id": "/type/LineItem:0",
+                "kind": "type",
+                "name": "LineItem",
+                "container": "",
+                "oldRange": [
+                  1,
+                  5
+                ],
+                "newRange": [
+                  1,
+                  6
+                ],
+                "change": "type-only",
+                "typeText": "pub struct LineItem {\n    sku: String,\n    price: Decimal,\n    note: Option<String>,\n    qty: u32,\n}",
+                "oldTypeText": "pub struct LineItem {\n    sku: String,\n    price: f64,\n    qty: u32,\n}",
+                "domain": {
+                  "members": [
+                    "sku",
+                    "price",
+                    "note",
+                    "qty"
+                  ],
+                  "added": [
+                    "note"
+                  ],
+                  "removed": []
+                }
               }
             ]
           },
-          {
-            "k": "ctx",
-            "o": 2,
-            "n": 2,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "    sku",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "pub struct LineItem {",
+                "oldLn": 1,
+                "newLn": 1
               },
               {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "kind": "ctx",
+                "text": "    sku,",
+                "oldLn": 2,
+                "newLn": 2,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": String"
+                  }
+                ]
               },
               {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "fold",
+                "count": 1,
+                "oldLines": [
+                  "    price: f64,"
+                ],
+                "newLines": [
+                  "    price: Decimal,"
+                ],
+                "oldLns": [
+                  3
+                ],
+                "newLns": [
+                  3
+                ],
+                "summary": "LineItem: price (type/format changes)"
               },
               {
-                "t": "String",
-                "dc": "#FFA657",
-                "lc": "#953800"
+                "kind": "add",
+                "text": "    note,",
+                "newLn": 4,
+                "erases": [
+                  {
+                    "start": 8,
+                    "end": 8,
+                    "original": ": Option<String>"
+                  }
+                ]
               },
               {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "    qty,",
+                "oldLn": 4,
+                "newLn": 5,
+                "erases": [
+                  {
+                    "start": 7,
+                    "end": 7,
+                    "original": ": u32"
+                  }
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 5,
+                "newLn": 6
+              },
+              {
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 6,
+                "newLn": 7
+              },
+              {
+                "kind": "del",
+                "text": "pub fn total(items, coupon) {",
+                "oldLn": 7,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 28,
+                    "end": 28,
+                    "original": "-> f64"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "del",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+                "oldLn": 8,
+                "erases": [
+                  {
+                    "start": 16,
+                    "end": 16,
+                    "original": ": f64"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "del",
+                "text": "    match coupon {",
+                "oldLn": 9
+              },
+              {
+                "kind": "del",
+                "text": "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+                "oldLn": 10,
+                "pair": 3
+              },
+              {
+                "kind": "del",
+                "text": "        None => subtotal,",
+                "oldLn": 11
+              },
+              {
+                "kind": "del",
+                "text": "    }",
+                "oldLn": 12
+              },
+              {
+                "kind": "add",
+                "text": "pub fn total(items, coupon, currency) {",
+                "newLn": 8,
+                "erases": [
+                  {
+                    "start": 18,
+                    "end": 18,
+                    "original": ": &[LineItem]"
+                  },
+                  {
+                    "start": 26,
+                    "end": 26,
+                    "original": ": Option<&Coupon>"
+                  },
+                  {
+                    "start": 36,
+                    "end": 36,
+                    "original": ": &Currency"
+                  },
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "-> Result<Decimal, PricingError>"
+                  }
+                ],
+                "pair": 1
+              },
+              {
+                "kind": "add",
+                "text": "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+                "newLn": 9,
+                "erases": [
+                  {
+                    "start": 58,
+                    "end": 58,
+                    "original": ".into()"
+                  }
+                ],
+                "pair": 2
+              },
+              {
+                "kind": "add",
+                "text": "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+                "newLn": 10
+              },
+              {
+                "kind": "add",
+                "text": "    let rate = exchange_rate(currency);",
+                "newLn": 11,
+                "erases": [
+                  {
+                    "start": 38,
+                    "end": 38,
+                    "original": "?"
+                  }
+                ]
+              },
+              {
+                "kind": "add",
+                "text": "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+                "newLn": 12,
+                "pair": 3
+              },
+              {
+                "kind": "ctx",
+                "text": "}",
+                "oldLn": 13,
+                "newLn": 13
               }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 3,
-            "segs": [
-              {
-                "t": "    price",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 3,
-            "segs": [
-              {
-                "t": "    price",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 4,
-            "segs": [
-              {
-                "t": "    note",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Option",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "String",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ">,",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 5,
-            "segs": [
-              {
-                "t": "    qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "u32",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ",",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 6,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 7,
-            "segs": []
-          },
-          {
-            "k": "del",
-            "o": 7,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "[",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "], coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Option",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Coupon",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ">) ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "->",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 8,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "sum",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "match",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 10,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Some",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "(c) ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "percent ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "as",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "f64",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": "),",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 11,
-            "segs": [
-              {
-                "t": "        ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "None",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal,",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "del",
-            "o": 12,
-            "segs": [
-              {
-                "t": "    }",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 8,
-            "segs": [
-              {
-                "t": "pub",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "fn",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "total",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "[",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "LineItem",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "], coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Option",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Coupon",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ">, currency",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "&",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Currency",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "->",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Result",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "<",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "PricingError",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "> {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 9,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "iter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "()",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "price ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "qty",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "into",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "())",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "fold",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Decimal",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "::",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "ZERO",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "acc, x",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " acc ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "+",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " x);",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 10,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " discount ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " coupon",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "map",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "|",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " c",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "percent)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ".",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "unwrap_or_default",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "();",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 11,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "let",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " rate ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "exchange_rate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(currency)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "?",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 12,
-            "segs": [
-              {
-                "t": "    ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Ok",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "(subtotal ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " (",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "1.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "-",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " discount ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "/",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "100.0",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " rate)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 13,
-            "n": 13,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 1,
+              "visible": 12
+            }
           }
-        ]
+        },
+        "oldFile": {
+          "path": "src/pricing.rs",
+          "language": "rust",
+          "source": "pub struct LineItem {\n    sku: String,\n    price: f64,\n    qty: u32,\n}\n\npub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n    match coupon {\n        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n        None => subtotal,\n    }\n}\n",
+          "simplified": [
+            "pub struct LineItem {",
+            "    sku,",
+            "    price,",
+            "    qty,",
+            "}",
+            "",
+            "pub fn total(items, coupon) {",
+            "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+            "    match coupon {",
+            "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+            "        None => subtotal,",
+            "    }",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "fold",
+              "text": "struct LineItem { sku, price, qty }",
+              "srcRange": [
+                1,
+                5
+              ],
+              "original": [
+                "pub struct LineItem {",
+                "    sku: String,",
+                "    price: f64,",
+                "    qty: u32,",
+                "}"
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 6
+            },
+            {
+              "kind": "line",
+              "text": "pub fn total(items, coupon) {",
+              "src": 7,
+              "erases": [
+                {
+                  "start": 18,
+                  "end": 18,
+                  "original": ": &[LineItem]"
+                },
+                {
+                  "start": 26,
+                  "end": 26,
+                  "original": ": Option<&Coupon>"
+                },
+                {
+                  "start": 28,
+                  "end": 28,
+                  "original": "-> f64"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    let subtotal = items.iter().map(|it| it.price * it.qty as f64).sum();",
+              "src": 8,
+              "erases": [
+                {
+                  "start": 16,
+                  "end": 16,
+                  "original": ": f64"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    match coupon {",
+              "src": 9
+            },
+            {
+              "kind": "line",
+              "text": "        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),",
+              "src": 10
+            },
+            {
+              "kind": "line",
+              "text": "        None => subtotal,",
+              "src": 11
+            },
+            {
+              "kind": "line",
+              "text": "    }",
+              "src": 12
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 13
+            }
+          ],
+          "outline": [
+            {
+              "kind": "type",
+              "name": "LineItem",
+              "container": "",
+              "typeLevel": true,
+              "range": [
+                1,
+                5
+              ]
+            },
+            {
+              "kind": "function",
+              "name": "total",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                7,
+                13
+              ],
+              "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64"
+            }
+          ]
+        },
+        "newFile": {
+          "path": "src/pricing.rs",
+          "language": "rust",
+          "source": "pub struct LineItem {\n    sku: String,\n    price: Decimal,\n    note: Option<String>,\n    qty: u32,\n}\n\npub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n    let rate = exchange_rate(currency)?;\n    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n}\n",
+          "simplified": [
+            "pub struct LineItem {",
+            "    sku,",
+            "    price,",
+            "    note,",
+            "    qty,",
+            "}",
+            "",
+            "pub fn total(items, coupon, currency) {",
+            "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+            "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+            "    let rate = exchange_rate(currency);",
+            "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "fold",
+              "text": "struct LineItem { sku, price, note, qty }",
+              "srcRange": [
+                1,
+                6
+              ],
+              "original": [
+                "pub struct LineItem {",
+                "    sku: String,",
+                "    price: Decimal,",
+                "    note: Option<String>,",
+                "    qty: u32,",
+                "}"
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 7
+            },
+            {
+              "kind": "line",
+              "text": "pub fn total(items, coupon, currency) {",
+              "src": 8,
+              "erases": [
+                {
+                  "start": 18,
+                  "end": 18,
+                  "original": ": &[LineItem]"
+                },
+                {
+                  "start": 26,
+                  "end": 26,
+                  "original": ": Option<&Coupon>"
+                },
+                {
+                  "start": 36,
+                  "end": 36,
+                  "original": ": &Currency"
+                },
+                {
+                  "start": 38,
+                  "end": 38,
+                  "original": "-> Result<Decimal, PricingError>"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    let subtotal = items.iter().map(|it| it.price * it.qty).fold(Decimal::ZERO, |acc, x| acc + x);",
+              "src": 9,
+              "erases": [
+                {
+                  "start": 58,
+                  "end": 58,
+                  "original": ".into()"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    let discount = coupon.map(|c| c.percent).unwrap_or_default();",
+              "src": 10
+            },
+            {
+              "kind": "line",
+              "text": "    let rate = exchange_rate(currency);",
+              "src": 11,
+              "erases": [
+                {
+                  "start": 38,
+                  "end": 38,
+                  "original": "?"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "    Ok(subtotal * (1.0 - discount / 100.0) * rate)",
+              "src": 12
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 13
+            }
+          ],
+          "outline": [
+            {
+              "kind": "type",
+              "name": "LineItem",
+              "container": "",
+              "typeLevel": true,
+              "range": [
+                1,
+                6
+              ]
+            },
+            {
+              "kind": "function",
+              "name": "total",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                8,
+                13
+              ],
+              "signature": "pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError>"
+            }
+          ]
+        }
       },
-      {
-        "path": "src/notify.go",
-        "additions": 4,
-        "deletions": 0,
-        "badges": [
-          {
-            "kind": "body",
-            "label": "Body",
-            "count": 1
-          }
-        ],
-        "units": [
-          {
-            "name": "SendOrderConfirmation",
-            "glyph": "ƒ",
-            "tag": "Body",
-            "tagKind": "body",
-            "membersAdded": [],
-            "membersRemoved": []
-          }
-        ],
-        "simplified": [
-          {
-            "k": "ctx",
-            "o": 3,
-            "n": 3,
-            "segs": [
+      "src/notify.go": {
+        "ok": true,
+        "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+        "snapshot": "demo",
+        "entry": {
+          "oldPath": "src/notify.go",
+          "newPath": "src/notify.go",
+          "status": "modify",
+          "projection": {
+            "language": "go",
+            "summary": {
+              "signature": 0,
+              "body": 1,
+              "type-only": 0,
+              "added": 0,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "import",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "fmt",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
+                "id": "/function/SendOrderConfirmation:4",
+                "kind": "function",
+                "name": "SendOrderConfirmation",
+                "container": "",
+                "oldRange": [
+                  5,
+                  10
+                ],
+                "newRange": [
+                  5,
+                  14
+                ],
+                "change": "body"
               }
             ]
           },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 4,
-            "segs": []
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 5,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "func",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "kind": "ctx",
+                "text": "import \"fmt\"",
+                "oldLn": 3,
+                "newLn": 3
               },
               {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "ctx",
+                "text": "",
+                "oldLn": 4,
+                "newLn": 4
               },
               {
-                "t": "SendOrderConfirmation",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "client",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "e": " *Client",
-                "em": "adj"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "order",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "e": " Order",
-                "em": "adj"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": "error",
-                "em": "mark",
-                "mo": -0.5
-              },
-              {
-                "t": "{",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 6,
-            "segs": [
-              {
-                "t": "\terr ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "validate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(order)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 7,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "e": "if err != nil {",
-                "em": "repl"
-              },
-              {
-                "t": " err: ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328",
-                "e": "if err != nil {",
-                "em": "repl"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E",
-                "e": "if err != nil {",
-                "em": "repl"
-              }
-            ]
-          },
-          {
-            "k": "fold",
-            "count": 2,
-            "summary": "2 type/format-only lines collapsed",
-            "olds": [],
-            "news": [
-              {
-                "ln": 8,
-                "segs": [
+                "kind": "ctx",
+                "text": "func SendOrderConfirmation(client, order) {",
+                "oldLn": 5,
+                "newLn": 5,
+                "erases": [
                   {
-                    "t": "\t\t",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 33,
+                    "end": 33,
+                    "original": " *Client"
                   },
                   {
-                    "t": "return",
-                    "dc": "#FF7B72",
-                    "lc": "#CF222E"
+                    "start": 40,
+                    "end": 40,
+                    "original": " Order"
                   },
                   {
-                    "t": " err",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 42,
+                    "end": 42,
+                    "original": "error"
                   }
                 ]
               },
               {
-                "ln": 9,
-                "segs": [
+                "kind": "add",
+                "text": "\terr := validate(order)",
+                "newLn": 6
+              },
+              {
+                "kind": "add",
+                "text": "\tif err: return",
+                "newLn": 7,
+                "erases": [
                   {
-                    "t": "\t}",
-                    "dc": "#E6EDF3",
-                    "lc": "#1F2328"
+                    "start": 1,
+                    "end": 15,
+                    "original": "if err != nil {"
                   }
                 ]
+              },
+              {
+                "kind": "fold",
+                "count": 2,
+                "oldLines": [],
+                "newLines": [
+                  "\t\treturn err",
+                  "\t}"
+                ],
+                "oldLns": [],
+                "newLns": [
+                  8,
+                  9
+                ]
+              },
+              {
+                "kind": "ctx",
+                "text": "\tif err := client.Connect(); err != nil {",
+                "oldLn": 6,
+                "newLn": 10
+              },
+              {
+                "kind": "ctx",
+                "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+                "oldLn": 7,
+                "newLn": 11
+              },
+              {
+                "kind": "ctx",
+                "text": "\t}",
+                "oldLn": 8,
+                "newLn": 12
               }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 10,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " client.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Connect",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(); err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "!=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "nil",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 7,
-            "n": 11,
-            "segs": [
-              {
-                "t": "\t\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " fmt.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Errorf",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"connect: ",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "%w",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": ", err)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 8,
-            "n": 12,
-            "segs": [
-              {
-                "t": "\t}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 2,
+              "visible": 2
+            }
           }
-        ],
-        "raw": [
-          {
-            "k": "ctx",
-            "o": 3,
-            "n": 3,
-            "segs": [
-              {
-                "t": "import",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "fmt",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 4,
-            "n": 4,
-            "segs": []
-          },
-          {
-            "k": "ctx",
-            "o": 5,
-            "n": 5,
-            "segs": [
-              {
-                "t": "func",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "SendOrderConfirmation",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "client",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "Client",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ", ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "order",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Order",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "error",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 6,
-            "segs": [
-              {
-                "t": "\terr ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "validate",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(order)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 7,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "!=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "nil",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 8,
-            "segs": [
-              {
-                "t": "\t\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 9,
-            "segs": [
-              {
-                "t": "\t}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 6,
-            "n": 10,
-            "segs": [
-              {
-                "t": "\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "if",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " client.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Connect",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(); err ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "!=",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "nil",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 7,
-            "n": 11,
-            "segs": [
-              {
-                "t": "\t\t",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " fmt.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "Errorf",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "\"connect: ",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": "%w",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": "\"",
-                "dc": "#A5D6FF",
-                "lc": "#0A3069"
-              },
-              {
-                "t": ", err)",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "ctx",
-            "o": 8,
-            "n": 12,
-            "segs": [
-              {
-                "t": "\t}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          }
-        ]
+        },
+        "oldFile": {
+          "path": "src/notify.go",
+          "language": "go",
+          "source": "package notify\n\nimport \"fmt\"\n\nfunc SendOrderConfirmation(client *Client, order Order) error {\n\tif err := client.Connect(); err != nil {\n\t\treturn fmt.Errorf(\"connect: %w\", err)\n\t}\n\treturn client.Send(order.ReceiptEmail, renderReceipt(order))\n}\n",
+          "simplified": [
+            "package notify",
+            "",
+            "import \"fmt\"",
+            "",
+            "func SendOrderConfirmation(client, order) {",
+            "\tif err := client.Connect(); err != nil {",
+            "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+            "\t}",
+            "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "line",
+              "text": "package notify",
+              "src": 1
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 2
+            },
+            {
+              "kind": "fold",
+              "text": "1 import (fmt)",
+              "srcRange": [
+                3,
+                3
+              ],
+              "original": [
+                "import \"fmt\""
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 4
+            },
+            {
+              "kind": "line",
+              "text": "func SendOrderConfirmation(client, order) {",
+              "src": 5,
+              "erases": [
+                {
+                  "start": 33,
+                  "end": 33,
+                  "original": " *Client"
+                },
+                {
+                  "start": 40,
+                  "end": 40,
+                  "original": " Order"
+                },
+                {
+                  "start": 42,
+                  "end": 42,
+                  "original": "error"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "\tif err := client.Connect(); err != nil {",
+              "src": 6
+            },
+            {
+              "kind": "line",
+              "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+              "src": 7
+            },
+            {
+              "kind": "line",
+              "text": "\t}",
+              "src": 8
+            },
+            {
+              "kind": "line",
+              "text": "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+              "src": 9
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 10
+            }
+          ],
+          "outline": [
+            {
+              "kind": "function",
+              "name": "SendOrderConfirmation",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                5,
+                10
+              ],
+              "signature": "func SendOrderConfirmation(client *Client, order Order) error"
+            }
+          ]
+        },
+        "newFile": {
+          "path": "src/notify.go",
+          "language": "go",
+          "source": "package notify\n\nimport \"fmt\"\n\nfunc SendOrderConfirmation(client *Client, order Order) error {\n\terr := validate(order)\n\tif err != nil {\n\t\treturn err\n\t}\n\tif err := client.Connect(); err != nil {\n\t\treturn fmt.Errorf(\"connect: %w\", err)\n\t}\n\treturn client.Send(order.ReceiptEmail, renderReceipt(order))\n}\n",
+          "simplified": [
+            "package notify",
+            "",
+            "import \"fmt\"",
+            "",
+            "func SendOrderConfirmation(client, order) {",
+            "\terr := validate(order)",
+            "\tif err: return",
+            "",
+            "",
+            "\tif err := client.Connect(); err != nil {",
+            "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+            "\t}",
+            "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "line",
+              "text": "package notify",
+              "src": 1
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 2
+            },
+            {
+              "kind": "fold",
+              "text": "1 import (fmt)",
+              "srcRange": [
+                3,
+                3
+              ],
+              "original": [
+                "import \"fmt\""
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "",
+              "src": 4
+            },
+            {
+              "kind": "line",
+              "text": "func SendOrderConfirmation(client, order) {",
+              "src": 5,
+              "erases": [
+                {
+                  "start": 33,
+                  "end": 33,
+                  "original": " *Client"
+                },
+                {
+                  "start": 40,
+                  "end": 40,
+                  "original": " Order"
+                },
+                {
+                  "start": 42,
+                  "end": 42,
+                  "original": "error"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "\terr := validate(order)",
+              "src": 6
+            },
+            {
+              "kind": "line",
+              "text": "\tif err: return",
+              "src": 7,
+              "erases": [
+                {
+                  "start": 1,
+                  "end": 15,
+                  "original": "if err != nil {"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "\tif err := client.Connect(); err != nil {",
+              "src": 10
+            },
+            {
+              "kind": "line",
+              "text": "\t\treturn fmt.Errorf(\"connect: %w\", err)",
+              "src": 11
+            },
+            {
+              "kind": "line",
+              "text": "\t}",
+              "src": 12
+            },
+            {
+              "kind": "line",
+              "text": "\treturn client.Send(order.ReceiptEmail, renderReceipt(order))",
+              "src": 13
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 14
+            }
+          ],
+          "outline": [
+            {
+              "kind": "function",
+              "name": "SendOrderConfirmation",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                5,
+                14
+              ],
+              "signature": "func SendOrderConfirmation(client *Client, order Order) error"
+            }
+          ]
+        }
       },
-      {
-        "path": "src/gift.ts",
-        "additions": 3,
-        "deletions": 0,
-        "badges": [
-          {
-            "kind": "added",
-            "label": "Added",
-            "count": 1
-          }
-        ],
-        "units": [
-          {
-            "name": "giftWrapFee",
-            "glyph": "ƒ",
-            "tag": "Added",
-            "tagKind": "added",
-            "membersAdded": [],
-            "membersRemoved": []
-          }
-        ],
-        "simplified": [
-          {
-            "k": "add",
-            "n": 1,
-            "segs": [
+      "src/gift.ts": {
+        "ok": true,
+        "diff": "diff --git a/src/pricing.rs b/src/pricing.rs\nindex ebe3d53..8569bad 100644\n--- a/src/pricing.rs\n+++ b/src/pricing.rs\n@@ -1,13 +1,13 @@\n pub struct LineItem {\n     sku: String,\n-    price: f64,\n+    price: Decimal,\n+    note: Option<String>,\n     qty: u32,\n }\n \n-pub fn total(items: &[LineItem], coupon: Option<&Coupon>) -> f64 {\n-    let subtotal: f64 = items.iter().map(|it| it.price * it.qty as f64).sum();\n-    match coupon {\n-        Some(c) => subtotal * (1.0 - c.percent as f64 / 100.0),\n-        None => subtotal,\n-    }\n+pub fn total(items: &[LineItem], coupon: Option<&Coupon>, currency: &Currency) -> Result<Decimal, PricingError> {\n+    let subtotal = items.iter().map(|it| it.price * it.qty.into()).fold(Decimal::ZERO, |acc, x| acc + x);\n+    let discount = coupon.map(|c| c.percent).unwrap_or_default();\n+    let rate = exchange_rate(currency)?;\n+    Ok(subtotal * (1.0 - discount / 100.0) * rate)\n }\ndiff --git a/src/notify.go b/src/notify.go\nindex 184125d..767cb3e 100644\n--- a/src/notify.go\n+++ b/src/notify.go\n@@ -3,6 +3,10 @@ package notify\n import \"fmt\"\n \n func SendOrderConfirmation(client *Client, order Order) error {\n+\terr := validate(order)\n+\tif err != nil {\n+\t\treturn err\n+\t}\n \tif err := client.Connect(); err != nil {\n \t\treturn fmt.Errorf(\"connect: %w\", err)\n \t}\ndiff --git a/src/gift.ts b/src/gift.ts\nnew file mode 100644\nindex 0000000..b80ae59\n--- /dev/null\n+++ b/src/gift.ts\n@@ -0,0 +1,3 @@\n+export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n+  return items.filter((it) => it.wrapped).length * 3;\n+}\n",
+        "snapshot": "demo",
+        "entry": {
+          "oldPath": null,
+          "newPath": "src/gift.ts",
+          "status": "add",
+          "projection": {
+            "language": "typescript",
+            "summary": {
+              "signature": 0,
+              "body": 0,
+              "type-only": 0,
+              "added": 1,
+              "removed": 0
+            },
+            "units": [
               {
-                "t": "export",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "function",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "giftWrapFee",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#FFA657",
-                "lc": "#953800",
-                "e": ": { wrapped?: boolean }[]",
-                "em": "adj"
-              },
-              {
-                "t": ")",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "",
-                "e": ": number",
-                "em": "mark",
-                "mo": 0.5
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "id": "/function/giftWrapFee:0",
+                "kind": "function",
+                "name": "giftWrapFee",
+                "container": "",
+                "newRange": [
+                  1,
+                  3
+                ],
+                "change": "added",
+                "signature": "export function giftWrapFee(items: { wrapped?: boolean }[]): number"
               }
             ]
           },
-          {
-            "k": "add",
-            "n": 2,
-            "segs": [
+          "simplified": {
+            "rows": [
               {
-                "t": "  ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "add",
+                "text": "export function giftWrapFee(items) {",
+                "newLn": 1,
+                "erases": [
+                  {
+                    "start": 33,
+                    "end": 33,
+                    "original": ": { wrapped?: boolean }[]"
+                  },
+                  {
+                    "start": 34,
+                    "end": 34,
+                    "original": ": number"
+                  }
+                ]
               },
               {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
+                "kind": "add",
+                "text": "  return items.filter((it) => it.wrapped).length * 3;",
+                "newLn": 2
               },
               {
-                "t": " items.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "filter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "((",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "it",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it.wrapped).",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "length",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "3",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
+                "kind": "add",
+                "text": "}",
+                "newLn": 3
               }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 3,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
+            ],
+            "stats": {
+              "folded": 0,
+              "visible": 3
+            }
           }
-        ],
-        "raw": [
-          {
-            "k": "add",
-            "n": 1,
-            "segs": [
-              {
-                "t": "export",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "function",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "giftWrapFee",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "(",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "items",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " { ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "wrapped",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": "?:",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "boolean",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " }[])",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": ":",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "number",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " {",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 2,
-            "segs": [
-              {
-                "t": "  ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "return",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " items.",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "filter",
-                "dc": "#D2A8FF",
-                "lc": "#8250DF"
-              },
-              {
-                "t": "((",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "it",
-                "dc": "#FFA657",
-                "lc": "#953800"
-              },
-              {
-                "t": ") ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "=>",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " it.wrapped).",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "length",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "*",
-                "dc": "#FF7B72",
-                "lc": "#CF222E"
-              },
-              {
-                "t": " ",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              },
-              {
-                "t": "3",
-                "dc": "#79C0FF",
-                "lc": "#0550AE"
-              },
-              {
-                "t": ";",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          },
-          {
-            "k": "add",
-            "n": 3,
-            "segs": [
-              {
-                "t": "}",
-                "dc": "#E6EDF3",
-                "lc": "#1F2328"
-              }
-            ]
-          }
-        ]
+        },
+        "oldFile": null,
+        "newFile": {
+          "path": "src/gift.ts",
+          "language": "typescript",
+          "source": "export function giftWrapFee(items: { wrapped?: boolean }[]): number {\n  return items.filter((it) => it.wrapped).length * 3;\n}\n",
+          "simplified": [
+            "export function giftWrapFee(items) {",
+            "  return items.filter((it) => it.wrapped).length * 3;",
+            "}",
+            ""
+          ],
+          "view": [
+            {
+              "kind": "line",
+              "text": "export function giftWrapFee(items) {",
+              "src": 1,
+              "erases": [
+                {
+                  "start": 33,
+                  "end": 33,
+                  "original": ": { wrapped?: boolean }[]"
+                },
+                {
+                  "start": 34,
+                  "end": 34,
+                  "original": ": number"
+                }
+              ]
+            },
+            {
+              "kind": "line",
+              "text": "  return items.filter((it) => it.wrapped).length * 3;",
+              "src": 2
+            },
+            {
+              "kind": "line",
+              "text": "}",
+              "src": 3
+            }
+          ],
+          "outline": [
+            {
+              "kind": "function",
+              "name": "giftWrapFee",
+              "container": "",
+              "typeLevel": false,
+              "range": [
+                1,
+                3
+              ],
+              "signature": "export function giftWrapFee(items: { wrapped?: boolean }[]): number"
+            }
+          ]
+        }
       }
-    ]
+    }
   }
 };

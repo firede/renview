@@ -15,6 +15,7 @@ app/dist/
 app/.tanstack/
 app/src/routeTree.gen.ts
 data/
+!www/src/pages/demo/data/
 .env
 .env.*
 !.env.example

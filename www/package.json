@@ -5,9 +5,10 @@
   "homepage": "https://view.bandwidth.ren",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "wrangler dev"
+    "dev": "bun run prepare:viewer && astro dev",
+    "build": "bun run prepare:viewer && astro build",
+    "preview": "wrangler dev",
+    "prepare:viewer": "bun install --cwd .. --frozen-lockfile --ignore-scripts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.6",
