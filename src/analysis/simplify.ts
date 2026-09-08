@@ -309,7 +309,7 @@ function pairVisibleRows(dels: VisibleRow[], adds: VisibleRow[], nextPair: () =>
  * 在 git hunk 结构上构建简化 diff 行：
  * 简化后文本相同的 del/add 行对（含双双被抹空）折叠为 fold 标记；
  * 被抹空的变更行自动折叠；被抹空的上下文行直接不显示。
- * 例外：原文为空行的变更不进折叠（展开无内容可审，折叠标记纯属干扰），以普通空行呈现。
+ * 原文为空行的变更不显示、不进折叠（展开无内容可审），原始 diff 仍保留。
  * 剩余可见 del/add 行按相似度配对（pair id），供前端词级高亮。
  */
 export function buildSimplifiedRows(
