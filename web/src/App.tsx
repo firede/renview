@@ -281,20 +281,34 @@ export function App() {
   // 服务端 files 与前端 parseDiff 解析同一文本，顺序一致，按下标对应
   const entries = useMemo(() => payload?.files ?? [], [payload]);
 
-  // 侧栏排序：含签名变更的文件优先（先看契约再看实现），组内保持 diff 原顺序（sort 稳定）
+  // 根目录文件优先，其余按目录、文件名排序，让列表位置可预测。
   const items = useMemo(
     () =>
       files
         .map((file, i) => ({ file, entry: entries[i] ?? null }))
-        .sort(
-          (a, b) =>
-            Number((b.entry?.projection?.summary.signature ?? 0) > 0) -
-            Number((a.entry?.projection?.summary.signature ?? 0) > 0),
-        ),
+        .sort((a, b) => {
+          const left = splitPath(displayPath(a.file));
+          const right = splitPath(displayPath(b.file));
+          if (!left.dir && right.dir) return -1;
+          if (left.dir && !right.dir) return 1;
+          return left.dir.localeCompare(right.dir) || left.base.localeCompare(right.base);
+        }),
     [files, entries],
   );
 
-  // 按路径身份保留选中项，刷新引起的签名排序变化不应把用户带到另一文件。
+  // 按已排序的目录分组，保留文件的选择索引。
+  const fileGroups = useMemo(() => {
+    const groups = new Map<string, { item: (typeof items)[number]; index: number }[]>();
+    items.forEach((item, index) => {
+      const { dir } = splitPath(displayPath(item.file));
+      const group = groups.get(dir) ?? [];
+      group.push({ item, index });
+      groups.set(dir, group);
+    });
+    return [...groups];
+  }, [items]);
+
+  // 按路径身份保留选中项，刷新引起的排序变化不应把用户带到另一文件。
   const safeSelected = Math.max(
     0,
     items.findIndex(({ file }) => fileKey(file) === selected),
@@ -556,49 +570,63 @@ export function App() {
                 storageKey="review"
                 top={{
                   title: s.sectionFiles,
-                  body: items.map(({ file: f, entry }, i) => {
-                    const path = displayPath(f);
-                    const { dir, base } = splitPath(path);
-                    const stat = fileStats(f);
-                    const sum = entry?.projection?.summary;
-                    return (
-                      <button
-                        key={`${f.oldPath}→${f.newPath}`}
-                        className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                        onClick={() => {
-                          setSelected(fileKey(f));
-                          setRawOverride(null);
-                          setUnitJump(null);
-                        }}
-                      >
-                        <Tooltip content={path}>
-                          <span className="file-path">
-                            {dir && <span className="file-dir">{dir}</span>}
-                            <span className="file-base">{base}</span>
-                          </span>
-                        </Tooltip>
-                        <span className="file-meta">
-                          <Tooltip content={s.statusLabel[f.type as FileStatus] ?? f.type}>
-                            <span className={`status status-${f.type}`}>
-                              <StatusIcon status={f.type as FileStatus} />
-                            </span>
-                          </Tooltip>
-                          <em className="add">+{stat.adds}</em>
-                          <em className="del">−{stat.dels}</em>
-                          {sum && (
-                            <span className="chips">
-                              {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(([k, cls]) => (
-                                <span key={k} className={`chip ${cls}`}>
-                                  {s.summaryChips[k]}
-                                  {sum[k]}
+                  body: fileGroups.map(([dir, group]) => (
+                    <section className="file-group" key={dir} aria-label={dir || "/"}>
+                      {dir && group.length > 1 && <div className="file-group-title">{dir}</div>}
+                      {group.map(({ item: { file: f, entry }, index: i }) => {
+                        const path = displayPath(f);
+                        const { base } = splitPath(path);
+                        const stat = fileStats(f);
+                        const sum = entry?.projection?.summary;
+                        return (
+                          <button
+                            key={`${f.oldPath}→${f.newPath}`}
+                            className={`file-item ${i === safeSelected ? "selected" : ""}`}
+                            onClick={() => {
+                              setSelected(fileKey(f));
+                              setRawOverride(null);
+                              setUnitJump(null);
+                            }}
+                          >
+                            <Tooltip content={path}>
+                              <span className="file-path">
+                                {group.length === 1 && dir && (
+                                  <span className="file-dir">{dir}</span>
+                                )}
+                                {base.split(/(?<=[-_])/).map((part, index) => (
+                                  <Fragment key={index}>
+                                    {part}
+                                    <wbr />
+                                  </Fragment>
+                                ))}
+                              </span>
+                            </Tooltip>
+                            <span className="file-meta">
+                              <Tooltip content={s.statusLabel[f.type as FileStatus] ?? f.type}>
+                                <span className={`status status-${f.type}`}>
+                                  <StatusIcon status={f.type as FileStatus} />
                                 </span>
-                              ))}
+                              </Tooltip>
+                              <em className="add">+{stat.adds}</em>
+                              <em className="del">−{stat.dels}</em>
+                              {sum && (
+                                <span className="chips">
+                                  {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(
+                                    ([k, cls]) => (
+                                      <span key={k} className={`chip ${cls}`}>
+                                        {s.summaryChips[k]}
+                                        {sum[k]}
+                                      </span>
+                                    ),
+                                  )}
+                                </span>
+                              )}
                             </span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  }),
+                          </button>
+                        );
+                      })}
+                    </section>
+                  )),
                 }}
                 bottom={{
                   title: s.sectionUnits,

@@ -269,24 +269,31 @@ body {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
-.file-path {
-  display: flex;
+.file-group-title {
+  padding: 3px 12px;
+  margin-bottom: 1px;
+  background: var(--bg-raised);
   font-family: var(--font-mono);
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-dim);
+  overflow-wrap: anywhere;
 }
 
 .file-dir {
   color: var(--fg-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 0 1 auto;
-  min-width: 0;
 }
 
-.file-base {
-  flex: none;
+.file-path {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  overflow: hidden;
 }
 
 .file-meta {
