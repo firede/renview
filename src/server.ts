@@ -15,6 +15,7 @@ import {
 import { messages, type Locale } from "./i18n";
 import { webAssets } from "./webassets.gen";
 import { listenWithPort } from "./port";
+import { mapConcurrent } from "./concurrency";
 
 export interface ServerOptions {
   port?: number;
@@ -83,10 +84,8 @@ async function handleDiff(
 ): Promise<Response> {
   try {
     const { diff: fullDiff, sides } = await readReview(locale);
-    const files = await Promise.all(
-      parseDiff(fullDiff).map((f) =>
-        buildFileEntry(root, sides, f as unknown as ParsedFile, locale),
-      ),
+    const files = await mapConcurrent(parseDiff(fullDiff), 8, (f) =>
+      buildFileEntry(root, sides, f as unknown as ParsedFile, locale),
     );
     return Response.json({
       ok: true,
