@@ -274,12 +274,16 @@ function similarity(a: string[], b: string[]): number {
 /** 配对相似度阈值：低于此视为两行无关（误配对产生的高亮比缺失更糟糕） */
 const PAIR_THRESHOLD = 0.5;
 
+// 配对只影响词级高亮；大块保留正文，避免候选矩阵占用过多时间和内存。
+const MAX_PAIR_COMPARISONS = 40_000;
+
 /**
  * 块内可见 del/add 行按相似度贪心配对（全局最优优先，同分按行序），打上 pair id。
  * 配对只是高亮提示，不改变的 del 在前、add 在后的呈现顺序。
  */
 function pairVisibleRows(dels: VisibleRow[], adds: VisibleRow[], nextPair: () => number): void {
   if (dels.length === 0 || adds.length === 0) return;
+  if (dels.length * adds.length > MAX_PAIR_COMPARISONS) return;
   const delToks = dels.map((r) => simTokens(r.text));
   const addToks = adds.map((r) => simTokens(r.text));
   const cands: Array<{ i: number; j: number; score: number }> = [];
@@ -372,13 +376,21 @@ export function buildSimplifiedRows(
       const blockDels: VisibleRow[] = [];
       const blockAdds: VisibleRow[] = [];
       const used = new Array<boolean>(adds.length).fill(false);
+      const matches = new Map<string, { indices: number[]; next: number }>();
+      adds.forEach((a, idx) => {
+        const text = simpNew(a.ln!);
+        const queue = matches.get(text) ?? { indices: [], next: 0 };
+        queue.indices.push(idx);
+        matches.set(text, queue);
+      });
       for (const d of dels) {
         // 空行增删不携带可审阅内容；原始 diff 仍保留。
         if (orig(d).trim() === "") {
           continue;
         }
         const ds = simpOld(d.ln!);
-        const j = adds.findIndex((a, idx) => !used[idx] && simpNew(a.ln!) === ds);
+        const queue = matches.get(ds);
+        const j = queue?.indices[queue.next++] ?? -1;
         if (j >= 0) {
           used[j] = true;
           pushFold([orig(d)], [orig(adds[j]!)], [d.ln!], [adds[j]!.ln!]);

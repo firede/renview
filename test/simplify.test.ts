@@ -407,3 +407,46 @@ test("跨行替换只落首行，后续擦除与新操作不丢失", () => {
     [{ start: 0, end: 0, original: "x" }],
   ]);
 });
+
+test("大块变更跳过词级配对但保留每行正文", () => {
+  const old = Array.from({ length: 3000 }, (_, i) => `const n${i} = before(${i});`);
+  const next = old.map((s) => s.replace("before", "after"));
+  const file: ParsedFile = {
+    from: "a.ts",
+    to: "a.ts",
+    additions: next.length,
+    deletions: old.length,
+    chunks: [
+      {
+        changes: [
+          ...old.map((text, i) => ({ type: "del" as const, ln: i + 1, content: `-${text}` })),
+          ...next.map((text, i) => ({ type: "add" as const, ln: i + 1, content: `+${text}` })),
+        ],
+      },
+    ],
+  };
+  const result = buildSimplifiedRows(file, old, next);
+  expect(result.stats).toEqual({ folded: 0, visible: 6000 });
+  expect(result.rows.map((r) => (r.kind === "fold" ? null : r.text))).toEqual([...old, ...next]);
+  expect(result.rows.every((r) => r.kind !== "fold" && r.pair == null)).toBe(true);
+});
+
+test("重复简化文本仍按出现顺序折叠且不重复消耗新增行", () => {
+  const file: ParsedFile = {
+    from: "a.ts",
+    to: "a.ts",
+    additions: 2,
+    deletions: 3,
+    chunks: [
+      {
+        changes: [
+          ...[1, 2, 3].map((ln) => ({ type: "del" as const, ln, content: `-x: T${ln};` })),
+          ...[1, 2].map((ln) => ({ type: "add" as const, ln, content: `+x: U${ln};` })),
+        ],
+      },
+    ],
+  };
+  const result = buildSimplifiedRows(file, ["x;", "x;", "x;"], ["x;", "x;"]);
+  expect(result.rows[0]).toMatchObject({ kind: "fold", oldLns: [1, 2], newLns: [1, 2] });
+  expect(result.rows[1]).toMatchObject({ kind: "del", oldLn: 3, text: "x;" });
+});
