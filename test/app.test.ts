@@ -313,3 +313,20 @@ test("取消或伪造的 OAuth 回调返回首页，不暴露授权参数", asyn
     app.close();
   }
 });
+
+test("健康检查无需登录，并在缓存不可用时返回 503", async () => {
+  const cache = new MemoryCache();
+  const app = createApp(config, cache);
+  try {
+    const req = new Request(`${config.origin}/healthz`);
+    expect((await app.fetch(req)).status).toBe(200);
+    cache.get = async () => {
+      throw new Error("Redis 断开");
+    };
+    const failed = await app.fetch(req);
+    expect(failed.status).toBe(503);
+    expect(failed.headers.get("cache-control")).toBe("no-store");
+  } finally {
+    app.close();
+  }
+});

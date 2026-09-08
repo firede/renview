@@ -91,12 +91,13 @@ bun run dev HEAD~5
 
 开发服务启动后，在浏览器打开终端显示的地址。
 
-| 命令                | 用途                         |
-| ------------------- | ---------------------------- |
-| `bun run test`      | 准备构建资源并运行全部测试   |
-| `bun run typecheck` | 类型检查                     |
-| `bun run build`     | 构建各平台二进制到 dist 目录 |
-| `bun run gen:demo`  | 更新官网演示数据             |
+| 命令                | 用途                                |
+| ------------------- | ----------------------------------- |
+| `bun run check`     | 测试、类型检查和 lint，共用构建资源 |
+| `bun run test`      | 准备构建资源并运行全部测试          |
+| `bun run typecheck` | 类型检查                            |
+| `bun run build`     | 构建各平台二进制到 dist 目录        |
+| `bun run gen:demo`  | 更新官网演示数据                    |
 
 开发约定见 [AGENTS.md](AGENTS.md)，产品取舍见 [产品决策](.agents/truth/product.md)。
 

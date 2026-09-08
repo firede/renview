@@ -7,8 +7,8 @@ import { readConfig, type AppConfig } from "./config";
 import { GitHub, GitHubTokenError, type Source } from "./github";
 import { HttpError } from "./http";
 
-/** 更改分析契约时递增，公共缓存不会混用旧投影。 */
-const ANALYSIS_VERSION = "1";
+/** 分析契约与发布修订共同隔离缓存，部署后不会混用旧投影。 */
+const ANALYSIS_VERSION = `1:${process.env.APP_REVISION ?? "dev"}`;
 export function createApp(
   config: AppConfig,
   cache: Cache = new RedisCache(config.redisUrl),
@@ -33,7 +33,10 @@ export function createApp(
   }
   async function handle(req: Request): Promise<Response> {
     const url = new URL(req.url);
-    if (url.pathname === "/healthz") return Response.json({ ok: true });
+    if (url.pathname === "/healthz") {
+      await cache.get("health");
+      return Response.json({ ok: true });
+    }
     if (req.method === "GET" && url.pathname === "/auth/login") return auth.login(req);
     if (req.method === "GET" && url.pathname === "/auth/callback") return auth.callback(req);
     if (url.pathname === "/auth/logout") return auth.logout(req);

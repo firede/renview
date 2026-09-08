@@ -16,5 +16,5 @@
 - 审查、分析等报告不进代码库；确需保留时放在根目录 `/local` 供参考。
 - 注释、文档、提交信息一律中文；提交信息用 `feat|fix|test|docs|chore|refactor: 摘要` 格式。
 - 测试用 `bun:test`，放 `test/*.test.ts`；改分析层逻辑必须同步补测试。
-- 提交前跑 `bun run test` 与 `bun run typecheck`，保持全绿；pre-push 钩子（simple-git-hooks，`bun install` 时经 prepare 自动安装）强制同一道检查，紧急时用 `git push --no-verify` 跳过。
-- 注意 `bun test`（裸命令）与 `bun run test`（含 sync:wasm）的区别：CI、钩子等干净环境一律用 `bun run test`。
+- 提交前跑 `bun run check`（测试、类型检查与 lint），保持全绿；pre-push 钩子（simple-git-hooks，`bun install` 时经 prepare 自动安装）强制同一道检查，紧急时用 `git push --no-verify` 跳过。
+- `bun run test`、`bun run typecheck` 可独立准备所需资源；组合检查用 `bun run check`，发布构建用 `bun run build:release`，均在单次执行内复用资源。裸 `bun test` 仅用于资源已准备好的定向验证。

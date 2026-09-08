@@ -29,7 +29,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD \
             || { echo "::error::tag ${GITHUB_REF_NAME} 指向的提交不在 main 分支上，拒绝发版"; exit 1; }
 
-      # Bun 版本与本地开发锁定一致（见 .agents/truth/stack.md）
+      # Bun 版本与构建镜像保持一致。
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.2"
@@ -40,19 +40,17 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           pkg="$(bun -e 'console.log(JSON.parse(require("fs").readFileSync("package.json", "utf8")).version)')"
           echo "tag=$tag package.json=$pkg"
+          [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [ "$tag" = "$pkg" ]
 
       # gdscript.wasm 靠 docker+emscripten 自建（慢），按 lockfile 缓存；命中后 sync-wasm 自动跳过
       - uses: actions/cache@v6
         with:
           path: wasm/
-          key: wasm-${{ hashFiles('bun.lock') }}
+          key: wasm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'scripts/sync-wasm.ts') }}
 
       - run: bun install --frozen-lockfile
-      - run: bun run test # 走 package.json 脚本（含 sync:wasm），裸 bun test 在 fresh clone 上没有 wasm
-      - run: bun run typecheck
-      - run: bun run build
-      - run: bun run scripts/pack.ts
+      - run: bun run build:release
 
       - uses: actions/upload-artifact@v7
         with:
@@ -64,6 +62,67 @@ jobs:
           name: release-assets
           path: dist/release/
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-image-context
+          path: dist/app-image/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  app-image:
+    needs: build
+    if: github.repository == 'firede/renview'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/download-artifact@v8
+        with:
+          name: app-image-context
+          path: dist/app-image
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 封装已验证的应用产物
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: app/Dockerfile
+          build-contexts: release=./dist/app-image
+          build-args: |
+            APP_BUILD=release
+            APP_REVISION=${{ github.sha }}
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/${{ github.repository }}-app:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+      - name: 验证实际镜像
+        run: bun run smoke:app "$APP_TAG"
+        env:
+          APP_TAG: ghcr.io/${{ github.repository }}-app:${{ github.ref_name }}
+      - name: 推送验证后的同一镜像
+        id: push
+        run: |
+          docker push "$APP_TAG"
+          image=$(docker image inspect "$APP_TAG" --format '{{index .RepoDigests 0}}')
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+        env:
+          APP_TAG: ghcr.io/${{ github.repository }}-app:${{ github.ref_name }}
 
   # 按平台在真实 runner 上冒烟：解开对应 tarball，--version 输出必须等于 tag 版本
   smoke:
@@ -96,7 +155,7 @@ jobs:
           [ "$got" = "$expected" ]
 
   publish:
-    needs: smoke
+    needs: [smoke, app-image]
     # 防 fork 误发
     if: github.repository == 'firede/renview'
     runs-on: ubuntu-24.04
@@ -132,3 +191,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+
+  deploy:
+    needs: [publish, app-image]
+    if: github.repository == 'firede/renview'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: app-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - name: 部署已发布版本
+        run: bash scripts/deploy-app.sh
+        env:
+          APP_VERSION: ${{ github.ref_name }}
+          APP_IMAGE: ${{ needs.app-image.outputs.image }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}

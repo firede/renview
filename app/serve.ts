@@ -13,7 +13,6 @@ Bun.serve({
   port: Number(process.env.PORT ?? 3000),
   async fetch(request) {
     const pathname = new URL(request.url).pathname;
-    if (pathname === "/healthz") return Response.json({ ok: true });
     let path: string;
     try {
       path = resolve(root, `.${decodeURIComponent(pathname)}`);

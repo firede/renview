@@ -10,21 +10,34 @@ export interface Cache {
 /** Redis 仅保存可过期的缓存；服务故障时停止上游读取，避免击穿。 */
 export class RedisCache implements Cache {
   private client: RedisClient;
+  private connecting: Promise<void> | null = null;
   constructor(url: string) {
     this.client = new RedisClient(url, { connectionTimeout: 3000, maxRetries: 1 });
   }
+  /** 重试次数耗尽后，下次请求仍可重新连接；合并并发连接尝试。 */
+  private async ready() {
+    if (this.client.connected) return;
+    this.connecting ??= this.client.connect().finally(() => {
+      this.connecting = null;
+    });
+    await this.connecting;
+  }
   async get<T>(key: string): Promise<T | null> {
+    await this.ready();
     const value = await this.client.get(`rv:${key}`);
     return value === null ? null : JSON.parse(value);
   }
   async set(key: string, value: unknown, seconds: number) {
+    await this.ready();
     await this.client.set(`rv:${key}`, JSON.stringify(value), "EX", seconds);
   }
   async take<T>(key: string): Promise<T | null> {
+    await this.ready();
     const value = await this.client.send("GETDEL", [`rv:${key}`]);
     return value === null ? null : JSON.parse(String(value));
   }
   async limit(key: string, maximum: number, seconds: number) {
+    await this.ready();
     const count = await this.client.send("EVAL", [
       "local n = redis.call('INCR', KEYS[1]); if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end; return n",
       "1",

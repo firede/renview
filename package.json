@@ -14,20 +14,23 @@
     "build:web": "vite build",
     "gen:assets": "bun run scripts/gen-assets.ts",
     "gen:demo": "bun run scripts/gen-demo.ts",
-    "build": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run scripts/build.ts",
-    "test": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun test",
-    "typecheck": "bun run build:web && bun run gen:assets && bun run build:app && tsc --noEmit",
+    "build": "bun scripts/tasks.ts build",
+    "test": "bun scripts/tasks.ts test",
+    "typecheck": "bun scripts/tasks.ts typecheck",
     "prepare": "simple-git-hooks",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix --deny-warnings",
     "fmt": "oxfmt --write",
     "fmt:check": "oxfmt --check",
     "dev:app": "bun run sync:wasm && cd app && bun --bun vite",
-    "build:app": "bun run sync:wasm && bun run scripts/build-app.ts",
-    "start:app": "bun app/serve.ts"
+    "build:app": "bun scripts/tasks.ts app",
+    "start:app": "bun app/serve.ts",
+    "check": "bun scripts/tasks.ts check",
+    "build:release": "bun scripts/tasks.ts release",
+    "smoke:app": "bun scripts/smoke-app.ts"
   },
   "simple-git-hooks": {
-    "pre-push": "bun run test && bun run typecheck",
+    "pre-push": "bun run check",
     "pre-commit": "bun run lint-staged"
   },
   "dependencies": {
