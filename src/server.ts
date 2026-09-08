@@ -4,7 +4,14 @@ import { profileForPath } from "./analysis/langs";
 import type { ParsedFile } from "./analysis/map";
 import { analyzeFile, viewerFile } from "./analysis/service";
 import { configPath, createConfigLoader, type LoadedConfig } from "./config";
-import { getReviewDiff, getSideContent, listFiles, resolveDiffArgs, resolveSides } from "./git";
+import {
+  createReviewDiffReader,
+  getReviewDiff,
+  getSideContent,
+  listFiles,
+  resolveDiffArgs,
+  resolveSides,
+} from "./git";
 import { messages, type Locale } from "./i18n";
 import { webAssets } from "./webassets.gen";
 import { listenWithPort } from "./port";
@@ -15,6 +22,7 @@ export interface ServerOptions {
 
 export async function startServer(root: string, gitArgs: string[], opts: ServerOptions) {
   const diffArgs = await resolveDiffArgs(root, gitArgs);
+  const readReview = createReviewDiffReader(root, diffArgs);
 
   // 配置每请求重读（窗口聚焦刷新即生效）；引用相等判断只在内容变化时输出警告
   const cfgPath = configPath();
@@ -46,9 +54,15 @@ export async function startServer(root: string, gitArgs: string[], opts: ServerO
           // 数据接口按当次配置解析语言（改 language 保存后聚焦即生效，无需重启）
           if (url.pathname.startsWith("/api/")) {
             const locale = (await getConfig()).config.language;
-            if (url.pathname === "/api/diff") return handleDiff(root, diffArgs, locale);
+            if (url.pathname === "/api/diff") return handleDiff(root, diffArgs, locale, readReview);
             if (url.pathname === "/api/review-file")
-              return handleReviewFile(root, diffArgs, url.searchParams.get("path"), locale);
+              return handleReviewFile(
+                root,
+                diffArgs,
+                url.searchParams.get("path"),
+                locale,
+                readReview,
+              );
             if (url.pathname === "/api/files") return handleFiles(root, locale);
             if (url.pathname === "/api/file") {
               return handleFile(root, url.searchParams.get("path"), locale);
@@ -61,9 +75,14 @@ export async function startServer(root: string, gitArgs: string[], opts: ServerO
   );
 }
 
-async function handleDiff(root: string, diffArgs: string[], locale: Locale): Promise<Response> {
+async function handleDiff(
+  root: string,
+  diffArgs: string[],
+  locale: Locale,
+  readReview: ReturnType<typeof createReviewDiffReader>,
+): Promise<Response> {
   try {
-    const { diff: fullDiff, sides } = await getReviewDiff(root, diffArgs, locale);
+    const { diff: fullDiff, sides } = await readReview(locale);
     const files = await Promise.all(
       parseDiff(fullDiff).map((f) =>
         buildFileEntry(root, sides, f as unknown as ParsedFile, locale),
@@ -135,12 +154,13 @@ export async function handleReviewFile(
   args: string[],
   path: string | null,
   locale: Locale,
+  readReview = (language: Locale) => getReviewDiff(root, args, language),
 ): Promise<Response> {
   const m = messages(locale).api;
   if (!path || !safeRepoPath(root, path))
     return Response.json({ ok: false, error: m.invalidPath }, { status: 400 });
   try {
-    const { diff, sides } = await getReviewDiff(root, args, locale);
+    const { diff, sides } = await readReview(locale);
     const f = parseDiff(diff).find((f) => (f.to === "/dev/null" ? f.from : f.to) === path);
     if (!f) return Response.json({ ok: false, error: m.fileNotFound }, { status: 404 });
     const read = async (path: string | undefined, side: typeof sides.oldSide) => {

@@ -1,5 +1,7 @@
 import { $ } from "bun";
 import { join } from "node:path";
+import { lstat } from "node:fs/promises";
+import { mapConcurrent } from "./concurrency";
 import { messages, type Locale } from "./i18n";
 
 /** git 空树的固定 hash，用于仓库尚无提交时作为对比基准 */
@@ -32,11 +34,16 @@ export async function getDiff(root: string, args: string[], locale: Locale): Pro
 }
 
 /** 原始 diff 与投影共用同一组来源；仅工作区审阅补入未跟踪文件。 */
-export async function getReviewDiff(root: string, args: string[], locale: Locale) {
+export async function getReviewDiff(
+  root: string,
+  args: string[],
+  locale: Locale,
+  cache?: UntrackedCache,
+) {
   const sides = await resolveSides(root, args);
   const [tracked, untracked] = await Promise.all([
     getDiff(root, args, locale),
-    sides.newSide.type === "worktree" ? getUntrackedDiff(root, extractPathspecs(args)) : "",
+    sides.newSide.type === "worktree" ? getUntrackedDiff(root, extractPathspecs(args), cache) : "",
   ]);
   return { diff: tracked + untracked, sides };
 }
@@ -69,21 +76,57 @@ export async function listFiles(root: string, locale: Locale): Promise<string[]>
   return [...new Set(r.text().split("\0").filter(Boolean))].sort();
 }
 
-/** 为 untracked 文件合成 new-file 风格的 unified diff（git diff 本身不含 untracked） */
-export async function getUntrackedDiff(root: string, pathspecs: string[]): Promise<string> {
+type UntrackedCache = Map<string, { stamp: string; diff: string }>;
+
+/** 每个服务保留未跟踪文件缓存；重叠请求共用读取，完成后仍重新检查工作区。 */
+export function createReviewDiffReader(root: string, args: string[]) {
+  const cache: UntrackedCache = new Map();
+  const pending = new Map<Locale, ReturnType<typeof getReviewDiff>>();
+  return (locale: Locale) => {
+    let task = pending.get(locale);
+    if (!task) {
+      task = getReviewDiff(root, args, locale, cache).finally(() => pending.delete(locale));
+      pending.set(locale, task);
+    }
+    return task;
+  };
+}
+
+/** 为 untracked 文件合成 new-file diff；缓存仅在元数据未变时使用，不修改 Git 索引。 */
+export async function getUntrackedDiff(
+  root: string,
+  pathspecs: string[],
+  cache: UntrackedCache = new Map(),
+): Promise<string> {
   const files = await listUntracked(root, pathspecs);
-  const parts: string[] = [];
-  for (const file of files) {
+  const present = new Set(files);
+  for (const path of cache.keys()) if (!present.has(path)) cache.delete(path);
+  const stamp = async (file: string) => {
+    const s = await lstat(join(root, file), { bigint: true });
+    return `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}:${s.mode}`;
+  };
+  const parts = await mapConcurrent(files, 8, async (file) => {
+    let before: string;
+    try {
+      before = await stamp(file);
+    } catch {
+      cache.delete(file);
+      return "";
+    }
+    const hit = cache.get(file);
+    if (hit?.stamp === before) return hit.diff;
+    cache.delete(file);
     const r =
       await $`git -c core.quotepath=false -C ${root} diff --no-index --no-color --no-ext-diff --no-textconv -- /dev/null ${file}`
         .quiet()
         .nothrow();
-    // --no-index 有差异时退出码为 1，大于 1 才是真正的错误
-    if (r.exitCode > 1) continue;
-    const text = r.text();
-    if (!text) continue;
-    parts.push(text);
-  }
+    // --no-index 有差异时退出码为 1，大于 1 才是真正的错误。
+    if (r.exitCode > 1) return "";
+    const diff = r.text();
+    // 读取中发生变化时不缓存，下一次请求重新生成。
+    if ((await stamp(file).catch(() => null)) === before) cache.set(file, { stamp: before, diff });
+    return diff;
+  });
   return parts.join("");
 }
 

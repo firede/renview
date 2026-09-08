@@ -5,6 +5,8 @@ import * as os from "node:os";
 import { join } from "node:path";
 import {
   EMPTY_TREE,
+  createReviewDiffReader,
+  getUntrackedDiff,
   getReviewDiff,
   getSideContent,
   listFiles,
@@ -214,4 +216,33 @@ describe("审阅数据范围", () => {
     const { diff } = await getReviewDiff(dir, ["--staged"], "en");
     expect(diff).toContain("b/中文.ts");
   });
+});
+
+test("未跟踪缓存复用且文件编辑、新增、删除和暂存后立即失效", async () => {
+  const dir = await makeRepo(true);
+  const cache = new Map<string, { stamp: string; diff: string }>();
+  fs.writeFileSync(join(dir, "draft.ts"), "const n = 1;\n");
+  await getUntrackedDiff(dir, [], cache);
+  const entry = cache.get("draft.ts");
+  await getUntrackedDiff(dir, [], cache);
+  expect(cache.get("draft.ts")).toBe(entry);
+  fs.writeFileSync(join(dir, "draft.ts"), "const n = 2;\n");
+  expect(await getUntrackedDiff(dir, [], cache)).toContain("+const n = 2;");
+  expect(cache.get("draft.ts")).not.toBe(entry);
+  fs.writeFileSync(join(dir, "new.ts"), "const added = 1;\n");
+  expect(await getUntrackedDiff(dir, [], cache)).toContain("new.ts");
+  fs.unlinkSync(join(dir, "new.ts"));
+  await $`git -C ${dir} add draft.ts`.quiet();
+  expect(await getUntrackedDiff(dir, [], cache)).toBe("");
+  expect(cache.size).toBe(0);
+});
+
+test("重叠审阅请求合并，下一轮仍读取工作区变化", async () => {
+  const dir = await makeRepo(true);
+  const read = createReviewDiffReader(dir, ["HEAD"]);
+  const first = read("en");
+  expect(read("en")).toBe(first);
+  await first;
+  fs.writeFileSync(join(dir, "a.txt"), "changed\n");
+  expect((await read("en")).diff).toContain("+changed");
 });
