@@ -59,7 +59,7 @@ renview
 界面默认进入「变更」模式，可在简化视图与原始 diff 之间切换，按需展开未变更的上下文。「浏览」模式用于阅读仓库文件。
 
 - **代码简化**：TypeScript、JavaScript、TSX、JSX、Java、Rust、Go、Python、GDScript。
-- **语法高亮**：TypeScript、JavaScript、TSX、JSX、Java、Rust、Go、Python、GDScript、XML、Groovy、Gradle、Kotlin、Kotlin DSL、Properties、Bash、Batch、JSON、JSONC、JSON5、JSONL、TOML、YAML、Markdown、CSS、SCSS、Sass、Less。
+- **语法高亮**：TypeScript、JavaScript、TSX、JSX、Java、Rust、Go、Python、GDScript、XML、Groovy、Gradle、Kotlin、Kotlin DSL、Properties、Dockerfile、SQL、Bash、Batch、JSON、JSONC、JSON5、JSONL、TOML、YAML、Markdown、CSS、SCSS、Sass、Less。
 
 ## 配置
 

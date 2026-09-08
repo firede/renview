@@ -87,9 +87,15 @@ test("连续行保留跨行注释状态", async () => {
   expect(tokens.slice(9)).toEqual(expected!);
 });
 
-test("Java 生态按文件名选择语法，明暗主题均保留文本并实际着色", async () => {
+test("常见源码与配置按文件名选择语法，明暗主题均保留文本并实际着色", async () => {
   const { shikiLangForPath } = await import("../web/src/langForPath");
   const samples = [
+    ["Dockerfile", "docker", 'FROM alpine:3\nRUN echo "hello"'],
+    ["app/Dockerfile.dev", "docker", "FROM alpine:3\nWORKDIR /app"],
+    ["build/api.dockerfile", "docker", "FROM alpine:3\nCOPY . /app"],
+    ["dockerfile", "docker", "FROM alpine:3\nEXPOSE 8080"],
+    ["db/migrations/001.sql", "sql", "CREATE TABLE orders (id INTEGER PRIMARY KEY);"],
+    ["queries/Orders.SQL", "sql", "SELECT * FROM orders WHERE status = 'paid';"],
     ["src/Order.java", "java", "public record Order(String id) {}"],
     ["pom.xml", "xml", "<project><version>1.0</version></project>"],
     ["layout.fxml", "xml", '<Label text="Hello" />'],

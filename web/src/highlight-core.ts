@@ -50,6 +50,8 @@ const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   groovy: () => import("shiki/langs/groovy.mjs"),
   kotlin: () => import("shiki/langs/kotlin.mjs"),
   properties: () => import("shiki/langs/properties.mjs"),
+  docker: () => import("shiki/langs/docker.mjs"),
+  sql: () => import("shiki/langs/sql.mjs"),
   batch: () => import("shiki/langs/batch.mjs"),
   json: () => import("shiki/langs/json.mjs"),
   jsonc: () => import("shiki/langs/jsonc.mjs"),

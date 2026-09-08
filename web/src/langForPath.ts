@@ -28,6 +28,8 @@ const EXT_LANG: Record<string, string> = {
   kt: "kotlin",
   kts: "kotlin",
   properties: "properties",
+  dockerfile: "docker",
+  sql: "sql",
   sh: "bash",
   bat: "batch",
   cmd: "batch",
@@ -61,6 +63,7 @@ export function shikiLangForPath(path: string | null | undefined): string | null
   const base = path.split("/").pop()!;
   const byName = FILENAME_LANG[base];
   if (byName) return byName;
+  if (/^dockerfile(?:\..+)?$/i.test(base)) return "docker";
   const m = /\.([^.]+)$/.exec(base);
   return m ? (EXT_LANG[m[1]!.toLowerCase()] ?? null) : null;
 }
