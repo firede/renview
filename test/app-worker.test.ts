@@ -14,6 +14,15 @@ test("独立 worker 正确加载 WASM 并复用共享查看器分析", async () 
     expect(file.degradedReason).toBeUndefined();
     expect(file.outline[0]?.name).toBe("fee");
     expect(file.simplified?.[0]).not.toContain(": number");
+    const java = await analyzer.run<ViewerFile>({
+      kind: "file",
+      path: "Order.java",
+      source: "public record Order(Money total) {}",
+      locale: "zh-CN",
+    });
+    expect(java.degradedReason).toBeUndefined();
+    expect(java.outline[0]?.name).toBe("Order");
+    expect(java.simplified?.[0]).toBe("record Order(Money total) {}");
   } finally {
     analyzer.close();
   }

@@ -86,3 +86,30 @@ test("连续行保留跨行注释状态", async () => {
   const expected = await highlightText(source.join("\n"), "typescript", "dark", "deterministic");
   expect(tokens.slice(9)).toEqual(expected!);
 });
+
+test("Java 生态按文件名选择语法，明暗主题均保留文本并实际着色", async () => {
+  const { shikiLangForPath } = await import("../web/src/langForPath");
+  const samples = [
+    ["src/Order.java", "java", "public record Order(String id) {}"],
+    ["pom.xml", "xml", "<project><version>1.0</version></project>"],
+    ["layout.fxml", "xml", '<Label text="Hello" />'],
+    ["schema.xsd", "xml", '<xs:element name="order" />'],
+    ["build.gradle", "groovy", "plugins { id 'java' }"],
+    ["settings.gradle.kts", "kotlin", 'rootProject.name = "shop"'],
+    ["src/Build.groovy", "groovy", 'def name = "shop"'],
+    ["src/Build.kt", "kotlin", 'val name = "shop"'],
+    ["gradle.properties", "properties", "# JVM\norg.gradle.jvmargs=-Xmx2g"],
+    ["gradlew", "bash", '#!/bin/sh\necho "$JAVA_HOME"'],
+    ["mvnw", "bash", '#!/bin/sh\necho "$JAVA_HOME"'],
+    ["gradlew.bat", "batch", "@echo off\nset JAVA_HOME=C:\\Java"],
+    ["mvnw.cmd", "batch", "@echo off\nset JAVA_HOME=C:\\Java"],
+  ];
+  for (const [path, lang, source] of samples) {
+    expect(shikiLangForPath(path)).toBe(lang!);
+    for (const theme of ["light", "dark"] as const) {
+      const tokens = await highlightText(source!, lang!, theme, "deterministic");
+      expect(tokens?.map((line) => line.map((t) => t.content).join("")).join("\n")).toBe(source!);
+      expect(new Set(tokens!.flat().map((t) => t.color)).size).toBeGreaterThan(1);
+    }
+  }
+});

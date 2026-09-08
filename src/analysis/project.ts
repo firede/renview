@@ -352,7 +352,9 @@ function classify(
   const os = sigText(oldSource, o);
   const ns = sigText(newSource, n);
   if (os !== ns) {
-    return { ...base, change: "signature", signature: ns, oldSignature: os };
+    const u: ChangeUnit = { ...base, change: "signature", signature: ns, oldSignature: os };
+    attachDomain(profile, u, o, n, locale);
+    return u;
   }
 
   if (o.bodyNode && n.bodyNode) {
