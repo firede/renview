@@ -332,13 +332,17 @@ export function App() {
       : null,
     source.refreshOnFocus,
   );
-  const context =
-    contextResource.data?.ok &&
-    (payload?.snapshot
-      ? contextResource.data.snapshot === payload.snapshot
-      : contextResource.data.diff === payload?.diff)
-      ? { ...contextResource.data, diff: payload?.diff ?? "" }
-      : null;
+  // 稳定上下文引用，避免高亮完成后的渲染重建文件并再次触发高亮。
+  const context = useMemo(
+    () =>
+      contextResource.data?.ok &&
+      (payload?.snapshot
+        ? contextResource.data.snapshot === payload.snapshot
+        : contextResource.data.diff === payload?.diff)
+        ? { ...contextResource.data, diff: payload?.diff ?? "" }
+        : null,
+    [contextResource.data, payload?.snapshot, payload?.diff],
+  );
   const selectedEntry = context?.entry ?? listedEntry;
   useEffect(() => setExpansions([]), [selectedFile]);
   const expandedFile = useMemo(

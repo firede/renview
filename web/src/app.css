@@ -1162,6 +1162,23 @@ button.icon-btn.spinning svg {
   z-index: 100;
 }
 
+.unit-signature-preview {
+  display: block;
+  max-width: 360px;
+}
+
+.unit-signature-preview > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.unit-signature-preview > span + span {
+  margin-top: 6px;
+}
+
 .tooltip-popup {
   max-width: min(420px, calc(100vw - 24px));
   padding: 5px 8px;

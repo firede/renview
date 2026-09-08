@@ -71,9 +71,14 @@ export function UnitList({
           <Tooltip
             key={u.id}
             content={
-              u.change === "signature" && u.oldSignature && u.signature
-                ? `${u.oldSignature}\n→ ${u.signature}`
-                : u.name
+              u.change === "signature" && u.oldSignature && u.signature ? (
+                <span className="unit-signature-preview">
+                  <span>{u.oldSignature}</span>
+                  <span>→ {u.signature}</span>
+                </span>
+              ) : (
+                u.name
+              )
             }
           >
             <button
