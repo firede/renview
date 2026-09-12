@@ -6,6 +6,7 @@ import rustWasm from "../../wasm/rust.wasm" with { type: "file" };
 import goWasm from "../../wasm/go.wasm" with { type: "file" };
 import gdscriptWasm from "../../wasm/gdscript.wasm" with { type: "file" };
 import pythonWasm from "../../wasm/python.wasm" with { type: "file" };
+import swiftWasm from "../../wasm/swift.wasm" with { type: "file" };
 import javaWasm from "../../wasm/java.wasm" with { type: "file" };
 
 /**
@@ -22,6 +23,7 @@ const GRAMMAR_WASM: Record<string, string> = {
   gdscript: gdscriptWasm,
   python: pythonWasm,
   java: javaWasm,
+  swift: swiftWasm,
 };
 
 let parserReady: Promise<void> | null = null;

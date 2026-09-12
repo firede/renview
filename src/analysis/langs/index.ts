@@ -2,6 +2,7 @@ import type { LanguageProfile } from "./types";
 import { gdscriptProfile } from "./gdscript";
 import { goProfile } from "./go";
 import { pythonProfile } from "./python";
+import { swiftProfile } from "./swift";
 import { javaProfile } from "./java";
 import { rustProfile } from "./rust";
 import { typescriptProfile, tsxProfile } from "./typescript";
@@ -15,6 +16,7 @@ for (const profile of [
   gdscriptProfile,
   pythonProfile,
   javaProfile,
+  swiftProfile,
 ]) {
   for (const ext of profile.extensions) byExtension.set(ext, profile);
 }

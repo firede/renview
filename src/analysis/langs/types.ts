@@ -15,6 +15,8 @@ export interface DeclarationInfo {
   bodyNode: Node | null;
   /** 外层容器名（如所属类、命名空间），用于新旧配对消歧 */
   container: string;
+  /** 同名重载优先按完整签名匹配，再将剩余声明按位置配对。 */
+  pairingSignature?: string;
 }
 
 /** 顶层块折叠类别：import 连续段合并为一行；type-decl 每个声明各成一行 */

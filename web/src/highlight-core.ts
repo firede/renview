@@ -1,3 +1,4 @@
+import { resolveHighlightLanguage } from "./langForPath";
 import type { SRow } from "../../src/analysis/types";
 import {
   isDelete,
@@ -38,6 +39,15 @@ const THEME_LOADERS: Record<ResolvedTheme, () => Promise<{ default: unknown }>> 
 };
 
 const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
+  swift: () => import("shiki/langs/swift.mjs"),
+  "objective-c": () => import("shiki/langs/objective-c.mjs"),
+  "objective-cpp": () => import("shiki/langs/objective-cpp.mjs"),
+  c: () => import("shiki/langs/c.mjs"),
+  cpp: () => import("shiki/langs/cpp.mjs"),
+  ruby: () => import("shiki/langs/ruby.mjs"),
+  openstep: () => import("./langs/apple").then((m) => ({ default: m.openstep })),
+  "apple-strings": () => import("./langs/apple").then((m) => ({ default: m.strings })),
+  xcconfig: () => import("./langs/apple").then((m) => ({ default: m.xcconfig })),
   typescript: () => import("shiki/langs/typescript.mjs"),
   tsx: () => import("shiki/langs/tsx.mjs"),
   javascript: () => import("shiki/langs/javascript.mjs"),
@@ -90,6 +100,7 @@ export async function highlightText(
   theme: ResolvedTheme,
   mode: HighlightMode = "interactive",
 ): Promise<HToken[][] | null> {
+  lang = resolveHighlightLanguage(lang, text);
   const loader = LANG_LOADERS[lang];
   if (!loader) return null;
   const h = await highlighter();

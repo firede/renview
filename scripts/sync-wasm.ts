@@ -1,5 +1,15 @@
+import { createHash } from "node:crypto";
 import { $ } from "bun";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+} from "node:fs";
 
 /** 把 node_modules 里的 tree-sitter wasm 复制到 wasm/，供源码以固定路径内嵌（编译进二进制） */
 
@@ -20,34 +30,57 @@ for (const [src, dst] of Object.entries(MAP)) {
 }
 
 /**
- * tree-sitter-gdscript 的 npm 包不附带 wasm（只有 parser.c 源码），
- * 用 docker（emscripten/emsdk）+ tree-sitter CLI 从 grammar 源码构建；已存在则跳过。
+ * gdscript 和 swift 的 npm 包不附带 wasm（只有 parser.c 源码），
+ * 用 docker（emscripten/emsdk）+ tree-sitter CLI 构建；Swift 同时校验依赖与构建脚本指纹。
  */
-async function syncGdscript(): Promise<void> {
-  const dst = "wasm/gdscript.wasm";
-  if (existsSync(dst)) {
+async function buildGrammar(name: string): Promise<void> {
+  const dst = `wasm/${name}.wasm`;
+  const stamp = `${dst}.build-id`;
+  const buildId =
+    name === "swift"
+      ? createHash("sha256")
+          .update(readFileSync(import.meta.path))
+          .update(readFileSync(`node_modules/tree-sitter-${name}/package.json`))
+          .digest("hex")
+      : null;
+  if (
+    existsSync(dst) &&
+    (!buildId || (existsSync(stamp) && readFileSync(stamp, "utf8") === buildId))
+  ) {
     console.log(`${dst} 已存在，跳过构建`);
     return;
   }
-  const buildDir = ".wasm-build/gdscript";
+  const buildDir = `.wasm-build/${name}`;
   rmSync(buildDir, { recursive: true, force: true });
   mkdirSync(buildDir, { recursive: true });
   for (const f of ["grammar.js", "tree-sitter.json", "src"]) {
-    cpSync(`node_modules/tree-sitter-gdscript/${f}`, `${buildDir}/${f}`, { recursive: true });
+    cpSync(`node_modules/tree-sitter-${name}/${f}`, `${buildDir}/${f}`, { recursive: true });
+  }
+  if (name === "swift") {
+    // 0.7.1 的 scanner 分配了零字节，且空快照未清理 raw string 状态。
+    const scannerPath = `${buildDir}/src/scanner.c`;
+    const scanner = readFileSync(scannerPath, "utf8")
+      .replace("calloc(0, sizeof(struct ScannerState))", "calloc(1, sizeof(struct ScannerState))")
+      .replace(
+        "if (length < 4) {\n        return;",
+        "if (length < 4) {\n        tree_sitter_swift_external_scanner_reset(payload);\n        return;",
+      );
+    writeFileSync(scannerPath, scanner);
   }
   // CLI 版本与 package.json devDependencies 的 tree-sitter-cli 保持一致
   // 容器内是 root，构建产物在 Linux 宿主机上属 root 所有，chown 回宿主用户以便清理与缓存
   //（macOS/Windows 的 Docker Desktop 本就映射为宿主用户，chown 无害）
   const uid = process.getuid?.() ?? 0;
   const gid = process.getgid?.() ?? 0;
-  const cmd = `npm i --no-save --silent tree-sitter-cli@0.25.10 && npx tree-sitter build --wasm . && chown -R ${uid}:${gid} /work`;
-  console.log("构建 tree-sitter-gdscript wasm（docker + emscripten，首次需拉取镜像）…");
+  const generate = name === "swift" ? "npx tree-sitter generate && " : "";
+  const cmd = `npm i --no-save --silent tree-sitter-cli@0.25.10 && ${generate}npx tree-sitter build --wasm . && chown -R ${uid}:${gid} /work`;
+  console.log(`构建 tree-sitter-${name} wasm（docker + emscripten，首次需拉取镜像）…`);
   const r =
     await $`docker run --rm -v ${process.cwd()}/${buildDir}:/work -w /work emscripten/emsdk:3.1.74 bash -lc ${cmd}`
       .quiet()
       .nothrow();
   if (r.exitCode !== 0) {
-    console.error(`gdscript wasm 构建失败（需要可用的 docker）：\n${r.stderr.toString()}`);
+    console.error(`${name} wasm 构建失败（需要可用的 docker）：\n${r.stderr.toString()}`);
     process.exit(1);
   }
   const built = readdirSync(buildDir).find((f) => f.endsWith(".wasm"));
@@ -56,6 +89,7 @@ async function syncGdscript(): Promise<void> {
     process.exit(1);
   }
   copyFileSync(`${buildDir}/${built}`, dst);
+  if (buildId) writeFileSync(stamp, buildId);
   try {
     rmSync(".wasm-build", { recursive: true, force: true });
   } catch {
@@ -65,4 +99,5 @@ async function syncGdscript(): Promise<void> {
   console.log(`${buildDir}/${built} -> ${dst}`);
 }
 
-await syncGdscript();
+await buildGrammar("gdscript");
+await buildGrammar("swift");

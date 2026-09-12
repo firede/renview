@@ -57,8 +57,26 @@ function pairUp(
   const keys = new Set([...oldMap.keys(), ...newMap.keys()]);
   const pairs: Array<[DeclarationInfo | null, DeclarationInfo | null]> = [];
   for (const key of keys) {
-    const os = oldMap.get(key) ?? [];
-    const ns = newMap.get(key) ?? [];
+    let os = oldMap.get(key) ?? [];
+    let ns = newMap.get(key) ?? [];
+    if (os.some((d) => d.pairingSignature) || ns.some((d) => d.pairingSignature)) {
+      const available = new Map<string, DeclarationInfo[]>();
+      for (const n of ns) {
+        if (!n.pairingSignature) continue;
+        const group = available.get(n.pairingSignature) ?? [];
+        group.push(n);
+        available.set(n.pairingSignature, group);
+      }
+      const paired = new Set<DeclarationInfo>();
+      os = os.filter((o) => {
+        const match = o.pairingSignature ? available.get(o.pairingSignature)?.shift() : null;
+        if (!match) return true;
+        pairs.push([o, match]);
+        paired.add(match);
+        return false;
+      });
+      ns = ns.filter((n) => !paired.has(n));
+    }
     for (let i = 0; i < Math.max(os.length, ns.length); i++) {
       pairs.push([os[i] ?? null, ns[i] ?? null]);
     }

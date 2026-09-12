@@ -119,3 +119,86 @@ test("常见源码与配置按文件名选择语法，明暗主题均保留文�
     }
   }
 });
+
+test("Apple 工程与源码文件按语法着色，原文在明暗主题中保持完整", async () => {
+  const { shikiLangForPath } = await import("../web/src/langForPath");
+  const samples = [
+    ["Store.swift", "swift", '@MainActor final class Store { var title = "你好" }'],
+    ["Store.swiftinterface", "swift", "public func load(id: Int) async throws -> Item"],
+    [
+      "Store.m",
+      "objective-c",
+      "@interface Store : NSObject\n@property (nonatomic, copy) NSString *title;\n@end",
+    ],
+    ["Store.mm", "objective-cpp", "#include <vector>\n@implementation Store\n@end"],
+    ["Bridge.h", "c", "@interface Store : NSObject\n@end"],
+    ["Core.h", "c", "int load(void);"],
+    ["Core.hpp", "cpp", "template<class T> struct Box { T value; };"],
+    ["Shaders.metal", "cpp", "#include <metal_stdlib>\nusing namespace metal;"],
+    ["Info.plist", "xml", "<plist><dict><key>Name</key><string>App</string></dict></plist>"],
+    [
+      "App.entitlements",
+      "xml",
+      "<plist><dict><key>com.apple.security.app-sandbox</key><true/></dict></plist>",
+    ],
+    [
+      "PrivacyInfo.xcprivacy",
+      "xml",
+      "<plist><dict><key>NSPrivacyTracking</key><false/></dict></plist>",
+    ],
+    ["Main.storyboard", "xml", "<document><scenes/></document>"],
+    ["Main.xib", "xml", "<document><objects/></document>"],
+    ["App.xcscheme", "xml", '<Scheme version="1.3"/>'],
+    ["contents.xcworkspacedata", "xml", '<Workspace version="1.0"/>'],
+    ["Localizable.stringsdict", "xml", "<plist><dict/></plist>"],
+    ["Localizable.xcstrings", "json", '{"sourceLanguage":"en","strings":{}}'],
+    ["App.xctestplan", "json", '{"version":1,"testTargets":[]}'],
+    ["Package.resolved", "json", '{"pins":[],"version":3}'],
+    ["Assets.xcassets/Contents.json", "json", '{"info":{"version":1}}'],
+    [
+      "App.xcodeproj/project.pbxproj",
+      "openstep",
+      "// !$*UTF8*$!\n{ objects = { ABC123 /* App */ = { isa = PBXGroup; children = (); }; }; }",
+    ],
+    ["Localizable.strings", "apple-strings", '/* 翻译 */\n"greeting" = "Hello %@, %1$d \\n";'],
+    [
+      "Debug.xcconfig",
+      "xcconfig",
+      '#include? "Base.xcconfig"\nOTHER_LDFLAGS[sdk=iphoneos*] = $(inherited) -ObjC',
+    ],
+    ["Podfile", "ruby", 'platform :ios, "17.0"'],
+    ["App.podspec", "ruby", 'Pod::Spec.new do |s|\n s.name = "App"\nend'],
+    ["Fastfile", "ruby", 'lane :beta do\n build_app(scheme: "App")\nend'],
+    ["Podfile.lock", "yaml", "PODS:\n  - App (1.0)"],
+  ];
+  for (const [path, lang, source] of samples) {
+    expect(shikiLangForPath(path)).toBe(lang!);
+    for (const theme of ["light", "dark"] as const) {
+      const tokens = await highlightText(source!, lang!, theme, "deterministic");
+      expect(tokens?.map((line) => line.map((t) => t.content).join("")).join("\n")).toBe(source!);
+      expect(new Set(tokens!.flat().map((t) => t.color)).size).toBeGreaterThan(1);
+    }
+  }
+  expect(shikiLangForPath("Inputs.xcfilelist")).toBeNull();
+});
+
+test("Apple 格式多行注释、变量、占位符和格式推断保留上下文", async () => {
+  const { resolveHighlightLanguage } = await import("../web/src/langForPath");
+  expect(resolveHighlightLanguage("c", "@interface A\nstd::vector<int> values;")).toBe(
+    "objective-cpp",
+  );
+  expect(resolveHighlightLanguage("c", "namespace A {} ")).toBe("cpp");
+  expect(resolveHighlightLanguage("xml", "/* 属性 */ { name = App; }")).toBe("openstep");
+  expect(resolveHighlightLanguage("apple-strings", '<?xml version="1.0"?><plist/>')).toBe("xml");
+  for (const lang of ["openstep", "apple-strings", "xcconfig"]) {
+    const lines = ["/* 注释", "跨行注释 */", '"name" = "Hello %@";'];
+    const tokens = await highlightSparseLines(
+      new Map(lines.map((line, i) => [i + 20, line])),
+      lang,
+      "dark",
+      "deterministic",
+    );
+    const full = await highlightText(lines.join("\n"), lang, "dark", "deterministic");
+    expect(tokens.slice(19)).toEqual(full!);
+  }
+});

@@ -2,6 +2,35 @@
 
 /** 扩展名 → shiki 语言（有 profile 的语言 + 无简化规则但值得高亮的常见格式） */
 const EXT_LANG: Record<string, string> = {
+  swift: "swift",
+  swiftinterface: "swift",
+  m: "objective-c",
+  mm: "objective-cpp",
+  c: "c",
+  h: "c",
+  cc: "cpp",
+  cpp: "cpp",
+  cxx: "cpp",
+  hh: "cpp",
+  hpp: "cpp",
+  hxx: "cpp",
+  metal: "cpp",
+  plist: "xml",
+  entitlements: "xml",
+  xcprivacy: "xml",
+  stringsdict: "xml",
+  storyboard: "xml",
+  xib: "xml",
+  xcscheme: "xml",
+  xcworkspacedata: "xml",
+  xccheckout: "xml",
+  xcstrings: "json",
+  xctestplan: "json",
+  pbxproj: "openstep",
+  strings: "apple-strings",
+  xcconfig: "xcconfig",
+  podspec: "ruby",
+  rb: "ruby",
   ts: "typescript",
   mts: "typescript",
   cts: "typescript",
@@ -50,6 +79,16 @@ const EXT_LANG: Record<string, string> = {
 
 /** 按文件名的特殊映射（无扩展名）；gitignore 类文件无专用语法，用 bash 近似（注释与通配模式均可读） */
 const FILENAME_LANG: Record<string, string> = {
+  "Package.resolved": "json",
+  "Podfile.lock": "yaml",
+  Podfile: "ruby",
+  Gemfile: "ruby",
+  Fastfile: "ruby",
+  Appfile: "ruby",
+  Matchfile: "ruby",
+  Deliverfile: "ruby",
+  Scanfile: "ruby",
+  Snapfile: "ruby",
   ".gitignore": "bash",
   ".gitattributes": "bash",
   ".dockerignore": "bash",
@@ -66,4 +105,21 @@ export function shikiLangForPath(path: string | null | undefined): string | null
   if (/^dockerfile(?:\..+)?$/i.test(base)) return "docker";
   const m = /\.([^.]+)$/.exec(base);
   return m ? (EXT_LANG[m[1]!.toLowerCase()] ?? null) : null;
+}
+
+/** 只修正有歧义的候选语法；缺少完整上下文时保留路径默认值。 */
+export function resolveHighlightLanguage(lang: string, source: string): string {
+  if (lang === "c") {
+    const objc = /@(interface|implementation|protocol|class|property|end)\b/.test(source);
+    const cpp = /\b(namespace|template)\s*[<{\w]|\bstd::/.test(source);
+    if (objc) return cpp ? "objective-cpp" : "objective-c";
+    if (cpp) return "cpp";
+  }
+  if (
+    (lang === "xml" || lang === "apple-strings") &&
+    /^\s*(?:<\?xml\b|<!DOCTYPE\s+plist|<plist\b)/.test(source)
+  )
+    return "xml";
+  if (lang === "xml" && /^\s*(?:\/\*[\s\S]*?\*\/\s*)*[{(]/.test(source)) return "openstep";
+  return lang;
 }
