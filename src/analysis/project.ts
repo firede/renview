@@ -9,9 +9,44 @@ export class ParseError extends Error {}
 
 const TYPE_TEXT_LIMIT = 2000;
 
-/** 空白归一化：仅格式变化不视为变更（已知局限：字符串字面量内的连续空格会被抹平） */
+/** 仅用于摘要展示；变更判断使用语法 token，保留字面量内的空白。 */
 function normalize(text: string): string {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function isComment(node: Node): boolean {
+  return /^(comment|line_comment|block_comment|multiline_comment)$/.test(node.type);
+}
+
+/** 保留 token 边界与字面量原文，忽略语法间空白。 */
+function syntaxText(
+  node: Node,
+  includeComments = false,
+  end = node.endIndex,
+  variableSignature = false,
+): string {
+  const tokens: string[] = [];
+  const walk = (current: Node) => {
+    if (current.startIndex >= end) return;
+    if (isComment(current)) {
+      if (includeComments) tokens.push(current.text);
+      return;
+    }
+    if (variableSignature && current.type === "=") return;
+    if (current.childCount === 0 || /string|template|char_literal/.test(current.type)) {
+      tokens.push(current.type, current.text);
+      return;
+    }
+    tokens.push(current.type, "(");
+    for (let i = 0; i < current.childCount; i++) {
+      const field = current.fieldNameForChild(i);
+      if (variableSignature && (field === "value" || field === "right")) continue;
+      walk(current.child(i)!);
+    }
+    tokens.push(")");
+  };
+  walk(node);
+  return JSON.stringify(tokens);
 }
 
 function truncate(text: string, locale: Locale): string {
@@ -24,10 +59,6 @@ function truncate(text: string, locale: Locale): string {
 function sigText(source: string, d: DeclarationInfo): string {
   const end = d.bodyNode ? d.bodyNode.startIndex : d.node.endIndex;
   return normalize(source.slice(d.node.startIndex, end));
-}
-
-function fullText(source: string, d: DeclarationInfo): string {
-  return normalize(source.slice(d.node.startIndex, d.node.endIndex));
 }
 
 function pairKey(d: DeclarationInfo): string {
@@ -88,22 +119,17 @@ function rangeOf(d: DeclarationInfo): [number, number] {
   return [d.node.startPosition.row + 1, d.node.endPosition.row + 1];
 }
 
+/** 按类别聚合；先读声明契约，再读增删与实现，注释保留独立入口。 */
 const CHANGE_ORDER: Record<ChangeKind, number> = {
   signature: 0,
-  added: 1,
-  removed: 2,
-  body: 3,
-  "type-only": 4,
+  "type-only": 1,
+  added: 2,
+  removed: 3,
+  body: 4,
+  comment: 5,
 };
 
-/**
- * 审阅排序（先看契约再看实现）：
- * 成员增减的形状信号（带 domain）先于普通实现，纯类型细节（无 domain 的 type-only）仍在末尾。
- * added/removed 的实体生命周期顺序不变（它们本来就在 body 之前）。
- */
 function unitRank(u: ChangeUnit): number {
-  if (u.change !== "body" && u.change !== "type-only") return CHANGE_ORDER[u.change];
-  if (u.domain) return 2.5;
   return CHANGE_ORDER[u.change];
 }
 
@@ -177,7 +203,7 @@ export function analyzeParsed(
   // 类整体的 body 变更若已被成员单元完全覆盖（方法改动），去掉重复的类单元；
   // 但数据形状类（带 domain，如 Python 纯数据类）保留——类级单元正是领域总览的入口
   const deduped = units.filter((cu) => {
-    if (cu.kind !== "class" || cu.change !== "body") return true;
+    if (cu.kind !== "class" || (cu.change !== "body" && cu.change !== "comment")) return true;
     if (cu.domain) return true;
     const [s, e] = cu.newRange ?? cu.oldRange!;
     const lines = cu.newRange ? newLines : oldLines;
@@ -210,8 +236,10 @@ export function analyzeParsed(
     const oldComments = oldTree ? collectCommentRanges(oldTree.rootNode) : [];
     const newComments = newTree ? collectCommentRanges(newTree.rootNode) : [];
     const commentOnly =
-      (!strayOld || strayAllInComments(meaningfulOld, coveredOld, oldComments)) &&
-      (!strayNew || strayAllInComments(meaningfulNew, coveredNew, newComments));
+      (!strayOld ||
+        strayAllInComments(meaningfulOld, coveredOld, oldComments, oldTree?.rootNode ?? null)) &&
+      (!strayNew ||
+        strayAllInComments(meaningfulNew, coveredNew, newComments, newTree?.rootNode ?? null));
     deduped.push({
       id: `other:${strayOld?.[0] ?? strayNew?.[0] ?? 0}`,
       kind: "other",
@@ -219,7 +247,7 @@ export function analyzeParsed(
         ? messages(locale).analysis.commentChanges
         : messages(locale).analysis.outsideDeclarations,
       container: "",
-      change: "body",
+      change: commentOnly ? "comment" : "body",
       oldRange: strayOld ?? undefined,
       newRange: strayNew ?? undefined,
     });
@@ -233,6 +261,7 @@ export function analyzeParsed(
 
   const summary: Record<ChangeKind, number> = {
     signature: 0,
+    comment: 0,
     body: 0,
     "type-only": 0,
     added: 0,
@@ -355,8 +384,12 @@ function classify(
   }
   if (!o || !n || oldSource == null || newSource == null) return null;
 
-  if (o.typeLevel || n.typeLevel) {
-    if (fullText(oldSource, o) === fullText(newSource, n)) return null;
+  if (syntaxText(o.node) === syntaxText(n.node)) {
+    if (syntaxText(o.node, true) === syntaxText(n.node, true)) return null;
+    return { ...base, change: "comment" };
+  }
+
+  if ((o.typeLevel || n.typeLevel) && ref!.kind !== "function") {
     const u: ChangeUnit = {
       ...base,
       change: "type-only",
@@ -369,15 +402,17 @@ function classify(
 
   const os = sigText(oldSource, o);
   const ns = sigText(newSource, n);
-  if (os !== ns) {
+  const oldSignature = syntaxText(o.node, false, o.bodyNode?.startIndex, o.kind === "variable");
+  const newSignature = syntaxText(n.node, false, n.bodyNode?.startIndex, n.kind === "variable");
+  if (oldSignature !== newSignature) {
     const u: ChangeUnit = { ...base, change: "signature", signature: ns, oldSignature: os };
     attachDomain(profile, u, o, n, locale);
     return u;
   }
 
   if (o.bodyNode && n.bodyNode) {
-    const ob = normalize(oldSource.slice(o.bodyNode.startIndex, o.bodyNode.endIndex));
-    const nb = normalize(newSource.slice(n.bodyNode.startIndex, n.bodyNode.endIndex));
+    const ob = syntaxText(o.bodyNode);
+    const nb = syntaxText(n.bodyNode);
     if (ob === nb) return null;
     const u: ChangeUnit = {
       ...base,
@@ -389,7 +424,7 @@ function classify(
   }
 
   // 无 body 的非类型级单元（变量、枚举等）：整体比较
-  if (fullText(oldSource, o) !== fullText(newSource, n)) {
+  if (syntaxText(o.node) !== syntaxText(n.node)) {
     return {
       ...base,
       change: "body",
@@ -418,7 +453,7 @@ function strayLines(lines: Set<number>, covered: Array<[number, number]>): [numb
 function collectCommentRanges(root: Node): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
   const walk = (n: Node) => {
-    if (n.type === "comment") {
+    if (isComment(n)) {
       ranges.push([n.startPosition.row + 1, n.endPosition.row + 1]);
       return;
     }
@@ -433,10 +468,23 @@ function strayAllInComments(
   lines: Set<number>,
   covered: Array<[number, number]>,
   comments: Array<[number, number]>,
+  root: Node | null,
 ): boolean {
+  const stray = new Set<number>();
   for (const ln of lines) {
     if (covered.some(([s, e]) => ln >= s && ln <= e)) continue;
     if (!comments.some(([s, e]) => ln >= s && ln <= e)) return false;
+    stray.add(ln);
   }
-  return true;
+  // 行范围只能证明存在注释；同行还有代码时不能降为纯注释。
+  const hasCode = (node: Node): boolean => {
+    if (isComment(node)) return false;
+    if (node.childCount > 0) return node.children.some(hasCode);
+    if (!node.text.trim()) return false;
+    for (let line = node.startPosition.row + 1; line <= node.endPosition.row + 1; line++) {
+      if (stray.has(line)) return true;
+    }
+    return false;
+  };
+  return root != null && !hasCode(root);
 }

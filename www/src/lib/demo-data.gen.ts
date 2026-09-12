@@ -18,6 +18,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "rust",
             "summary": {
               "signature": 1,
+              "comment": 0,
               "body": 0,
               "type-only": 1,
               "added": 0,
@@ -289,6 +290,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "go",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 1,
               "type-only": 0,
               "added": 0,
@@ -413,6 +415,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "typescript",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 0,
               "type-only": 0,
               "added": 1,
@@ -484,6 +487,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "rust",
             "summary": {
               "signature": 1,
+              "comment": 0,
               "body": 0,
               "type-only": 1,
               "added": 0,
@@ -1018,6 +1022,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "go",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 1,
               "type-only": 0,
               "added": 0,
@@ -1380,6 +1385,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "typescript",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 0,
               "type-only": 0,
               "added": 1,
@@ -1509,6 +1515,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "rust",
             "summary": {
               "signature": 1,
+              "comment": 0,
               "body": 0,
               "type-only": 1,
               "added": 0,
@@ -1780,6 +1787,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "go",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 1,
               "type-only": 0,
               "added": 0,
@@ -1904,6 +1912,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "typescript",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 0,
               "type-only": 0,
               "added": 1,
@@ -1975,6 +1984,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "rust",
             "summary": {
               "signature": 1,
+              "comment": 0,
               "body": 0,
               "type-only": 1,
               "added": 0,
@@ -2509,6 +2519,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "go",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 1,
               "type-only": 0,
               "added": 0,
@@ -2871,6 +2882,7 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "language": "typescript",
             "summary": {
               "signature": 0,
+              "comment": 0,
               "body": 0,
               "type-only": 0,
               "added": 1,

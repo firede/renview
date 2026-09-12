@@ -5,7 +5,7 @@ import type { ViewRow } from "./view";
 export type { EraseSpan, SimplifiedViewData, SRow } from "./simplify";
 export type { ViewRow } from "./view";
 
-export type ChangeKind = "signature" | "body" | "type-only" | "added" | "removed";
+export type ChangeKind = "signature" | "body" | "type-only" | "added" | "removed" | "comment";
 export type DeclKind = "function" | "class" | "type" | "variable" | "other";
 
 /** 领域模型（数据形状）变更的成员信息：只留业务词汇，不含类型细节 */

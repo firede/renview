@@ -23,6 +23,7 @@ export const en: Strings = {
     "no-source": "Couldn't read file content",
   },
   summaryChips: {
+    comment: "Comment",
     signature: "Signature",
     body: "Body",
     "type-only": "Type",

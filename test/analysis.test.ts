@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { profileForPath } from "../src/analysis/langs";
 import { pythonProfile } from "../src/analysis/langs/python";
 import { typescriptProfile } from "../src/analysis/langs/typescript";
 import { analyzeFile, outlineOf, withParsedSides } from "../src/analysis/project";
@@ -172,20 +173,20 @@ describe("领域模型成员（domain）", () => {
     expect(u.domain).toBeUndefined();
   });
 
-  test("排序：成员增减的形状信号先于普通实现，纯类型细节仍在末尾", async () => {
+  test("排序：类型变更无论是否增删成员均先于实现", async () => {
     const next = BASE.replace("  y: number;\n}", "  y: number;\n  z?: number;\n}").replace(
       "return `hi ${name}`;",
       "return `hello ${name}!`;",
     );
     const p = await analyzeFile(typescriptProfile, BASE, next, lines(11), lines(4, 11), "zh-CN");
     expect(p.units.map((u) => u.name)).toEqual(["Point", "greet"]);
-    // 纯细节变更无 domain，排在实现之后
+    // 成员类型变化同样先于实现，不靠成员增删推断重要性。
     const detail = BASE.replace("  x: number;\n", "  x: string;\n").replace(
       "return `hi ${name}`;",
       "return `hello ${name}!`;",
     );
     const p2 = await analyzeFile(typescriptProfile, BASE, detail, lines(11), lines(2, 11), "zh-CN");
-    expect(p2.units.map((u) => u.name)).toEqual(["greet", "Point"]);
+    expect(p2.units.map((u) => u.name)).toEqual(["Point", "greet"]);
   });
 
   test("Python 纯数据类加字段：类级单元带 domain（成员增删）", async () => {
@@ -273,14 +274,14 @@ export class OrderService {
     expect(p.units[0]!.name).toBe("Card");
   });
 
-  test("顶层重载签名变更：type-only 单元而非'声明之外的变更'兜底", async () => {
+  test("顶层重载签名变更与普通函数签名同类", async () => {
     const old = `function find(id: string): Item;\nfunction find(ids: string[]): Item[];\n`;
     const next = `function find(id: string): Item | null;\nfunction find(ids: string[]): Item[];\n`;
     const p = await analyzeFile(typescriptProfile, old, next, lines(1), lines(1), "zh-CN");
     expect(p.units).toHaveLength(1);
-    expect(p.units[0]!.change).toBe("type-only");
+    expect(p.units[0]!.change).toBe("signature");
     expect(p.units[0]!.name).toBe("find");
-    expect(p.units[0]!.typeText).toContain("Item | null");
+    expect(p.units[0]!.signature).toContain("Item | null");
   });
 
   test("declare function 可收集", async () => {
@@ -326,4 +327,100 @@ test("注释夹杂空行仍归为注释变更且锚点非空", async () => {
   expect(p.units).toHaveLength(1);
   expect(p.units[0]!.newRange).toEqual([2, 2]);
   expect(p.units[0]!.name).toBe("注释变更");
+});
+
+describe("变更性质与聚合", () => {
+  test.each([
+    ["const x = 1;", "const x = 2;", "body"],
+    ["const x: number = 1;", "const x: string = 1;", "signature"],
+    ["const x = 1;", "const x  =  1;", null],
+    ['const x = "a b";', 'const x = "a  b";', "body"],
+    ['function f() { return "a b"; }', 'function f() { return "a  b"; }', "body"],
+    ["function f() { /* 旧 */ return 1; }", "function f() { /* 新 */ return 1; }", "comment"],
+    ["function f() { /* 旧 */ return 1; }", "function f() { /* 新 */ return 2; }", "body"],
+    ["interface A { /* 旧 */ x: string }", "interface A { /* 新 */ x: string }", "comment"],
+  ] as const)("%s → %s", async (old, next, change) => {
+    const p = await analyzeFile(typescriptProfile, old, next, lines(1), lines(1), "zh-CN");
+    expect(p.units.map((u) => u.change)).toEqual(change ? [change] : []);
+    if (change === "comment") {
+      expect(p.summary.comment).toBe(1);
+      expect(p.summary.body).toBe(0);
+    }
+  });
+
+  test("方法内注释变化不重复生成类入口", async () => {
+    const old = "class A {\n f() { /* 旧 */ return 1; }\n}";
+    const next = old.replace("旧", "新");
+    const p = await analyzeFile(typescriptProfile, old, next, lines(2), lines(2), "zh-CN");
+    expect(p.units.map((u) => [u.name, u.change])).toEqual([["f", "comment"]]);
+  });
+
+  test("新增和删除分别聚合，组内按源码位置排列", async () => {
+    const old = "function z() {}\nfunction a() {}";
+    const next = "function y() {}\nfunction b() {}";
+    const p = await analyzeFile(typescriptProfile, old, next, lines(1, 2), lines(1, 2), "zh-CN");
+    expect(p.units.map((u) => [u.name, u.change])).toEqual([
+      ["y", "added"],
+      ["b", "added"],
+      ["z", "removed"],
+      ["a", "removed"],
+    ]);
+  });
+});
+
+describe("跨语言分类边界", () => {
+  test.each([
+    ["a.ts", "const x = 1;", "const x = 2;"],
+    ["a.py", "x = 1", "x = 2"],
+    ["a.go", "package a\nvar x = 1", "package a\nvar x = 2"],
+    ["a.rs", "const X: i32 = 1;", "const X: i32 = 2;"],
+    ["a.java", "class A { int x = 1; }", "class A { int x = 2; }"],
+    ["a.swift", "let x = 1", "let x = 2"],
+    ["a.gd", "var x = 1", "var x = 2"],
+  ])("%s 初始化值变化属于实现", async (path, old, next) => {
+    const p = await analyzeFile(
+      profileForPath(path)!,
+      old,
+      next,
+      lines(old.split("\n").length),
+      lines(next.split("\n").length),
+      "zh-CN",
+    );
+    expect(p.units.map((u) => u.change)).toEqual(["body"]);
+  });
+
+  test.each([
+    ["a.ts", "// 旧"],
+    ["a.py", "# 旧"],
+    ["a.go", "package a\n// 旧"],
+    ["a.rs", "// 旧"],
+    ["a.java", "/* 旧 */"],
+    ["a.swift", "/* 旧 */"],
+    ["a.gd", "# 旧"],
+  ])("%s 声明外注释单独计数", async (path, old) => {
+    const p = await analyzeFile(
+      profileForPath(path)!,
+      old,
+      old.replace("旧", "新"),
+      lines(old.split("\n").length),
+      lines(old.split("\n").length),
+      "zh-CN",
+    );
+    expect(p.units.map((u) => u.change)).toEqual(["comment"]);
+    expect(p.summary.body).toBe(0);
+  });
+
+  test("Python 缩进改变语法结构时仍生成实现入口", async () => {
+    const old = "def f(x):\n    if x:\n        print(x)\n    return x\n";
+    const next = old.replace("    return x", "        return x");
+    const p = await analyzeFile(pythonProfile, old, next, lines(4), lines(4), "zh-CN");
+    expect(p.units.map((u) => u.change)).toEqual(["body"]);
+  });
+});
+
+test("导入与注释同行时不把代码变化降为注释", async () => {
+  const old = 'import "old"; // 说明';
+  const next = 'import "new"; // 说明';
+  const p = await analyzeFile(typescriptProfile, old, next, lines(1), lines(1), "zh-CN");
+  expect(p.units.map((u) => u.change)).toEqual(["body"]);
 });

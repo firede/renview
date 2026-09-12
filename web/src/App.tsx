@@ -63,13 +63,13 @@ interface DiffPayload {
   unreachable?: boolean;
 }
 
-/** 变更分类徽章的样式类（顺序即展示顺序；文案在 i18n 目录的 summaryChips） */
+/** 文件列表仅汇总代码分类；注释在变更单元区呈现，避免重复强调。 */
 const SUMMARY_CHIP_CLASS: Array<[ChangeKind, string]> = [
   ["signature", "chip-signature"],
-  ["body", "chip-body"],
   ["type-only", "chip-type"],
   ["added", "chip-added"],
   ["removed", "chip-removed"],
+  ["body", "chip-body"],
 ];
 
 function fileKey(file: FileData): string {

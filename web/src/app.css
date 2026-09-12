@@ -1247,3 +1247,7 @@ button.icon-btn.spinning svg {
     background-color: var(--accent-muted);
   }
 }
+
+.chg-comment {
+  color: var(--fg-dim);
+}

@@ -6,6 +6,7 @@ import { KindGlyph } from "./icons";
 /** 变更分类的样式类（与文件列表徽章同一配色，纯文字无描边） */
 const CHANGE_CLASS: Record<ChangeKind, string> = {
   signature: "chg-signature",
+  comment: "chg-comment",
   body: "chg-body",
   "type-only": "chg-type-only",
   added: "chg-added",
@@ -44,14 +45,7 @@ function MemberDelta({ unit }: { unit: ChangeUnit }) {
   );
 }
 
-/**
- * 当前文件的变更单元列表（服务端已按 签名→新增→删除→形状→实现→类型 排序）。
- * 点击导航到 diff 对应行——单元是审阅顺序的物理化入口，先看契约再看实现。
- * 数据形状变更的成员增删直接缀在同一行内，不另起区域、不新增交互。
- * 同一种成员增减在不同语言下底层分类不同（TS 计类型、Python 计实现），
- * 行内徽章统一显示"结构"（中性色），不让语法分类泄漏到产品表达；
- * 实体增删（added/removed）本来跨语言一致，保留生命周期标签。
- */
+/** 按服务端分类顺序呈现导航入口，成员增删作为补充信号。 */
 export function UnitList({
   units,
   onJump,
@@ -66,7 +60,6 @@ export function UnitList({
   return (
     <div className="unit-list">
       {units.map((u) => {
-        const isShape = u.domain != null && (u.change === "type-only" || u.change === "body");
         return (
           <Tooltip
             key={u.id}
@@ -88,9 +81,7 @@ export function UnitList({
             >
               <KindGlyph kind={u.kind} />
               <span className="unit-name">{u.name}</span>
-              <span className={`chg ${isShape ? "chg-type-only" : CHANGE_CLASS[u.change]}`}>
-                {isShape ? s.domainShape : s.summaryChips[u.change]}
-              </span>
+              <span className={`chg ${CHANGE_CLASS[u.change]}`}>{s.summaryChips[u.change]}</span>
               {u.domain && <MemberDelta unit={u} />}
             </button>
           </Tooltip>

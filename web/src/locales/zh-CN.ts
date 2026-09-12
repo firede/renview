@@ -24,6 +24,7 @@ export const zhCN: Strings = {
     "no-source": "无法读取文件内容",
   },
   summaryChips: {
+    comment: "注释",
     signature: "签名",
     body: "实现",
     "type-only": "类型",
