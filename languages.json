@@ -1,0 +1,334 @@
+{
+  "generatedBy": "bun run gen:languages",
+  "languages": [
+    {
+      "language": "apple-strings",
+      "simplification": false,
+      "highlighting": "apple-strings",
+      "extensions": [".strings"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "bash",
+      "simplification": false,
+      "highlighting": "bash",
+      "extensions": [".sh"],
+      "filenames": [".dockerignore", ".gitattributes", ".gitignore", "gradlew", "mvnw"],
+      "filenamePatterns": []
+    },
+    {
+      "language": "batch",
+      "simplification": false,
+      "highlighting": "batch",
+      "extensions": [".bat", ".cmd"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "c",
+      "simplification": false,
+      "highlighting": "c",
+      "extensions": [".c", ".h"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "cpp",
+      "simplification": false,
+      "highlighting": "cpp",
+      "extensions": [".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx", ".metal"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "css",
+      "simplification": false,
+      "highlighting": "css",
+      "extensions": [".css"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "docker",
+      "simplification": false,
+      "highlighting": "docker",
+      "extensions": [".dockerfile"],
+      "filenames": [],
+      "filenamePatterns": [{ "regex": "^dockerfile(?:\\..+)?$", "flags": "i" }]
+    },
+    {
+      "language": "gdscript",
+      "simplification": true,
+      "highlighting": "gdscript",
+      "extensions": [".gd"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "go",
+      "simplification": true,
+      "highlighting": "go",
+      "extensions": [".go"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "groovy",
+      "simplification": false,
+      "highlighting": "groovy",
+      "extensions": [".gradle", ".groovy"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "java",
+      "simplification": true,
+      "highlighting": "java",
+      "extensions": [".java"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "javascript",
+      "simplification": true,
+      "highlighting": "javascript",
+      "extensions": [".cjs", ".js", ".mjs"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "json",
+      "simplification": false,
+      "highlighting": "json",
+      "extensions": [".json", ".xcstrings", ".xctestplan"],
+      "filenames": ["Package.resolved"],
+      "filenamePatterns": []
+    },
+    {
+      "language": "json5",
+      "simplification": false,
+      "highlighting": "json5",
+      "extensions": [".json5"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "jsonc",
+      "simplification": false,
+      "highlighting": "jsonc",
+      "extensions": [".jsonc"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "jsonl",
+      "simplification": false,
+      "highlighting": "jsonl",
+      "extensions": [".jsonl"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "kotlin",
+      "simplification": false,
+      "highlighting": "kotlin",
+      "extensions": [".kt", ".kts"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "less",
+      "simplification": false,
+      "highlighting": "less",
+      "extensions": [".less"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "markdown",
+      "simplification": false,
+      "highlighting": "markdown",
+      "extensions": [".markdown", ".md"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "objective-c",
+      "simplification": false,
+      "highlighting": "objective-c",
+      "extensions": [".m"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "objective-cpp",
+      "simplification": false,
+      "highlighting": "objective-cpp",
+      "extensions": [".mm"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "openstep",
+      "simplification": false,
+      "highlighting": "openstep",
+      "extensions": [".pbxproj"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "properties",
+      "simplification": false,
+      "highlighting": "properties",
+      "extensions": [".properties"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "python",
+      "simplification": true,
+      "highlighting": "python",
+      "extensions": [".py", ".pyi"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "python",
+      "simplification": false,
+      "highlighting": "python",
+      "extensions": [".pyw"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "ruby",
+      "simplification": false,
+      "highlighting": "ruby",
+      "extensions": [".podspec", ".rb"],
+      "filenames": [
+        "Appfile",
+        "Deliverfile",
+        "Fastfile",
+        "Gemfile",
+        "Matchfile",
+        "Podfile",
+        "Scanfile",
+        "Snapfile"
+      ],
+      "filenamePatterns": []
+    },
+    {
+      "language": "rust",
+      "simplification": true,
+      "highlighting": "rust",
+      "extensions": [".rs"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "sass",
+      "simplification": false,
+      "highlighting": "sass",
+      "extensions": [".sass"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "scss",
+      "simplification": false,
+      "highlighting": "scss",
+      "extensions": [".scss"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "sql",
+      "simplification": false,
+      "highlighting": "sql",
+      "extensions": [".sql"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "swift",
+      "simplification": true,
+      "highlighting": "swift",
+      "extensions": [".swift"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "swift",
+      "simplification": false,
+      "highlighting": "swift",
+      "extensions": [".swiftinterface"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "toml",
+      "simplification": false,
+      "highlighting": "toml",
+      "extensions": [".toml"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "tsx",
+      "simplification": true,
+      "highlighting": "tsx",
+      "extensions": [".jsx", ".tsx"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "typescript",
+      "simplification": true,
+      "highlighting": "typescript",
+      "extensions": [".cts", ".mts", ".ts"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "xcconfig",
+      "simplification": false,
+      "highlighting": "xcconfig",
+      "extensions": [".xcconfig"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "xml",
+      "simplification": false,
+      "highlighting": "xml",
+      "extensions": [
+        ".entitlements",
+        ".fxml",
+        ".plist",
+        ".pom",
+        ".storyboard",
+        ".stringsdict",
+        ".xccheckout",
+        ".xcprivacy",
+        ".xcscheme",
+        ".xcworkspacedata",
+        ".xib",
+        ".xml",
+        ".xsd",
+        ".xsl",
+        ".xslt"
+      ],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "yaml",
+      "simplification": false,
+      "highlighting": "yaml",
+      "extensions": [".yaml", ".yml"],
+      "filenames": ["Podfile.lock"],
+      "filenamePatterns": []
+    }
+  ]
+}

@@ -58,8 +58,7 @@ Staged and commit-range reviews exclude working-tree drafts. Revision and path a
 
 The interface opens in **Changes** mode, where you can switch between simplified and raw diffs and expand unchanged context as needed. **Browse** mode lets you read repository files.
 
-- **Code simplification**: TypeScript, JavaScript, TSX, JSX, Java, Rust, Go, Python, GDScript.
-- **Syntax highlighting**: TypeScript, JavaScript, TSX, JSX, Java, Rust, Go, Python, GDScript, XML, Groovy, Gradle, Kotlin, Kotlin DSL, Properties, Dockerfile, SQL, Bash, Batch, JSON, JSONC, JSON5, JSONL, TOML, YAML, Markdown, CSS, SCSS, Sass, Less.
+See [languages.json](languages.json) for supported languages, file formats, and simplification support.
 
 ## Configuration
 

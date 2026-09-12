@@ -38,7 +38,7 @@ const THEME_LOADERS: Record<ResolvedTheme, () => Promise<{ default: unknown }>> 
   light: () => import("shiki/themes/github-light-default.mjs"),
 };
 
-const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
+export const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   swift: () => import("shiki/langs/swift.mjs"),
   "objective-c": () => import("shiki/langs/objective-c.mjs"),
   "objective-cpp": () => import("shiki/langs/objective-cpp.mjs"),

@@ -12,6 +12,8 @@
     "sync:wasm": "bun run scripts/sync-wasm.ts",
     "dev": "bun run sync:wasm && bun run build:web && bun run gen:assets && bun run --watch src/cli.ts --no-open",
     "build:web": "vite build",
+    "gen:languages": "bun scripts/gen-languages.ts",
+    "check:languages": "bun scripts/gen-languages.ts --check",
     "gen:assets": "bun run scripts/gen-assets.ts",
     "gen:demo": "bun run scripts/gen-demo.ts",
     "build": "bun scripts/tasks.ts build",

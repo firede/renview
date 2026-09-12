@@ -33,6 +33,7 @@ async function typecheck() {
   await run("bun", "x", "tsc", "--noEmit");
 }
 async function check() {
+  await run("bun", "scripts/gen-languages.ts", "--check");
   await test();
   await typecheck();
   await run("bun", "run", "lint");

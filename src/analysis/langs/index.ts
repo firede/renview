@@ -7,8 +7,7 @@ import { javaProfile } from "./java";
 import { rustProfile } from "./rust";
 import { typescriptProfile, tsxProfile } from "./typescript";
 
-const byExtension = new Map<string, LanguageProfile>();
-for (const profile of [
+export const languageProfiles: LanguageProfile[] = [
   typescriptProfile,
   tsxProfile,
   rustProfile,
@@ -17,7 +16,10 @@ for (const profile of [
   pythonProfile,
   javaProfile,
   swiftProfile,
-]) {
+];
+
+const byExtension = new Map<string, LanguageProfile>();
+for (const profile of languageProfiles) {
   for (const ext of profile.extensions) byExtension.set(ext, profile);
 }
 

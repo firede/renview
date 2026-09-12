@@ -1,7 +1,7 @@
 /** 文件名/扩展名 → shiki 语言映射（纯数据，无运行时副作用；highlight.tsx 与 scripts/gen-demo.ts 共用） */
 
 /** 扩展名 → shiki 语言（有 profile 的语言 + 无简化规则但值得高亮的常见格式） */
-const EXT_LANG: Record<string, string> = {
+export const EXT_LANG: Record<string, string> = {
   swift: "swift",
   swiftinterface: "swift",
   m: "objective-c",
@@ -78,7 +78,7 @@ const EXT_LANG: Record<string, string> = {
 };
 
 /** 按文件名的特殊映射（无扩展名）；gitignore 类文件无专用语法，用 bash 近似（注释与通配模式均可读） */
-const FILENAME_LANG: Record<string, string> = {
+export const FILENAME_LANG: Record<string, string> = {
   "Package.resolved": "json",
   "Podfile.lock": "yaml",
   Podfile: "ruby",
@@ -96,13 +96,17 @@ const FILENAME_LANG: Record<string, string> = {
   mvnw: "bash",
 };
 
+/** 特殊文件名匹配规则同时用于运行时识别与支持清单。 */
+export const FILENAME_PATTERNS = [{ pattern: /^dockerfile(?:\..+)?$/i, language: "docker" }];
+
 /** 按文件名/扩展名映射 shiki 语言；无映射返回 null（不高亮，纯文本渲染） */
 export function shikiLangForPath(path: string | null | undefined): string | null {
   if (!path) return null;
   const base = path.split("/").pop()!;
   const byName = FILENAME_LANG[base];
   if (byName) return byName;
-  if (/^dockerfile(?:\..+)?$/i.test(base)) return "docker";
+  const byPattern = FILENAME_PATTERNS.find(({ pattern }) => pattern.test(base));
+  if (byPattern) return byPattern.language;
   const m = /\.([^.]+)$/.exec(base);
   return m ? (EXT_LANG[m[1]!.toLowerCase()] ?? null) : null;
 }

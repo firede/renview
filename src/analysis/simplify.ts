@@ -1,6 +1,5 @@
 import type { Node, Tree } from "web-tree-sitter";
 import type { ParsedChange, ParsedFile } from "./map";
-import { parseSource } from "./parser";
 
 /**
  * 简化器：把类型性质 / 技巧性质的语法从源码中抹掉，输出与原文逐行 1:1 对齐的简化文本。
@@ -194,6 +193,7 @@ export async function simplifySource(
   profile: { grammarFile: string; simplify: SimplifyWalker },
   source: string,
 ): Promise<SimplifyResult> {
+  const { parseSource } = await import("./parser");
   const tree = await parseSource(profile.grammarFile, source);
   try {
     return simplifyTree(tree, source, profile.simplify);
