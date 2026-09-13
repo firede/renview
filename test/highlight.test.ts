@@ -120,6 +120,11 @@ test("常见源码与配置按文件名选择语法，明暗主题均保留文�
       const tokens = await highlightText(source!, lang!, theme, "deterministic");
       expect(tokens?.map((line) => line.map((t) => t.content).join("")).join("\n")).toBe(source!);
       expect(new Set(tokens!.flat().map((t) => t.color)).size).toBeGreaterThan(1);
+      if (lang === "ignore") {
+        // 未闭合字符组不能改变后续行的着色。
+        const prefixed = await highlightText(`[unclosed\n${source}`, lang, theme, "deterministic");
+        expect(prefixed?.slice(1)).toEqual(tokens!);
+      }
     }
   }
 });
@@ -232,17 +237,16 @@ test("Godot 工程与源码文件按语法着色，原文在明暗主题中保�
       expect(new Set(tokens!.flat().map((t) => t.color)).size).toBeGreaterThan(1);
     }
   }
-  // .shader 歧义：Unity ShaderLab 与 Godot shader 按内容区分
-  expect(
-    resolveHighlightLanguage("shaderlab", "shader_type canvas_item;\nvoid fragment() {}"),
-  ).toBe("gdshader");
-  expect(resolveHighlightLanguage("shaderlab", 'Shader "Custom/X" {\nCGPROGRAM\nENDCG\n}')).toBe(
-    "shaderlab",
-  );
-  expect(resolveHighlightLanguage("gdshader", 'Shader "Legacy/X" {\nCGPROGRAM\nENDCG\n}')).toBe(
-    "shaderlab",
-  );
-  expect(resolveHighlightLanguage("gdshader", "shader_type spatial;")).toBe("gdshader");
+  // .shader 歧义：只根据代码标记推断，忽略注释与普通变量名。
+  for (const [lang, source, expected] of [
+    ["shaderlab", "/* 注释 */ shader_type canvas_item;", "gdshader"],
+    ["shaderlab", '/*\nshader_type spatial;\n*/\nShader "Custom/X" {}', "shaderlab"],
+    ["gdshader", 'Shader "Custom//X" {\nHLSLPROGRAM\n}', "shaderlab"],
+    ["gdshader", "// CGPROGRAM\n/* HLSLPROGRAM */\nshader_type spatial;", "gdshader"],
+    ["gdshader", "float CGPROGRAM = 1.0;", "gdshader"],
+  ]) {
+    expect(resolveHighlightLanguage(lang!, source!)).toBe(expected!);
+  }
 });
 
 test("Apple 格式多行注释、变量、占位符和格式推断保留上下文", async () => {

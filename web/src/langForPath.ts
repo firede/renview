@@ -159,9 +159,16 @@ export function resolveHighlightLanguage(lang: string, source: string): string {
   )
     return "xml";
   if (lang === "xml" && /^\s*(?:\/\*[\s\S]*?\*\/\s*)*[{(]/.test(source)) return "openstep";
-  // .shader 默认 ShaderLab（VS Code 约定）；Godot shader 必含 shader_type 声明
-  if (lang === "shaderlab" && /^\s*shader_type\s+\w+/m.test(source)) return "gdshader";
-  if (lang === "gdshader" && /(\bCGPROGRAM\b|\bHLSLPROGRAM\b|^\s*Shader\s+")/m.test(source))
-    return "shaderlab";
+  if (lang === "shaderlab" || lang === "gdshader") {
+    // 排除注释中的示例；保留字符串，避免把字符串内的斜杠误当注释。
+    const code = source.replace(
+      /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\r\n]*|\/\*[\s\S]*?(?:\*\/|$)/g,
+      (part) => (part.startsWith("/") ? part.replace(/[^\r\n]/g, " ") : part),
+    );
+    // .shader 默认 ShaderLab；出现 Godot 声明时修正语法。
+    if (lang === "shaderlab" && /^\s*shader_type\s+\w+/m.test(code)) return "gdshader";
+    if (lang === "gdshader" && /(^\s*(?:CGPROGRAM|HLSLPROGRAM)\b|^\s*Shader\s+")/m.test(code))
+      return "shaderlab";
+  }
   return lang;
 }

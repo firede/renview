@@ -13,7 +13,7 @@ export const ignore: LanguageRegistration = {
     { name: "comment.line.number-sign", match: "^[ \\t]*#.*$" },
     { name: "keyword.operator.negation", match: "^[ \\t]*!" },
     { name: "keyword.operator.glob", match: "\\*\\*|[*?]" },
-    { name: "punctuation.section.brackets", begin: "\\[", end: "\\]" },
+    { name: "punctuation.section.brackets", begin: "\\[", end: "\\]|$" },
     { name: "punctuation.separator", match: "/" },
     { name: "keyword.operator", match: "[ \\t]-[A-Za-z_][A-Za-z0-9_-]*" },
     { name: "entity.other.attribute-name", match: "[ \\t][A-Za-z_][A-Za-z0-9_-]*(?==)" },
