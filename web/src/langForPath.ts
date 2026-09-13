@@ -42,6 +42,17 @@ export const EXT_LANG: Record<string, string> = {
   rs: "rust",
   go: "go",
   gd: "gdscript",
+  gdshader: "gdshader",
+  gdshaderinc: "gdshader",
+  shader: "shaderlab",
+  tscn: "gdresource",
+  tres: "gdresource",
+  godot: "gdresource",
+  import: "ini",
+  gdextension: "ini",
+  gdnlib: "ini",
+  gdns: "ini",
+  cs: "csharp",
   py: "python",
   pyi: "python",
   pyw: "python",
@@ -52,11 +63,14 @@ export const EXT_LANG: Record<string, string> = {
   xslt: "xml",
   fxml: "xml",
   pom: "xml",
+  csproj: "xml",
   gradle: "groovy",
   groovy: "groovy",
   kt: "kotlin",
   kts: "kotlin",
   properties: "properties",
+  ini: "ini",
+  cfg: "ini",
   dockerfile: "docker",
   sql: "sql",
   sh: "bash",
@@ -71,6 +85,8 @@ export const EXT_LANG: Record<string, string> = {
   yml: "yaml",
   md: "markdown",
   markdown: "markdown",
+  po: "po",
+  pot: "po",
   css: "css",
   scss: "scss",
   sass: "sass",
@@ -92,6 +108,7 @@ export const FILENAME_LANG: Record<string, string> = {
   ".gitignore": "bash",
   ".gitattributes": "bash",
   ".dockerignore": "bash",
+  ".editorconfig": "ini",
   gradlew: "bash",
   mvnw: "bash",
 };
@@ -125,5 +142,9 @@ export function resolveHighlightLanguage(lang: string, source: string): string {
   )
     return "xml";
   if (lang === "xml" && /^\s*(?:\/\*[\s\S]*?\*\/\s*)*[{(]/.test(source)) return "openstep";
+  // .shader 默认 ShaderLab（VS Code 约定）；Godot shader 必含 shader_type 声明
+  if (lang === "shaderlab" && /^\s*shader_type\s+\w+/m.test(source)) return "gdshader";
+  if (lang === "gdshader" && /(\bCGPROGRAM\b|\bHLSLPROGRAM\b|^\s*Shader\s+")/m.test(source))
+    return "shaderlab";
   return lang;
 }

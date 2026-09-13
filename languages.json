@@ -42,6 +42,14 @@
       "filenamePatterns": []
     },
     {
+      "language": "csharp",
+      "simplification": false,
+      "highlighting": "csharp",
+      "extensions": [".cs"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
       "language": "css",
       "simplification": false,
       "highlighting": "css",
@@ -58,10 +66,26 @@
       "filenamePatterns": [{ "regex": "^dockerfile(?:\\..+)?$", "flags": "i" }]
     },
     {
+      "language": "gdresource",
+      "simplification": false,
+      "highlighting": "gdresource",
+      "extensions": [".godot", ".tres", ".tscn"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
       "language": "gdscript",
       "simplification": true,
       "highlighting": "gdscript",
       "extensions": [".gd"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "gdshader",
+      "simplification": false,
+      "highlighting": "gdshader",
+      "extensions": [".gdshader", ".gdshaderinc"],
       "filenames": [],
       "filenamePatterns": []
     },
@@ -79,6 +103,14 @@
       "highlighting": "groovy",
       "extensions": [".gradle", ".groovy"],
       "filenames": [],
+      "filenamePatterns": []
+    },
+    {
+      "language": "ini",
+      "simplification": false,
+      "highlighting": "ini",
+      "extensions": [".cfg", ".gdextension", ".gdnlib", ".gdns", ".import", ".ini"],
+      "filenames": [".editorconfig"],
       "filenamePatterns": []
     },
     {
@@ -178,6 +210,14 @@
       "filenamePatterns": []
     },
     {
+      "language": "po",
+      "simplification": false,
+      "highlighting": "po",
+      "extensions": [".po", ".pot"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
       "language": "properties",
       "simplification": false,
       "highlighting": "properties",
@@ -243,6 +283,14 @@
       "filenamePatterns": []
     },
     {
+      "language": "shaderlab",
+      "simplification": false,
+      "highlighting": "shaderlab",
+      "extensions": [".shader"],
+      "filenames": [],
+      "filenamePatterns": []
+    },
+    {
       "language": "sql",
       "simplification": false,
       "highlighting": "sql",
@@ -303,6 +351,7 @@
       "simplification": false,
       "highlighting": "xml",
       "extensions": [
+        ".csproj",
         ".entitlements",
         ".fxml",
         ".plist",

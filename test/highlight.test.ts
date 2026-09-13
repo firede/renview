@@ -182,6 +182,65 @@ test("Apple 工程与源码文件按语法着色，原文在明暗主题中保�
   expect(shikiLangForPath("Inputs.xcfilelist")).toBeNull();
 });
 
+test("Godot 工程与源码文件按语法着色，原文在明暗主题中保持完整", async () => {
+  const { shikiLangForPath, resolveHighlightLanguage } = await import("../web/src/langForPath");
+  const samples = [
+    ["scripts/Player.gd", "gdscript", "extends CharacterBody2D\nfunc _ready() -> void:\n\tpass"],
+    [
+      "shaders/water.gdshader",
+      "gdshader",
+      "shader_type spatial;\nuniform vec4 color : source_color;\nvoid fragment() { ALBEDO = color.rgb; }",
+    ],
+    [
+      "shaders/common.gdshaderinc",
+      "gdshader",
+      "float saturate(float v) { return clamp(v, 0.0, 1.0); }",
+    ],
+    [
+      "scenes/Main.tscn",
+      "gdresource",
+      '[gd_scene load_steps=2 format=3 uid="uid://abc"]\n\n[node name="Main" type="Node2D"]\nposition = Vector2(1, 2)',
+    ],
+    [
+      "data/Default.tres",
+      "gdresource",
+      '[gd_resource type="Theme" format=3]\n\n[resource]\ndefault_font_size = 16',
+    ],
+    [
+      "project.godot",
+      "gdresource",
+      '[application]\nconfig/name="Game"\nrun/main_scene="res://Main.tscn"',
+    ],
+    ["icon.png.import", "ini", '[remap]\nimporter="texture"\ntype="CompressedTexture2D"'],
+    ["extension/libfoo.gdextension", "ini", '[configuration]\nentry_symbol = "foo_init"'],
+    ["export_presets.cfg", "ini", '[preset.0]\nname="macOS"'],
+    [".editorconfig", "ini", "root = true\n[*.gd]\nindent_style = tab"],
+    ["locale/zh.po", "po", 'msgid "Hello"\nmsgstr "你好"'],
+    ["locale/messages.pot", "po", 'msgid "Hello"\nmsgstr ""'],
+    ["scripts/Player.cs", "csharp", "using Godot;\npublic partial class Player : Node2D { }"],
+    ["Game.csproj", "xml", '<Project Sdk="Godot.NET.Sdk/4.3.0"></Project>'],
+  ];
+  for (const [path, lang, source] of samples) {
+    expect(shikiLangForPath(path)).toBe(lang!);
+    for (const theme of ["light", "dark"] as const) {
+      const tokens = await highlightText(source!, lang!, theme, "deterministic");
+      expect(tokens?.map((line) => line.map((t) => t.content).join("")).join("\n")).toBe(source!);
+      expect(new Set(tokens!.flat().map((t) => t.color)).size).toBeGreaterThan(1);
+    }
+  }
+  // .shader 歧义：Unity ShaderLab 与 Godot shader 按内容区分
+  expect(
+    resolveHighlightLanguage("shaderlab", "shader_type canvas_item;\nvoid fragment() {}"),
+  ).toBe("gdshader");
+  expect(resolveHighlightLanguage("shaderlab", 'Shader "Custom/X" {\nCGPROGRAM\nENDCG\n}')).toBe(
+    "shaderlab",
+  );
+  expect(resolveHighlightLanguage("gdshader", 'Shader "Legacy/X" {\nCGPROGRAM\nENDCG\n}')).toBe(
+    "shaderlab",
+  );
+  expect(resolveHighlightLanguage("gdshader", "shader_type spatial;")).toBe("gdshader");
+});
+
 test("Apple 格式多行注释、变量、占位符和格式推断保留上下文", async () => {
   const { resolveHighlightLanguage } = await import("../web/src/langForPath");
   expect(resolveHighlightLanguage("c", "@interface A\nstd::vector<int> values;")).toBe(
