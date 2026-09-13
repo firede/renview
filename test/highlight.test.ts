@@ -109,6 +109,10 @@ test("常见源码与配置按文件名选择语法，明暗主题均保留文�
     ["mvnw", "bash", '#!/bin/sh\necho "$JAVA_HOME"'],
     ["gradlew.bat", "batch", "@echo off\nset JAVA_HOME=C:\\Java"],
     ["mvnw.cmd", "batch", "@echo off\nset JAVA_HOME=C:\\Java"],
+    [".gitignore", "ignore", "# 注释\n!important.txt\n*.log\nbuild/"],
+    [".gitattributes", "ignore", "*.png binary\n*.ts text eol=lf"],
+    [".npmignore", "ignore", "# 产物\ndist/\n*.map"],
+    [".gitmodules", "ini", '[submodule "lib"]\npath = lib\nurl = ../lib.git'],
   ];
   for (const [path, lang, source] of samples) {
     expect(shikiLangForPath(path)).toBe(lang!);
@@ -247,6 +251,18 @@ test("Apple 格式多行注释、变量、占位符和格式推断保留上下�
     "objective-cpp",
   );
   expect(resolveHighlightLanguage("c", "namespace A {} ")).toBe("cpp");
+  expect(resolveHighlightLanguage("c", "class Box {\npublic:\n  int value;\n};")).toBe("cpp");
+  expect(resolveHighlightLanguage("c", 'extern "C" {\nint load(void);\n}')).toBe("cpp");
+  expect(resolveHighlightLanguage("c", "typedef struct { int x; } Point;")).toBe("c");
+  expect(
+    resolveHighlightLanguage("objective-c", "function y = f(x)\n% 注释\ny = x + 1;\nend"),
+  ).toBe("matlab");
+  expect(resolveHighlightLanguage("objective-c", "@interface A : NSObject\n@end")).toBe(
+    "objective-c",
+  );
+  expect(resolveHighlightLanguage("objective-c", "int add(int a, int b) { return a + b; }")).toBe(
+    "objective-c",
+  );
   expect(resolveHighlightLanguage("xml", "/* 属性 */ { name = App; }")).toBe("openstep");
   expect(resolveHighlightLanguage("apple-strings", '<?xml version="1.0"?><plist/>')).toBe("xml");
   for (const lang of ["openstep", "apple-strings", "xcconfig"]) {

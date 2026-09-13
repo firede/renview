@@ -9,7 +9,7 @@ test("支持清单区分同语言不同扩展名的简化能力", () => {
   expect(forExtension(".swift")?.simplification).toBe(true);
   expect(forExtension(".swiftinterface")?.simplification).toBe(false);
   expect(forExtension(".py")?.simplification).toBe(true);
-  expect(forExtension(".pyw")?.simplification).toBe(false);
+  expect(forExtension(".pyw")?.simplification).toBe(true);
   expect(forExtension(".js")?.simplification).toBe(true);
   expect(forExtension(".metal")?.highlighting).toBe("cpp");
 });

@@ -41,6 +41,7 @@ const THEME_LOADERS: Record<ResolvedTheme, () => Promise<{ default: unknown }>> 
 export const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   swift: () => import("shiki/langs/swift.mjs"),
   "objective-c": () => import("shiki/langs/objective-c.mjs"),
+  matlab: () => import("shiki/langs/matlab.mjs"),
   "objective-cpp": () => import("shiki/langs/objective-cpp.mjs"),
   c: () => import("shiki/langs/c.mjs"),
   cpp: () => import("shiki/langs/cpp.mjs"),
@@ -48,6 +49,7 @@ export const LANG_LOADERS: Record<string, () => Promise<{ default: unknown }>> =
   openstep: () => import("./langs/apple").then((m) => ({ default: m.openstep })),
   "apple-strings": () => import("./langs/apple").then((m) => ({ default: m.strings })),
   xcconfig: () => import("./langs/apple").then((m) => ({ default: m.xcconfig })),
+  ignore: () => import("./langs/ignore").then((m) => ({ default: m.ignore })),
   typescript: () => import("shiki/langs/typescript.mjs"),
   tsx: () => import("shiki/langs/tsx.mjs"),
   javascript: () => import("shiki/langs/javascript.mjs"),

@@ -93,7 +93,7 @@ export const EXT_LANG: Record<string, string> = {
   less: "less",
 };
 
-/** 按文件名的特殊映射（无扩展名）；gitignore 类文件无专用语法，用 bash 近似（注释与通配模式均可读） */
+/** 按文件名的特殊映射（无扩展名）；ignore 为自研近似语法（langs/ignore.ts），覆盖通配清单与 gitattributes 属性行 */
 export const FILENAME_LANG: Record<string, string> = {
   "Package.resolved": "json",
   "Podfile.lock": "yaml",
@@ -105,9 +105,14 @@ export const FILENAME_LANG: Record<string, string> = {
   Deliverfile: "ruby",
   Scanfile: "ruby",
   Snapfile: "ruby",
-  ".gitignore": "bash",
-  ".gitattributes": "bash",
-  ".dockerignore": "bash",
+  ".gitignore": "ignore",
+  ".gitattributes": "ignore",
+  ".dockerignore": "ignore",
+  ".npmignore": "ignore",
+  ".eslintignore": "ignore",
+  ".prettierignore": "ignore",
+  ".ignore": "ignore",
+  ".gitmodules": "ini",
   ".editorconfig": "ini",
   gradlew: "bash",
   mvnw: "bash",
@@ -132,10 +137,22 @@ export function shikiLangForPath(path: string | null | undefined): string | null
 export function resolveHighlightLanguage(lang: string, source: string): string {
   if (lang === "c") {
     const objc = /@(interface|implementation|protocol|class|property|end)\b/.test(source);
-    const cpp = /\b(namespace|template)\s*[<{\w]|\bstd::/.test(source);
+    const cpp =
+      /\b(namespace|template)\s*[<{\w]|\bstd::|\bclass\s+\w+\s*[{:]|\bextern\s+"C"|\bvirtual\s+~?\w+\s*\(|(?:public|private|protected)\s*:/.test(
+        source,
+      );
     if (objc) return cpp ? "objective-cpp" : "objective-c";
     if (cpp) return "cpp";
   }
+  // .m 同扩展名歧义：无 Objective-C 标记且有 MATLAB 特征（function 定义、% 行注释）时按 matlab 处理
+  if (
+    lang === "objective-c" &&
+    !/@(interface|implementation|protocol|class|property|end|autoreleasepool)\b|#(?:import|include)\b/.test(
+      source,
+    ) &&
+    /(^\s*function\b|^\s*%)/m.test(source)
+  )
+    return "matlab";
   if (
     (lang === "xml" || lang === "apple-strings") &&
     /^\s*(?:<\?xml\b|<!DOCTYPE\s+plist|<plist\b)/.test(source)

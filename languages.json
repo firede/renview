@@ -14,7 +14,7 @@
       "simplification": false,
       "highlighting": "bash",
       "extensions": [".sh"],
-      "filenames": [".dockerignore", ".gitattributes", ".gitignore", "gradlew", "mvnw"],
+      "filenames": ["gradlew", "mvnw"],
       "filenamePatterns": []
     },
     {
@@ -106,11 +106,27 @@
       "filenamePatterns": []
     },
     {
+      "language": "ignore",
+      "simplification": false,
+      "highlighting": "ignore",
+      "extensions": [],
+      "filenames": [
+        ".dockerignore",
+        ".eslintignore",
+        ".gitattributes",
+        ".gitignore",
+        ".ignore",
+        ".npmignore",
+        ".prettierignore"
+      ],
+      "filenamePatterns": []
+    },
+    {
       "language": "ini",
       "simplification": false,
       "highlighting": "ini",
       "extensions": [".cfg", ".gdextension", ".gdnlib", ".gdns", ".import", ".ini"],
-      "filenames": [".editorconfig"],
+      "filenames": [".editorconfig", ".gitmodules"],
       "filenamePatterns": []
     },
     {
@@ -229,15 +245,7 @@
       "language": "python",
       "simplification": true,
       "highlighting": "python",
-      "extensions": [".py", ".pyi"],
-      "filenames": [],
-      "filenamePatterns": []
-    },
-    {
-      "language": "python",
-      "simplification": false,
-      "highlighting": "python",
-      "extensions": [".pyw"],
+      "extensions": [".py", ".pyi", ".pyw"],
       "filenames": [],
       "filenamePatterns": []
     },

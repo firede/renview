@@ -271,7 +271,7 @@ function pyTypeDeclMembers(node: Node, locale: Locale): TypeDeclMembers | null {
 
 export const pythonProfile: LanguageProfile = {
   id: "python",
-  extensions: ["py", "pyi"],
+  extensions: ["py", "pyi", "pyw"],
   grammarFile: "python",
   collect(root, locale) {
     const out: DeclarationInfo[] = [];
