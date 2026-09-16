@@ -508,11 +508,18 @@ export function App() {
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       if (e.key === "j" || e.key === "k") {
         const next = safeSelected + (e.key === "j" ? 1 : -1);
-        if (next >= 0 && next < items.length) selectFile(next);
+        if (next >= 0 && next < items.length) {
+          // 鼠标点过的条目仍持有焦点，键盘操作会让浏览器给它画焦点环；选中态已由高亮表达，先释放焦点
+          (document.activeElement as HTMLElement | null)?.blur?.();
+          selectFile(next);
+        }
       } else if ((e.key === "n" || e.key === "p") && units && units.length > 0) {
         const cur = units.findIndex((u) => u.id === unitJump?.unitId);
         const next = e.key === "n" ? Math.min(cur + 1, units.length - 1) : Math.max(cur - 1, 0);
-        if (next !== cur || cur < 0) jumpToUnit(units[next]!);
+        if (next !== cur || cur < 0) {
+          (document.activeElement as HTMLElement | null)?.blur?.();
+          jumpToUnit(units[next]!);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
