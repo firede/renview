@@ -1,6 +1,6 @@
 import type { SRow } from "../../src/analysis/types";
 import { useEffect, useState, type CSSProperties } from "react";
-import type { HunkData, HunkTokens, RenderToken } from "react-diff-view";
+import type { HunkData, HunkTokens, RenderToken, TokenNode } from "react-diff-view";
 import { useTheme, type ResolvedTheme } from "./theme";
 
 import {
@@ -68,15 +68,29 @@ export function TokenSpans({ tokens }: { tokens: HToken[] }) {
 
 /* ---- react-diff-view 集成：tokens 按文件行号（1-based）索引，空洞行不高亮 ---- */
 
-/** react-diff-view 的 renderToken：只认我们自产的 shiki 节点，其余交回默认渲染 */
-export const renderDiffToken: RenderToken = (token, renderDefault, index) =>
-  token.type === "shiki" ? (
-    <span key={index} style={tokenStyle({ color: token.color, fontStyle: token.fontStyle })}>
-      {token.value}
-    </span>
-  ) : (
-    renderDefault(token, index)
-  );
+/**
+ * react-diff-view 的 renderToken：词级差异标记（edit）包裹 shiki 样式节点，需自行递归渲染子节点
+ * （默认渲染器对子节点不再回调 renderToken，会丢掉颜色）。其余类型交回默认渲染。
+ */
+export const renderDiffToken: RenderToken = (token, renderDefault, index) => {
+  const children = (nodes: TokenNode[] | undefined) =>
+    nodes?.map((n, i) => renderDiffToken(n, renderDefault, i));
+  if (token.type === "shiki") {
+    return (
+      <span key={index} style={tokenStyle({ color: token.color, fontStyle: token.fontStyle })}>
+        {token.value ?? children(token.children)}
+      </span>
+    );
+  }
+  if (token.type === "edit") {
+    return (
+      <span key={index} className="diff-code-edit">
+        {children(token.children)}
+      </span>
+    );
+  }
+  return renderDefault(token, index);
+};
 
 /** 当前选中 diff 文件的高亮 tokens；无语言映射或切走文件时返回 null（纯文本渲染） */
 export function useDiffTokens(
@@ -93,7 +107,7 @@ export function useDiffTokens(
   useEffect(() => {
     let cancelled = false;
     setResult(null);
-    if (file && lang) {
+    if (file) {
       highlightDiff(file.hunks, lang, theme)
         .then((t) => {
           if (!cancelled) setResult({ file, theme, tokens: t });

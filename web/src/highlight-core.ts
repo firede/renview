@@ -4,6 +4,7 @@ import {
   isDelete,
   isInsert,
   isNormal,
+  markEdits,
   type HunkData,
   type HunkTokens,
   type TokenNode,
@@ -130,23 +131,83 @@ export async function highlightText(
   );
 }
 
-function toNodes(line: HToken[]): TokenNode[] {
-  return line.map((t) => ({
-    type: "shiki",
-    value: t.content,
-    color: t.color,
-    fontStyle: t.fontStyle,
-  }));
+/** react-diff-view 增强器使用的"路径"：祖先节点 + 文本叶；shiki token 化为 [样式节点, 文本叶] */
+type TokenPath = Array<{ type: string; [key: string]: unknown }>;
+
+function toPaths(line: HToken[]): TokenPath[] {
+  return line.map((t) => [
+    { type: "shiki", color: t.color, fontStyle: t.fontStyle },
+    { type: "text", value: t.content },
+  ]);
+}
+
+/** 路径还原为嵌套节点（叶在最内层）；不合并相邻同类节点，渲染按节点递归即可。edit 节点只留类型（行号等定位字段渲染不用） */
+function pathToNode(path: TokenPath): TokenNode {
+  return path.reduceRight<TokenNode | null>((child, node) => {
+    const base = node.type === "edit" ? { type: "edit" } : { ...node };
+    return child ? { ...base, children: [child] } : base;
+  }, null)!;
+}
+
+/** 差异字符占块内文本的比例超过此值即视为整块重写，词级标记只剩噪音 */
+const MAX_EDIT_RATIO = 0.5;
+
+/**
+ * 去掉整块重写里的词级标记：按 del/add 块统计被标记字符占比，过半则该块两侧都还原为无标记路径。
+ * markEdits 把 edit 节点放在路径首位（wrap），据此识别与剥离。
+ */
+function pruneNoisyEdits(hunks: HunkData[], oldPaths: TokenPath[][], newPaths: TokenPath[][]) {
+  const leafLen = (p: TokenPath) => String(p[p.length - 1]!.value ?? "").length;
+  for (const h of hunks) {
+    let i = 0;
+    while (i < h.changes.length) {
+      if (isNormal(h.changes[i]!)) {
+        i++;
+        continue;
+      }
+      const oldLns: number[] = [];
+      const newLns: number[] = [];
+      while (i < h.changes.length && !isNormal(h.changes[i]!)) {
+        const c = h.changes[i]!;
+        if (isDelete(c)) oldLns.push(c.lineNumber);
+        else if (isInsert(c)) newLns.push(c.lineNumber);
+        i++;
+      }
+      let edited = 0;
+      let total = 0;
+      const visit = (paths: TokenPath[][], lns: number[]) => {
+        for (const ln of lns) {
+          for (const p of paths[ln - 1] ?? []) {
+            const n = leafLen(p);
+            total += n;
+            if (p[0]!.type === "edit") edited += n;
+          }
+        }
+      };
+      visit(oldPaths, oldLns);
+      visit(newPaths, newLns);
+      if (total === 0 || edited / total <= MAX_EDIT_RATIO) continue;
+      const strip = (paths: TokenPath[][], lns: number[]) => {
+        for (const ln of lns) {
+          const line = paths[ln - 1];
+          if (line) paths[ln - 1] = line.map((p) => p.filter((n) => n.type !== "edit"));
+        }
+      };
+      strip(oldPaths, oldLns);
+      strip(newPaths, newLns);
+    }
+  }
 }
 
 /**
- * 高亮一个文件的 diff：每侧按连续行分段高亮，再回填到原始行号。
+ * 高亮一个文件的 diff：每侧按连续行分段高亮，再回填到原始行号，并标记 del/add 块内的词级差异。
  * 成本随 diff 内容增长，而非末尾行号；百万行文件尾部的小改动也不分配百万个空行。
+ * lang 为 null 时不做语法高亮，只保留词级差异标记。
  * 局限：hunk 外缺失的语法上下文可能导致断色，仅影响颜色不影响文本。
  */
 export async function highlightDiff(
   hunks: HunkData[],
-  lang: string,
+  lang: string | null,
   theme: ResolvedTheme,
   mode: HighlightMode = "interactive",
 ): Promise<HunkTokens> {
@@ -165,15 +226,29 @@ export async function highlightDiff(
     }
   }
 
-  const side = async (byLine: Map<number, string>): Promise<TokenNode[][]> => {
-    const lines = await highlightSparseLines(byLine, lang, theme, mode);
-    const out: TokenNode[][] = [];
-    for (const key of Object.keys(lines)) out[Number(key)] = toNodes(lines[Number(key)]!);
+  const side = async (byLine: Map<number, string>): Promise<TokenPath[][]> => {
+    const lines = lang ? await highlightSparseLines(byLine, lang, theme, mode) : [];
+    const out: TokenPath[][] = [];
+    // 无高亮结果的行退化为纯文本路径，词级标记不依赖语法高亮是否可用
+    for (const [ln, content] of byLine) {
+      const toks = lines[ln - 1];
+      out[ln - 1] = toks ? toPaths(toks) : [[{ type: "text", value: content }]];
+    }
     return out;
   };
 
-  const [oldTokens, newTokens] = await Promise.all([side(oldByLine), side(newByLine)]);
-  return { old: oldTokens, new: newTokens };
+  const [oldPaths, newPaths] = markEdits(hunks, { type: "block" })(
+    await Promise.all([side(oldByLine), side(newByLine)]),
+  );
+  pruneNoisyEdits(hunks, oldPaths, newPaths);
+  const toNodes = (lines: TokenPath[][]): TokenNode[][] => {
+    const out: TokenNode[][] = [];
+    lines.forEach((paths, i) => {
+      out[i] = paths.map(pathToNode);
+    });
+    return out;
+  };
+  return { old: toNodes(oldPaths), new: toNodes(newPaths) };
 }
 
 /** 按原始行号高亮连续片段，缺口处重置语法状态。 */

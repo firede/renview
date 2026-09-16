@@ -7,6 +7,14 @@ import {
   highlightText,
 } from "../web/src/highlight-core";
 
+/** 节点（可能嵌套 edit/shiki 包装）的纯文本 */
+function flatText(n: { value?: string; children?: unknown[] }): string {
+  return (
+    n.value ??
+    (n.children as Array<{ value?: string; children?: unknown[] }>).map(flatText).join("")
+  );
+}
+
 function diffAt(line: number) {
   return parseDiff(`diff --git a/a.ts b/a.ts
 --- a/a.ts
@@ -42,7 +50,7 @@ describe("稀疏 diff 高亮", () => {
 +const next = 3;
 `)[0]!;
     const tokens = await highlightDiff(f.hunks, "typescript", "light", "deterministic");
-    const text = (nodes: (typeof tokens.old)[number]) => nodes?.map((n) => n.value).join("");
+    const text = (nodes: (typeof tokens.old)[number]) => nodes?.map(flatText).join("");
     expect(text(tokens.old[99])).toBe("const old = 2;");
     expect(text(tokens.new[100])).toBe("const next = 3;");
     expect(text(tokens.new[2])).toBe("const added = 1;");
@@ -280,4 +288,58 @@ test("Apple 格式多行注释、变量、占位符和格式推断保留上下�
     const full = await highlightText(lines.join("\n"), lang, "dark", "deterministic");
     expect(tokens.slice(19)).toEqual(full!);
   }
+});
+
+describe("原始 diff 的词级差异标记", () => {
+  const f = parseDiff(`diff --git a/a.ts b/a.ts
+--- a/a.ts
++++ b/a.ts
+@@ -1,2 +1,2 @@
+ const shared = true;
+-const value = 1;
++const value = 2;
+`)[0]!;
+
+  /** 收集被 edit 节点包裹的文本 */
+  function edits(nodes: Array<{ type: string; value?: string; children?: unknown[] }>): string[] {
+    const out: string[] = [];
+    for (const n of nodes) {
+      if (n.type === "edit") out.push(flatText(n));
+      else if (n.children)
+        out.push(
+          ...edits(n.children as Array<{ type: string; value?: string; children?: unknown[] }>),
+        );
+    }
+    return out;
+  }
+
+  test("高亮之上叠加 del/add 块内的差异片段，行文本不变", async () => {
+    const tokens = await highlightDiff(f.hunks, "typescript", "dark", "deterministic");
+    expect(tokens.old[1]!.map(flatText).join("")).toBe("const value = 1;");
+    expect(edits(tokens.old[1]!)).toEqual(["1"]);
+    expect(edits(tokens.new[1]!)).toEqual(["2"]);
+    expect(edits(tokens.old[0]!)).toEqual([]);
+  });
+
+  test("无语法高亮的语言也保留词级标记", async () => {
+    const tokens = await highlightDiff(f.hunks, null, "dark", "deterministic");
+    expect(tokens.new[1]!.map(flatText).join("")).toBe("const value = 2;");
+    expect(edits(tokens.new[1]!)).toEqual(["2"]);
+  });
+
+  test("整块重写不做词级标记", async () => {
+    const rewrite = parseDiff(`diff --git a/a.ts b/a.ts
+--- a/a.ts
++++ b/a.ts
+@@ -1,2 +1,2 @@
+-const alpha = compute(first, second);
+-return alpha;
++export function totallyDifferent() {}
++let x = 42;
+`)[0]!;
+    const tokens = await highlightDiff(rewrite.hunks, "typescript", "dark", "deterministic");
+    expect(edits(tokens.old[0]!)).toEqual([]);
+    expect(edits(tokens.new[1]!)).toEqual([]);
+    expect(tokens.new[1]!.map(flatText).join("")).toBe("let x = 42;");
+  });
 });
