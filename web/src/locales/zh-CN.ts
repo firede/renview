@@ -40,6 +40,8 @@ export const zhCN: Strings = {
   contextChanged: "变更已更新，请刷新后展开上下文。",
   fellBack: (reason) => `已退回原始 diff（${reason}）`,
   foldedLines: (n) => `已折叠 ${n} 行`,
+  erasedCount: (n) => `已简化 ${n} 处`,
+  erasedHint: "悬停代码中的点线标记可查看被简化的原文",
   shortcutS: "快捷键 S",
   shortcutB: "快捷键 B",
   toggleSidebar: "侧栏",

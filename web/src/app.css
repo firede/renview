@@ -633,13 +633,15 @@ body {
   cursor: help;
 }
 
+/* 零宽擦除点：2px 点线、不完全降权（1.5px 淡灰在大多数屏幕上几乎看不见，用户不知道这里藏了东西） */
 .erasure-mark::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 0.1em;
   bottom: 0.1em;
-  border-left: 1.5px dotted var(--fg-dim);
+  border-left: 2px dotted var(--fg-dim);
+  opacity: 0.9;
 }
 
 /* hover/聚焦提亮与横向下划线一致（fg-dim → fg） */
@@ -659,7 +661,7 @@ body {
 
 .erasure-repl,
 .erasure-adj {
-  border-bottom: 1.5px dotted var(--fg-dim);
+  border-bottom: 2px dotted var(--fg-dim);
   cursor: help;
 }
 

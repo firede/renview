@@ -39,6 +39,8 @@ export const en: Strings = {
   contextChanged: "Changes have updated. Refresh to expand context.",
   fellBack: (reason) => `Fell back to raw diff (${reason})`,
   foldedLines: (n) => `${n} ${n === 1 ? "line" : "lines"} folded`,
+  erasedCount: (n) => `${n} ${n === 1 ? "erasure" : "erasures"}`,
+  erasedHint: "Hover a dotted mark in the code to see the erased original",
   shortcutS: "Shortcut: S",
   shortcutB: "Shortcut: B",
   toggleSidebar: "Sidebar",

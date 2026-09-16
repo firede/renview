@@ -57,6 +57,9 @@ export interface Strings {
   fellBack: (reason: string) => string;
   /** 简化视图"已折叠 N 行"提示 */
   foldedLines: (n: number) => string;
+  /** 简化视图"已简化 N 处"提示与其 hover 说明 */
+  erasedCount: (n: number) => string;
+  erasedHint: string;
   /** 简化/原始切换按钮的快捷键提示（App 与查看器共用） */
   shortcutS: string;
   /** 侧栏显隐切换按钮的快捷键提示 */

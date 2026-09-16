@@ -473,6 +473,15 @@ export function App() {
   }, [files]);
 
   const hasSimplified = selectedEntry?.simplified != null;
+  /** 当前文件简化视图里的擦除点数（工具条提示：告诉人这里藏了东西、hover 可取回） */
+  const erasedCount = useMemo(
+    () =>
+      selectedEntry?.simplified?.rows.reduce(
+        (n, r) => n + (r.kind === "fold" ? 0 : (r.erases?.length ?? 0)),
+        0,
+      ) ?? 0,
+    [selectedEntry],
+  );
   const showRaw = rawOverride ?? !hasSimplified;
   // 仅在展示原始 diff 时计算高亮 tokens（懒加载 shiki，完成前纯文本渲染）
   const diffTokens = useDiffTokens(expandedFile && showRaw ? expandedFile : null);
@@ -682,6 +691,11 @@ export function App() {
                         {s.foldedLines(selectedEntry.simplified.stats.folded)}
                       </span>
                     )}
+                  {!showRaw && erasedCount > 0 && (
+                    <Tooltip content={s.erasedHint}>
+                      <span className="dim">{s.erasedCount(erasedCount)}</span>
+                    </Tooltip>
+                  )}
                   <span className="spacer" />
                   {showRaw && (
                     <span className="seg">
