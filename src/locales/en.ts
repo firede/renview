@@ -86,7 +86,7 @@ Examples:
     anonymousName: "(anonymous)",
     unknownName: "(unknown)",
     commentChanges: "Comment changes",
-    outsideDeclarations: "Changes outside declarations",
+    outsideDeclarations: "Module top-level code",
     truncatedSuffix: "… (truncated)",
     nameList: (shown, total) => `${shown}, … (${total} total)`,
     importsFold: (keyword, count, shown, hasMore) =>

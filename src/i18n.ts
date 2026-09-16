@@ -107,6 +107,7 @@ export interface Messages {
     anonymousName: string;
     unknownName: string;
     commentChanges: string;
+    /** 不属于任何声明的变更行（模块顶层语句等）的兜底单元名 */
     outsideDeclarations: string;
     /** 类型文本超长截断后缀 */
     truncatedSuffix: string;

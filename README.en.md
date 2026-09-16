@@ -56,7 +56,14 @@ By default, renview shows all uncommitted changes, including staged changes, uns
 
 Staged and commit-range reviews exclude working-tree drafts. Revision and path arguments follow `git diff`; run `renview --help` for tool options.
 
-The interface opens in **Changes** mode, where you can switch between simplified and raw diffs and expand unchanged context as needed. **Browse** mode lets you read repository files.
+The interface opens in **Changes** mode on the first file whose signatures changed. You can switch between simplified and raw diffs and expand unchanged context as needed. The file list can be filtered and collapsed by directory; lockfiles and generated files sink to the bottom. **Browse** mode lets you read repository files.
+
+| Shortcut | Action                         |
+| -------- | ------------------------------ |
+| `J` `K`  | Next / previous file           |
+| `N` `P`  | Next / previous changed symbol |
+| `S`      | Toggle simplified / raw diff   |
+| `B`      | Toggle sidebar                 |
 
 See [languages.json](languages.json) for supported languages, file formats, and simplification support.
 

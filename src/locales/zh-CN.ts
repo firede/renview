@@ -78,7 +78,7 @@ export const zhCN: Messages = {
     anonymousName: "(匿名)",
     unknownName: "(未知)",
     commentChanges: "注释变更",
-    outsideDeclarations: "声明之外的变更",
+    outsideDeclarations: "模块顶层代码",
     truncatedSuffix: "…（截断）",
     nameList: (shown, total) => `${shown}, …（共 ${total} 个）`,
     importsFold: (keyword, count, shown, hasMore) =>
