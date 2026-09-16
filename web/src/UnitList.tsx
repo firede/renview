@@ -1,7 +1,37 @@
+import type { ReactNode } from "react";
 import { Tooltip } from "./Tooltip";
 import type { ChangeKind, ChangeUnit } from "../../src/analysis/types";
 import { useStrings } from "./i18n";
 import { KindGlyph } from "./icons";
+import { wordDiffRanges } from "./worddiff";
+
+/** 按差异区间切分一行：区间内的片段套高亮类，区间外原样输出 */
+function markRanges(text: string, ranges: Array<[number, number]>, cls: "wdel" | "wadd") {
+  const out: ReactNode[] = [];
+  let pos = 0;
+  ranges.forEach(([start, end], i) => {
+    if (start > pos) out.push(text.slice(pos, start));
+    out.push(
+      <mark key={i} className={cls}>
+        {text.slice(start, end)}
+      </mark>,
+    );
+    pos = end;
+  });
+  if (pos < text.length) out.push(text.slice(pos));
+  return out;
+}
+
+/** 签名变更预览：新旧签名词级对比，只有差异片段着色，长签名里加了一个 export 也能一眼看到 */
+function SignaturePreview({ before, after }: { before: string; after: string }) {
+  const diff = wordDiffRanges(before, after);
+  return (
+    <span className="unit-signature-preview">
+      <span>{diff ? markRanges(before, diff.a, "wdel") : before}</span>
+      <span>{diff ? markRanges(after, diff.b, "wadd") : after}</span>
+    </span>
+  );
+}
 
 /** 变更分类的样式类（与文件列表徽章同一配色，纯文字无描边） */
 const CHANGE_CLASS: Record<ChangeKind, string> = {
@@ -65,10 +95,7 @@ export function UnitList({
             key={u.id}
             content={
               u.change === "signature" && u.oldSignature && u.signature ? (
-                <span className="unit-signature-preview">
-                  <span>{u.oldSignature}</span>
-                  <span>→ {u.signature}</span>
-                </span>
+                <SignaturePreview before={u.oldSignature} after={u.signature} />
               ) : (
                 u.name
               )

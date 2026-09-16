@@ -1187,21 +1187,29 @@ button.icon-btn.spinning svg {
   z-index: 100;
 }
 
+/* 签名预览：等宽、不截断（差异可能落在长签名末尾），删除侧与新增侧用左边线区分 */
 .unit-signature-preview {
   display: block;
-  max-width: 360px;
+  max-width: 400px;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .unit-signature-preview > span {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
+  display: block;
+  padding-left: 8px;
+  border-left: 2px solid var(--del-word-bg);
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .unit-signature-preview > span + span {
-  margin-top: 6px;
+  margin-top: 4px;
+  border-left-color: var(--add-word-bg);
+}
+
+.unit-signature-preview mark {
+  color: inherit;
 }
 
 .tooltip-popup {
