@@ -334,6 +334,15 @@ describe("变更性质与聚合", () => {
     ["const x = 1;", "const x = 2;", "body"],
     ["const x: number = 1;", "const x: string = 1;", "signature"],
     ["const x = 1;", "const x  =  1;", null],
+    // 格式化工具把参数换行并补尾逗号：不是签名变更
+    [
+      "function f(a: A, b: B) { return 1; }",
+      "function f(\n  a: A,\n  b: B,\n) { return 1; }",
+      null,
+    ],
+    ["const o = { a: 1, b: 2 };", "const o = {\n  a: 1,\n  b: 2,\n};", null],
+    ["function g() { f(a, b); }", "function g() {\n  f(\n    a,\n    b,\n  );\n}", null],
+    ["const xs = [1, 2];", "const xs = [1, 2, 3];", "body"],
     ['const x = "a b";', 'const x = "a  b";', "body"],
     ['function f() { return "a b"; }', 'function f() { return "a  b"; }', "body"],
     ["function f() { /* 旧 */ return 1; }", "function f() { /* 新 */ return 1; }", "comment"],

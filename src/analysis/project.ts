@@ -18,7 +18,14 @@ function isComment(node: Node): boolean {
   return /^(comment|line_comment|block_comment|multiline_comment)$/.test(node.type);
 }
 
-/** 保留 token 边界与字面量原文，忽略语法间空白。 */
+/** 尾逗号（后面只剩闭合符号）不改变语义，格式化工具换行时常增删，比较时忽略 */
+function isTrailingComma(parent: Node, i: number): boolean {
+  if (parent.child(i)!.type !== ",") return false;
+  const next = parent.child(i + 1);
+  return next == null || /^[)\]}>]$/.test(next.type);
+}
+
+/** 保留 token 边界与字面量原文，忽略语法间空白与尾逗号。 */
 function syntaxText(
   node: Node,
   includeComments = false,
@@ -41,6 +48,7 @@ function syntaxText(
     for (let i = 0; i < current.childCount; i++) {
       const field = current.fieldNameForChild(i);
       if (variableSignature && (field === "value" || field === "right")) continue;
+      if (isTrailingComma(current, i)) continue;
       walk(current.child(i)!);
     }
     tokens.push(")");
