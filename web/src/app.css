@@ -341,6 +341,14 @@ body {
   color: var(--fg-dim);
   height: 100%;
 }
+.center-note.stack {
+  flex-direction: column;
+  gap: 8px;
+}
+.center-note strong {
+  color: var(--fg);
+  font-weight: 500;
+}
 
 /* react-diff-view 主题适配（颜色全走 token） */
 .diff {
@@ -814,10 +822,13 @@ body {
   font-style: italic;
 }
 
-/* tab 按 4 格渲染（Go 等 tab 缩进语言的可读性） */
+/* tab 按 4 格渲染（Go 等 tab 缩进语言的可读性）；禁用连字：== 与 === 之类的差别是审阅要点，连字会把它抹平 */
 .scode,
-.diff-code {
+.diff-code,
+.erasure-pop code,
+.unit-signature-preview {
   tab-size: 4;
+  font-variant-ligatures: none;
 }
 
 /* 跳转目标的范围提示（闪烁一次后消退） */
@@ -1056,6 +1067,15 @@ button.icon-btn.spinning svg {
   min-height: 0;
 }
 .review-pane[hidden] {
+  display: none;
+}
+/* 浏览面板同理：进入过即保留挂载，切回审阅只隐藏。 */
+.browse-pane {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.browse-pane[hidden] {
   display: none;
 }
 .context-gap {

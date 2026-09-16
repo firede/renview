@@ -228,6 +228,11 @@ export function App() {
   const [viewType, setViewType] = useState<ViewType>("unified");
   const [rawOverride, setRawOverride] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"review" | "browse">("review");
+  // 进入过浏览模式后保持挂载：往返审阅不丢失已选文件、过滤词与滚动位置
+  const [browseMounted, setBrowseMounted] = useState(false);
+  useEffect(() => {
+    if (mode === "browse") setBrowseMounted(true);
+  }, [mode]);
   // 窄屏先留出阅读空间，侧栏仍可通过顶栏按钮展开。
   const [sidebarHidden, setSidebarHidden] = useState(() => window.innerWidth < 640);
   /** 变更单元点击的行跳转请求（nonce 去重；切换文件时清空） */
@@ -345,6 +350,12 @@ export function App() {
   );
   const selectedEntry = context?.entry ?? listedEntry;
   useEffect(() => setExpansions([]), [selectedFile]);
+  // 切换文件时回到顶部；按路径身份判定，聚焦刷新重建的同一文件不重置
+  const selectedKey = selectedFile ? fileKey(selectedFile) : null;
+  useLayoutEffect(() => {
+    const content = reviewPane.current?.querySelector<HTMLElement>(".content");
+    if (content) content.scrollTop = 0;
+  }, [selectedKey]);
   const expandedFile = useMemo(
     () =>
       selectedFile && context?.oldFile?.source != null
@@ -560,8 +571,15 @@ export function App() {
         )}
         {source.headerActions}
       </header>
-      {mode === "browse" && (
-        <BrowseView sidebarHidden={sidebarHidden} snapshot={payload.snapshot} />
+      {browseMounted && (
+        <div className="browse-pane" hidden={mode !== "browse"}>
+          <BrowseView
+            active={mode === "browse"}
+            sidebarHidden={sidebarHidden}
+            snapshot={payload.snapshot}
+            emptyNote={files.length === 0 ? s.noChanges : undefined}
+          />
+        </div>
       )}
       <div ref={reviewPane} className="review-pane" hidden={mode !== "review"}>
         {files.length === 0 ? (

@@ -33,11 +33,17 @@ function splitPath(p: string): { dir: string; base: string } {
  * 简化行与源码 1:1 对齐，行号即锚点（大纲与 diff 跳转都靠它定位）。
  */
 export function BrowseView({
+  active,
   sidebarHidden,
   snapshot,
+  emptyNote,
 }: {
+  /** 是否为当前可见模式（隐藏挂载时不响应快捷键） */
+  active: boolean;
   sidebarHidden: boolean;
   snapshot?: string;
+  /** 无文件选中时的附加说明（如：因无变更而自动进入浏览） */
+  emptyNote?: string;
 }) {
   const s = useStrings();
   const source = useViewerSource();
@@ -108,8 +114,9 @@ export function BrowseView({
 
   const hasSimplified = data?.simplified != null;
 
-  // S 键在简化与源码间切换（输入框聚焦时不生效）
+  // S 键在简化与源码间切换（输入框聚焦或本模式隐藏时不生效）
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "s" || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
@@ -118,7 +125,7 @@ export function BrowseView({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hasSimplified]);
+  }, [active, hasSimplified]);
 
   return (
     <SplitPane
@@ -181,7 +188,12 @@ export function BrowseView({
         />
       }
     >
-      {!path && <div className="center-note">{s.selectFileToBrowse}</div>}
+      {!path && (
+        <div className="center-note stack">
+          {emptyNote && <strong>{emptyNote}</strong>}
+          <span>{s.selectFileToBrowse}</span>
+        </div>
+      )}
       {path && (
         <>
           <div className={`file-toolbar${!showSource && hasSimplified ? " projected" : ""}`}>
