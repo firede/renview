@@ -1,7 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { del, replaceNode, type SimplifyOp } from "../simplify";
-import { nodeRowRange, type DeclarationInfo, type LanguageProfile } from "./types";
+import { nodeRowRange, type DeclarationInfo, type LanguageProfile, importAt } from "./types";
 
 const CLASS_NODES = new Set([
   "class_declaration",
@@ -193,6 +193,9 @@ export const javaProfile: LanguageProfile = {
   simplify: javaSimplify,
   foldKind(node) {
     return node.type === "import_declaration" ? "import" : null;
+  },
+  importNames(n) {
+    return [importAt(n, n.text.replace(/^import\s+|;$/g, ""))];
   },
   foldSummary(_kind, nodes, _source, locale) {
     const imports = nodes.map((n) => n.text.replace(/^import\s+|;$/g, ""));

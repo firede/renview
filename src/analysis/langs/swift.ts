@@ -1,7 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import { messages, type Locale } from "../../i18n";
 import { del, type SimplifyOp } from "../simplify";
-import { nodeRowRange, type DeclarationInfo, type LanguageProfile } from "./types";
+import { nodeRowRange, type DeclarationInfo, type LanguageProfile, importAt } from "./types";
 
 const CONTAINERS = new Set(["class_declaration", "protocol_declaration"]);
 const FUNCTIONS = new Set([
@@ -164,6 +164,9 @@ export const swiftProfile: LanguageProfile = {
       node.previousNamedSibling?.endPosition.row === node.startPosition.row ||
       node.nextNamedSibling?.startPosition.row === node.endPosition.row;
     return sharesLine ? null : "import";
+  },
+  importNames(n) {
+    return [importAt(n, n.text.replace(/^import\s+/, ""))];
   },
   foldSummary(_kind, nodes, _source, locale) {
     const imports = nodes.map((n) => n.text.replace(/^import\s+/, ""));

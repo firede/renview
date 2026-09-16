@@ -14,6 +14,8 @@ import {
   type FoldKind,
   type LanguageProfile,
   type TypeDeclMembers,
+  importAt,
+  type ImportName,
 } from "./types";
 
 /** Python profile：声明收集 + 类型/机制擦除（标注、self、cast、TYPE_CHECKING）+ 顶层块折叠 */
@@ -216,15 +218,17 @@ function pyFoldKind(node: Node): FoldKind | null {
   return null;
 }
 
+function pyImportNames(n: Node): ImportName[] {
+  if (n.type === "future_import_statement") return [importAt(n, "__future__")];
+  if (n.type === "import_from_statement") {
+    return [importAt(n, n.childForFieldName("module_name")?.text ?? "?")];
+  }
+  return [importAt(n, n.childForFieldName("name")?.text ?? "?")];
+}
+
 function pyFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
-    const mods = nodes.map((n) => {
-      if (n.type === "future_import_statement") return "__future__";
-      if (n.type === "import_from_statement") {
-        return n.childForFieldName("module_name")?.text ?? "?";
-      }
-      return n.childForFieldName("name")?.text ?? "?";
-    });
+    const mods = nodes.flatMap(pyImportNames).map((m) => m.name);
     return messages(locale).analysis.importsFold(
       "import",
       mods.length,
@@ -281,5 +285,6 @@ export const pythonProfile: LanguageProfile = {
   simplify: pySimplify,
   foldKind: pyFoldKind,
   foldSummary: pyFoldSummary,
+  importNames: pyImportNames,
   typeDeclMembers: pyTypeDeclMembers,
 };

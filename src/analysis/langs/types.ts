@@ -19,6 +19,17 @@ export interface DeclarationInfo {
   pairingSignature?: string;
 }
 
+/** import 引入的模块名与其所在源码行（1-based） */
+export interface ImportName {
+  name: string;
+  line: number;
+}
+
+/** 单行 import：模块名挂在节点起始行 */
+export function importAt(node: Node, name: string): ImportName {
+  return { name, line: node.startPosition.row + 1 };
+}
+
 /** 顶层块折叠类别：import 连续段合并为一行；type-decl 每个声明各成一行 */
 export type FoldKind = "import" | "type-decl";
 
@@ -41,6 +52,10 @@ export interface LanguageProfile {
   foldKind?: (node: Node) => FoldKind | null;
   /** 折叠块的单行摘要（nodes 为同类别的连续段）；locale 决定摘要语言 */
   foldSummary?: (kind: FoldKind, nodes: Node[], source: string, locale: Locale) => string;
+  /** import 节点引入的模块名及其所在行（分组 import 逐项给出）；diff 的 import 折叠摘要按变更行取名 */
+  importNames?: (node: Node) => ImportName[];
+  /** import 折叠摘要里的关键字（缺省 import；如 rust 为 use） */
+  importKeyword?: string;
   /** node 为可提取成员的类型级声明时返回声明名与成员（含行范围），否则 null（diff 折叠摘要定位用） */
   typeDeclMembers?: (node: Node, locale: Locale) => TypeDeclMembers | null;
 }

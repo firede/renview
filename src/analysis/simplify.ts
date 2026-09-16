@@ -1,4 +1,5 @@
 import type { Node, Tree } from "web-tree-sitter";
+import type { ImportFolder } from "./importfold";
 import type { ParsedChange, ParsedFile } from "./map";
 
 /**
@@ -225,6 +226,8 @@ export type SRow =
       newLns?: number[];
       /** 成员级折叠摘要（关联到类型声明时由 describeFold 产出）；缺省时前端按 count 回落 */
       summary?: string;
+      /** import 段折叠（摘要为模块增删）；与类型折叠互不合并 */
+      imports?: true;
     };
 
 export interface SimplifiedViewData {
@@ -310,6 +313,7 @@ function pairVisibleRows(dels: VisibleRow[], adds: VisibleRow[], nextPair: () =>
  * 简化后文本相同的 del/add 行对（含双双被抹空）折叠为 fold 标记；
  * 被抹空的变更行自动折叠；被抹空的上下文行直接不显示。
  * 原文为空行的变更不显示、不进折叠（展开无内容可审），原始 diff 仍保留。
+ * import 段：变更行折叠为一行带模块名摘要的 fold（置于所在块之首），上下文行不显示。
  * 剩余可见 del/add 行按相似度配对（pair id），供前端词级高亮。
  */
 export function buildSimplifiedRows(
@@ -317,6 +321,7 @@ export function buildSimplifiedRows(
   oldSimplified: SimplifyInput,
   newSimplified: SimplifyInput,
   describeFold?: FoldDescriber | null,
+  imports?: ImportFolder | null,
 ): SimplifiedViewData {
   const rows: SRow[] = [];
   let folded = 0;
@@ -332,7 +337,7 @@ export function buildSimplifiedRows(
   const pushFold = (ol: string[], nl: string[], ols: number[], nls: number[]) => {
     const count = Math.max(ol.length, nl.length);
     const last = rows[rows.length - 1];
-    if (last?.kind === "fold") {
+    if (last?.kind === "fold" && !last.imports) {
       last.oldLines.push(...ol);
       last.newLines.push(...nl);
       last.oldLns?.push(...ols);
@@ -358,8 +363,8 @@ export function buildSimplifiedRows(
       const c = changes[i]!;
       if (c.type === "normal") {
         const text = simpOld(c.ln1!);
-        // 原文为空的上下文行保留作视觉间隔；被抹空的非空上下文行不显示
-        if (orig(c).trim() === "" || text !== "") {
+        // 原文为空的上下文行保留作视觉间隔；被抹空的非空上下文行与 import 上下文行不显示
+        if ((orig(c).trim() === "" || text !== "") && !imports?.isImport("old", c.ln1!)) {
           const row: VisibleRow = { kind: "ctx", text, oldLn: c.ln1, newLn: c.ln2 };
           const erases = sideErases(oldSimplified, c.ln1!);
           if (erases) row.erases = erases;
@@ -375,6 +380,9 @@ export function buildSimplifiedRows(
 
       const blockDels: VisibleRow[] = [];
       const blockAdds: VisibleRow[] = [];
+      const blockStart = rows.length;
+      const importDels: ParsedChange[] = [];
+      const importAdds: ParsedChange[] = [];
       const used = new Array<boolean>(adds.length).fill(false);
       const matches = new Map<string, { indices: number[]; next: number }>();
       adds.forEach((a, idx) => {
@@ -386,6 +394,10 @@ export function buildSimplifiedRows(
       for (const d of dels) {
         // 空行增删不携带可审阅内容；原始 diff 仍保留。
         if (orig(d).trim() === "") {
+          continue;
+        }
+        if (imports?.isImport("old", d.ln!)) {
+          importDels.push(d);
           continue;
         }
         const ds = simpOld(d.ln!);
@@ -410,6 +422,10 @@ export function buildSimplifiedRows(
         if (orig(a).trim() === "") {
           return;
         }
+        if (imports?.isImport("new", a.ln!)) {
+          importAdds.push(a);
+          return;
+        }
         const as = simpNew(a.ln!);
         if (as === "") {
           pushFold([], [orig(a)], [], [a.ln!]);
@@ -423,13 +439,40 @@ export function buildSimplifiedRows(
         }
       });
       pairVisibleRows(blockDels, blockAdds, () => ++pairSeq);
+      if (importDels.length > 0 || importAdds.length > 0) {
+        const oldLns = importDels.map((d) => d.ln!);
+        const newLns = importAdds.map((a) => a.ln!);
+        folded += Math.max(oldLns.length, newLns.length);
+        const prev = rows[blockStart - 1];
+        if (prev?.kind === "fold" && prev.imports) {
+          // 只隔着被隐藏的 import 上下文行：并入前一条 import 折叠，重算摘要
+          prev.oldLines.push(...importDels.map(orig));
+          prev.newLines.push(...importAdds.map(orig));
+          prev.oldLns!.push(...oldLns);
+          prev.newLns!.push(...newLns);
+          prev.count = Math.max(prev.oldLns!.length, prev.newLns!.length);
+          prev.summary = imports!.describe(prev.oldLns!, prev.newLns!);
+        } else {
+          // import 在块内总是先于其他变更，折叠行放在块首
+          rows.splice(blockStart, 0, {
+            kind: "fold",
+            count: Math.max(oldLns.length, newLns.length),
+            oldLines: importDels.map(orig),
+            newLines: importAdds.map(orig),
+            oldLns,
+            newLns,
+            summary: imports!.describe(oldLns, newLns),
+            imports: true,
+          });
+        }
+      }
     }
   }
 
   // 折叠组的成员级摘要（关联类型声明成员时）；失败保持缺省，前端按行数回落
   if (describeFold) {
     for (const r of rows) {
-      if (r.kind !== "fold") continue;
+      if (r.kind !== "fold" || r.imports) continue;
       const summary = describeFold(r.oldLns ?? [], r.newLns ?? []);
       if (summary) r.summary = summary;
     }

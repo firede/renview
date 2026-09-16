@@ -83,6 +83,12 @@ export const zhCN: Messages = {
     nameList: (shown, total) => `${shown}, …（共 ${total} 个）`,
     importsFold: (keyword, count, shown, hasMore) =>
       `${keyword} × ${count}（${shown.join("、")}${hasMore ? "…" : ""}）`,
+    importFold: (keyword, addedLines, removedLines, added, removed, hasMore) => {
+      const counts = `${keyword} +${addedLines} −${removedLines}`;
+      const names = [...added.map((m) => `+${m}`), ...removed.map((m) => `−${m}`)];
+      if (names.length === 0) return `${counts}（模块不变）`;
+      return `${counts}：${names.join("、")}${hasMore ? "…" : ""}`;
+    },
     typeSpecJoiner: "；",
     foldedTypeMembers: (decl, members) =>
       members ? `${decl}：${members}（类型/格式变更）` : `${decl}（类型/格式变更）`,

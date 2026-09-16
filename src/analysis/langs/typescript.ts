@@ -6,6 +6,7 @@ import {
   nodeRowRange,
   type DeclarationInfo,
   type FoldKind,
+  type ImportName,
   type LanguageProfile,
   type TypeDeclMembers,
 } from "./types";
@@ -259,12 +260,16 @@ function tsFoldKind(node: Node): FoldKind | null {
   return null;
 }
 
+function tsImportNames(node: Node): ImportName[] {
+  const s = unwrapDecl(node).childForFieldName("source");
+  const name = s?.namedChildren[0]?.text ?? s?.text.replace(/^['"]|['"]$/g, "") ?? "?";
+  // 模块名挂在 from 所在行：多行 import 只改导入项时不算模块增删
+  return [{ name, line: (s ?? node).startPosition.row + 1 }];
+}
+
 function tsFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
-    const mods = nodes.map((n) => {
-      const s = unwrapDecl(n).childForFieldName("source");
-      return s?.namedChildren[0]?.text ?? s?.text.replace(/^['"]|['"]$/g, "") ?? "?";
-    });
+    const mods = nodes.flatMap(tsImportNames).map((m) => m.name);
     return messages(locale).analysis.importsFold(
       "import",
       nodes.length,
@@ -320,6 +325,7 @@ export const typescriptProfile: LanguageProfile = {
   simplify: tsSimplify,
   foldKind: tsFoldKind,
   foldSummary: tsFoldSummary,
+  importNames: tsImportNames,
   typeDeclMembers: tsTypeDeclMembers,
 };
 

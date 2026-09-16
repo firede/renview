@@ -318,12 +318,6 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "rows": [
               {
                 "kind": "ctx",
-                "text": "import \"fmt\"",
-                "oldLn": 3,
-                "newLn": 3
-              },
-              {
-                "kind": "ctx",
                 "text": "",
                 "oldLn": 4,
                 "newLn": 4
@@ -1048,12 +1042,6 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
           },
           "simplified": {
             "rows": [
-              {
-                "kind": "ctx",
-                "text": "import \"fmt\"",
-                "oldLn": 3,
-                "newLn": 3
-              },
               {
                 "kind": "ctx",
                 "text": "",
@@ -1815,12 +1803,6 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
             "rows": [
               {
                 "kind": "ctx",
-                "text": "import \"fmt\"",
-                "oldLn": 3,
-                "newLn": 3
-              },
-              {
-                "kind": "ctx",
                 "text": "",
                 "oldLn": 4,
                 "newLn": 4
@@ -2545,12 +2527,6 @@ export const demoData: Record<"zh-CN" | "en", DemoChangeset> = {
           },
           "simplified": {
             "rows": [
-              {
-                "kind": "ctx",
-                "text": "import \"fmt\"",
-                "oldLn": 3,
-                "newLn": 3
-              },
               {
                 "kind": "ctx",
                 "text": "",

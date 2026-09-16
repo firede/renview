@@ -1,5 +1,6 @@
 import { MAX_SOURCE_BYTES } from "../source";
 import { foldDescriber } from "./foldescribe";
+import { importFolder } from "./importfold";
 import { profileForPath } from "./langs";
 import { changedLinesOf, type ParsedFile } from "./map";
 import { analyzeParsed, outlineOf, withParsedSides } from "./project";
@@ -118,6 +119,7 @@ export async function analyzeFile(
           oldSide ? simplifyTree(oldSide.tree, oldSide.source, profile.simplify) : null,
           newSide ? simplifyTree(newSide.tree, newSide.source, profile.simplify) : null,
           foldDescriber(profile, oldSide, newSide, locale),
+          importFolder(profile, oldSide, newSide, locale),
         );
       }
     });

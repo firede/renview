@@ -8,6 +8,8 @@ import {
   type FoldKind,
   type LanguageProfile,
   type TypeDeclMembers,
+  importAt,
+  type ImportName,
 } from "./types";
 
 /** Go profile：声明收集 + 简化器（类型与错误传播机制擦除）+ 顶层块折叠 */
@@ -214,13 +216,13 @@ function goFoldKind(node: Node): FoldKind | null {
   return null;
 }
 
-function collectImportPaths(node: Node, out: string[]): void {
+function collectImportPaths(node: Node, out: ImportName[]): void {
   if (node.type === "import_spec") {
-    out.push(node.childForFieldName("path")?.text.replace(/^"|"$/g, "") ?? "?");
+    out.push(importAt(node, node.childForFieldName("path")?.text.replace(/^"|"$/g, "") ?? "?"));
     return;
   }
   if (node.type === "interpreted_string_literal") {
-    out.push(node.text.replace(/^"|"$/g, ""));
+    out.push(importAt(node, node.text.replace(/^"|"$/g, "")));
     return;
   }
   for (const c of node.namedChildren) collectImportPaths(c, out);
@@ -252,7 +254,11 @@ function typeSpecSummary(spec: Node, locale: Locale): string {
 function goFoldSummary(kind: FoldKind, nodes: Node[], _source: string, locale: Locale): string {
   if (kind === "import") {
     const paths: string[] = [];
-    for (const n of nodes) collectImportPaths(n, paths);
+    for (const n of nodes) {
+      const found: ImportName[] = [];
+      collectImportPaths(n, found);
+      paths.push(...found.map((m) => m.name));
+    }
     return messages(locale).analysis.importsFold(
       "import",
       paths.length,
@@ -312,5 +318,10 @@ export const goProfile: LanguageProfile = {
   simplify: goSimplify,
   foldKind: goFoldKind,
   foldSummary: goFoldSummary,
+  importNames(node) {
+    const paths: ImportName[] = [];
+    collectImportPaths(node, paths);
+    return paths;
+  },
   typeDeclMembers: goTypeDeclMembers,
 };

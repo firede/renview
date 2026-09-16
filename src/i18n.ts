@@ -114,6 +114,15 @@ export interface Messages {
     nameList: (shown: string, total: number) => string;
     /** 顶层 import/use 连续段的单行折叠摘要 */
     importsFold: (keyword: string, count: number, shown: string[], hasMore: boolean) => string;
+    /** diff 中 import 变更的折叠摘要：新增/删除的模块名（已截断）；两者皆空表示模块集合未变（导入项、顺序或格式变更） */
+    importFold: (
+      keyword: string,
+      addedLines: number,
+      removedLines: number,
+      added: string[],
+      removed: string[],
+      hasMore: boolean,
+    ) => string;
     /** 多个 type 声明摘要之间的连接符 */
     typeSpecJoiner: string;
     /** diff 折叠组的成员级摘要（定位到类型声明时）；members 为 null 时只给声明名 */

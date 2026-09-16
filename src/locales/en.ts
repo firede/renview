@@ -91,6 +91,12 @@ Examples:
     nameList: (shown, total) => `${shown}, … (${total} total)`,
     importsFold: (keyword, count, shown, hasMore) =>
       `${count} ${keyword}${count === 1 ? "" : "s"} (${shown.join(", ")}${hasMore ? ", …" : ""})`,
+    importFold: (keyword, addedLines, removedLines, added, removed, hasMore) => {
+      const counts = `${keyword} +${addedLines} −${removedLines}`;
+      const names = [...added.map((m) => `+${m}`), ...removed.map((m) => `−${m}`)];
+      if (names.length === 0) return `${counts} (same modules)`;
+      return `${counts}: ${names.join(", ")}${hasMore ? ", …" : ""}`;
+    },
     typeSpecJoiner: "; ",
     foldedTypeMembers: (decl, members) =>
       members ? `${decl}: ${members} (type/format changes)` : `${decl} (type/format changes)`,

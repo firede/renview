@@ -15,6 +15,7 @@ import {
   type FoldKind,
   type LanguageProfile,
   type TypeDeclMembers,
+  importAt,
 } from "./types";
 
 /** Rust profile：声明收集（徽章分类用）+ 简化器（对齐 rust-beautifier 的擦除规则） */
@@ -289,5 +290,7 @@ export const rustProfile: LanguageProfile = {
   simplify: rustSimplify,
   foldKind: rustFoldKind,
   foldSummary: rustFoldSummary,
+  importNames: (n) => [importAt(n, n.childForFieldName("argument")?.text ?? "?")],
+  importKeyword: "use",
   typeDeclMembers: rustTypeDeclMembers,
 };
