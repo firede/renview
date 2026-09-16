@@ -5,11 +5,6 @@ export const SIDEBAR_DEFAULT_WIDTH = 300;
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 560;
 
-/** 上下分栏的默认/边界比例 */
-const SPLIT_DEFAULT_PCT = 65;
-const SPLIT_MIN_PCT = 15;
-const SPLIT_MAX_PCT = 85;
-
 /**
  * 宽度与分栏比例存 sessionStorage：单次会话内记忆（刷新/模式切换不丢）。
  * 不用 localStorage——端口每次启动随机、按源隔离，跨启动持久化本就无意义。
@@ -96,53 +91,33 @@ export function SplitPane({
 
 export interface SideSection {
   title: string;
+  /** 标题右侧的快捷键提示（小字降权） */
+  hint?: string;
   body: ReactNode;
 }
 
 /**
- * 侧栏内部的上下分栏：上主列表（文件）下辅助列表（变更单元/大纲）。
- * 比例会话内记忆（storageKey 按场景区分），双击手柄复位默认比例。
- * 标题常驻小字降权，不参与滚动。
+ * 侧栏内部的上下分栏：上主列表（文件/目录树）下辅助列表（变更单元/大纲）。
+ * 下栏按内容取高（至多约四成），其余空间留给主列表：辅助列表常常很短甚至为空，
+ * 固定比例会让主列表在大变更集里只剩几行可见。
  */
-export function SideSections({
-  top,
-  bottom,
-  storageKey,
-}: {
-  top: SideSection;
-  bottom: SideSection;
-  storageKey: string;
-}) {
-  const key = `renview:sideSplit:${storageKey}`;
-  const [initialPct] = useState(() => {
-    const v = readSessionNumber(key);
-    return v != null ? Math.min(SPLIT_MAX_PCT, Math.max(SPLIT_MIN_PCT, v)) : SPLIT_DEFAULT_PCT;
-  });
-  const topPanel = useRef<PanelImperativeHandle>(null);
-
+export function SideSections({ top, bottom }: { top: SideSection; bottom: SideSection }) {
   return (
-    <Group orientation="vertical" className="side-sections">
-      <Panel
-        id="top"
-        className="side-section"
-        defaultSize={`${initialPct}%`}
-        minSize={`${SPLIT_MIN_PCT}%`}
-        maxSize={`${SPLIT_MAX_PCT}%`}
-        panelRef={topPanel}
-        onResize={(size) => writeSessionNumber(key, Math.round(size.asPercentage))}
-      >
-        <header className="side-head">{top.title}</header>
+    <div className="side-sections">
+      <div className="side-section top">
+        <header className="side-head">
+          {top.title}
+          {top.hint && <span className="side-hint">{top.hint}</span>}
+        </header>
         <div className="side-body">{top.body}</div>
-      </Panel>
-      <Separator
-        className="side-vsplit"
-        disableDoubleClick
-        onDoubleClick={() => topPanel.current?.resize(`${SPLIT_DEFAULT_PCT}%`)}
-      />
-      <Panel id="bottom" className="side-section grow" minSize={`${SPLIT_MIN_PCT}%`}>
-        <header className="side-head">{bottom.title}</header>
+      </div>
+      <div className="side-section bottom">
+        <header className="side-head">
+          {bottom.title}
+          {bottom.hint && <span className="side-hint">{bottom.hint}</span>}
+        </header>
         <div className="side-body">{bottom.body}</div>
-      </Panel>
-    </Group>
+      </div>
+    </div>
   );
 }

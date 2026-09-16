@@ -213,9 +213,12 @@ body {
 }
 
 /* 侧栏上下分栏：上主列表下辅助列表，中间手柄拖拽调比例 */
+/* 上下分栏：上栏吃掉剩余空间，下栏按内容取高、封顶四成后自行滚动 */
 .side-sections {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .side-section {
@@ -225,9 +228,22 @@ body {
   min-width: 0;
 }
 
+.side-section.top {
+  flex: 1 1 0;
+}
+
+.side-section.bottom {
+  flex: 0 1 auto;
+  max-height: 40%;
+  border-top: 1px solid var(--border);
+}
+
 /* 分栏标题：常驻小字降权，不参与滚动 */
 .side-head {
   flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   padding: 4px 12px;
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -235,15 +251,16 @@ body {
   user-select: none;
 }
 
+.side-hint {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
 .side-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-}
-
-/* 下栏顶边承担分隔线（手柄骑跨其上） */
-.side-section.grow {
-  border-top: 1px solid var(--border);
 }
 
 .file-item {
@@ -269,15 +286,54 @@ body {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
+/* 目录分组标题：整行可点折叠，尾部给文件数 */
 .file-group-title {
-  padding: 3px 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 3px 12px 3px 8px;
   margin-bottom: 1px;
+  border: none;
   background: var(--bg-raised);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
   color: var(--fg-dim);
+  text-align: left;
+  cursor: pointer;
+}
+
+.file-group-title:hover {
+  color: var(--fg);
+}
+
+.file-group-title svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.file-group-name {
+  flex: 1;
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.file-group-count {
+  flex: none;
+  opacity: 0.7;
+}
+
+/* 已看过的文件：名字降权，尾部给对勾 */
+.file-item.visited .file-path {
+  color: var(--fg-dim);
+}
+
+.file-seen {
+  margin-left: auto;
+  color: var(--fg-dim);
+  font-size: 11px;
 }
 
 .file-dir {

@@ -132,7 +132,6 @@ export function BrowseView({
       hidden={sidebarHidden}
       side={
         <SideSections
-          storageKey="browse"
           top={{
             title: s.sectionFiles,
             body: (
@@ -143,6 +142,11 @@ export function BrowseView({
                     placeholder={s.filterFiles}
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      // 回车打开首个匹配；Esc 清空
+                      if (e.key === "Enter" && visible[0]) setPath(visible[0]);
+                      if (e.key === "Escape") setFilter("");
+                    }}
                   />
                 </div>
                 {fileList.error && (

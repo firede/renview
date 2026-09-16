@@ -13,13 +13,7 @@ import {
   type HunkTokens,
   type ViewType,
 } from "react-diff-view";
-import type {
-  ChangeKind,
-  ChangeUnit,
-  FileEntry,
-  FileStatus,
-  ReviewContext,
-} from "../../src/analysis/types";
+import type { ChangeUnit, FileEntry, ReviewContext } from "../../src/analysis/types";
 import { BrowseView } from "./BrowseView";
 import { renderDiffToken, shikiLangForPath, useDiffTokens } from "./highlight";
 import { useStrings } from "./i18n";
@@ -30,7 +24,6 @@ import {
   IconRefresh,
   IconSplit,
   IconUnified,
-  StatusIcon,
 } from "./icons";
 import { SideSections, SplitPane } from "./SplitPane";
 import { SimplifiedView, type LineJump } from "./SimplifiedView";
@@ -48,6 +41,15 @@ import {
 } from "./reviewContext";
 import { UnitList } from "./UnitList";
 import { defaultLandingIndex, isLowValuePath } from "./fileRank";
+import {
+  FileList,
+  LOW_VALUE_GROUP,
+  displayPath,
+  fileKey,
+  fileStats,
+  splitPath,
+  type FileGroup,
+} from "./FileList";
 import { useResource } from "./useResource";
 import { useViewerSource } from "./viewerSource";
 
@@ -62,41 +64,6 @@ interface DiffPayload {
   error?: string;
   /** 网络层失败（进程退出/端口不可达），与服务端返回的业务错误区分 */
   unreachable?: boolean;
-}
-
-/** 文件列表仅汇总代码分类；注释在变更单元区呈现，避免重复强调。 */
-const SUMMARY_CHIP_CLASS: Array<[ChangeKind, string]> = [
-  ["signature", "chip-signature"],
-  ["type-only", "chip-type"],
-  ["added", "chip-added"],
-  ["removed", "chip-removed"],
-  ["body", "chip-body"],
-];
-
-function fileKey(file: FileData): string {
-  return JSON.stringify([file.oldPath, file.newPath]);
-}
-
-/** 删除文件的新侧是 /dev/null，界面名称仍使用原路径。 */
-function displayPath(file: FileData): string {
-  return file.newPath === "/dev/null" ? file.oldPath : file.newPath;
-}
-
-function splitPath(p: string): { dir: string; base: string } {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? { dir: p.slice(0, i + 1), base: p.slice(i + 1) } : { dir: "", base: p };
-}
-
-function fileStats(f: FileData): { adds: number; dels: number } {
-  let adds = 0;
-  let dels = 0;
-  for (const h of f.hunks) {
-    for (const c of h.changes) {
-      if (c.type === "insert") adds++;
-      else if (c.type === "delete") dels++;
-    }
-  }
-  return { adds, dels };
 }
 
 /** 原始 diff 的行锚 id：新增/上下文行挂新侧行号，删除行挂旧侧行号（双列模式下 id 落在对应侧单元格，统一可用 getElementById 定位） */
@@ -307,11 +274,8 @@ export function App() {
     [files, entries],
   );
 
-  /** 低价值文件的分组键（不与任何真实目录冲突） */
-  const LOW_VALUE_GROUP = "\0low-value";
-
   // 按已排序的目录分组，保留文件的选择索引；低价值文件独立成尾组。
-  const fileGroups = useMemo(() => {
+  const fileGroups = useMemo<FileGroup[]>(() => {
     const groups = new Map<string, { item: (typeof items)[number]; index: number }[]>();
     items.forEach((item, index) => {
       const key = item.lowValue ? LOW_VALUE_GROUP : splitPath(displayPath(item.file)).dir;
@@ -337,6 +301,15 @@ export function App() {
   // 按路径身份保留选中项，刷新引起的排序变化不应把用户带到另一文件。
   const found = items.findIndex(({ file }) => fileKey(file) === selected);
   const safeSelected = found >= 0 ? found : landing;
+  const selectFile = (index: number) => {
+    const f = items[index]?.file;
+    if (!f) return;
+    setSelected(fileKey(f));
+    setRawOverride(null);
+    setUnitJump(null);
+  };
+  /** 本次会话看过的文件：离开某文件时记入（会话内存，不持久化） */
+  const [visited, setVisited] = useState<Set<string>>(() => new Set());
   const selectedFile = items[safeSelected]?.file ?? null;
   const listedEntry = items[safeSelected]?.entry ?? null;
   const contextResource = useResource<
@@ -371,7 +344,13 @@ export function App() {
   useEffect(() => setExpansions([]), [selectedFile]);
   // 切换文件时回到顶部；按路径身份判定，聚焦刷新重建的同一文件不重置
   const selectedKey = selectedFile ? fileKey(selectedFile) : null;
+  const lastKey = useRef<string | null>(null);
   useLayoutEffect(() => {
+    const prev = lastKey.current;
+    lastKey.current = selectedKey;
+    if (prev != null && prev !== selectedKey) {
+      setVisited((v) => (v.has(prev) ? v : new Set(v).add(prev)));
+    }
     const content = reviewPane.current?.querySelector<HTMLElement>(".content");
     if (content) content.scrollTop = 0;
     // 默认落地或键盘切换的文件可能不在侧栏可视区，就近滚入（点击选中时不移动）
@@ -510,6 +489,27 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, hasSimplified, showRaw]);
 
+  // J/K 上下切换文件，N/P 上下切换变更单元（仅审阅模式；输入框聚焦时不生效）
+  const units = selectedEntry?.projection?.units ?? null;
+  useEffect(() => {
+    if (mode !== "review") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "j" || e.key === "k") {
+        const next = safeSelected + (e.key === "j" ? 1 : -1);
+        if (next >= 0 && next < items.length) selectFile(next);
+      } else if ((e.key === "n" || e.key === "p") && units && units.length > 0) {
+        const cur = units.findIndex((u) => u.id === unitJump?.unitId);
+        const next = e.key === "n" ? Math.min(cur + 1, units.length - 1) : Math.max(cur - 1, 0);
+        if (next !== cur || cur < 0) jumpToUnit(units[next]!);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   // B 键切换侧栏显隐（变更/浏览两模式共用；输入框聚焦时不生效）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -612,78 +612,21 @@ export function App() {
             hidden={sidebarHidden}
             side={
               <SideSections
-                storageKey="review"
                 top={{
                   title: s.sectionFiles,
-                  body: fileGroups.map(([key, group]) => {
-                    const lowValue = key === LOW_VALUE_GROUP;
-                    const dir = lowValue ? "" : key;
-                    return (
-                      <section
-                        className={`file-group${lowValue ? " low-value" : ""}`}
-                        key={key}
-                        aria-label={lowValue ? s.sectionLowValue : dir || "/"}
-                      >
-                        {lowValue && <div className="file-group-title">{s.sectionLowValue}</div>}
-                        {dir && group.length > 1 && <div className="file-group-title">{dir}</div>}
-                        {group.map(({ item: { file: f, entry }, index: i }) => {
-                          const path = displayPath(f);
-                          const { dir, base } = splitPath(path);
-                          const stat = fileStats(f);
-                          const sum = entry?.projection?.summary;
-                          return (
-                            <button
-                              key={`${f.oldPath}→${f.newPath}`}
-                              className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                              onClick={() => {
-                                setSelected(fileKey(f));
-                                setRawOverride(null);
-                                setUnitJump(null);
-                              }}
-                            >
-                              <Tooltip content={path}>
-                                <span className="file-path">
-                                  {(group.length === 1 || lowValue) && dir && (
-                                    <span className="file-dir">{dir}</span>
-                                  )}
-                                  {base.split(/(?<=[-_])/).map((part, index) => (
-                                    <Fragment key={index}>
-                                      {part}
-                                      <wbr />
-                                    </Fragment>
-                                  ))}
-                                </span>
-                              </Tooltip>
-                              <span className="file-meta">
-                                <Tooltip content={s.statusLabel[f.type as FileStatus] ?? f.type}>
-                                  <span className={`status status-${f.type}`}>
-                                    <StatusIcon status={f.type as FileStatus} />
-                                  </span>
-                                </Tooltip>
-                                <em className="add">+{stat.adds}</em>
-                                <em className="del">−{stat.dels}</em>
-                                {sum && (
-                                  <span className="chips">
-                                    {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(
-                                      ([k, cls]) => (
-                                        <span key={k} className={`chip ${cls}`}>
-                                          {s.summaryChips[k]}
-                                          {sum[k]}
-                                        </span>
-                                      ),
-                                    )}
-                                  </span>
-                                )}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </section>
-                    );
-                  }),
+                  hint: s.shortcutFiles,
+                  body: (
+                    <FileList
+                      groups={fileGroups}
+                      selectedIndex={safeSelected}
+                      visited={visited}
+                      onSelect={selectFile}
+                    />
+                  ),
                 }}
                 bottom={{
                   title: s.sectionUnits,
+                  hint: s.shortcutUnits,
                   body: (
                     <UnitList
                       selectedId={unitJump?.unitId}
