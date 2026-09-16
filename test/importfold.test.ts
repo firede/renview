@@ -72,6 +72,22 @@ describe("importFolder", () => {
     }
   });
 
+  test("与其他语句共行的 import 不索引，业务改动不会被藏进摘要", async () => {
+    const oldSrc = `import { x } from "m"; export const n = 1;\nimport { y } from "y";\n`;
+    const newSrc = `import { x } from "m"; export const n = 2;\nimport { y } from "y";\n`;
+    const oldSide = await parseSide(typescriptProfile, oldSrc);
+    const newSide = await parseSide(typescriptProfile, newSrc);
+    try {
+      const f = importFolder(typescriptProfile, oldSide, newSide, "zh-CN")!;
+      expect(f.isImport("old", 1)).toBe(false);
+      expect(f.isImport("new", 1)).toBe(false);
+      expect(f.isImport("new", 2)).toBe(true);
+    } finally {
+      oldSide.tree.delete();
+      newSide.tree.delete();
+    }
+  });
+
   test("无 importNames 的 profile 不折叠", async () => {
     const profile: LanguageProfile = { ...typescriptProfile, importNames: undefined };
     const side = await parseSide(profile, `import "a";\n`);

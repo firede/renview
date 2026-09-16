@@ -18,9 +18,16 @@ function isComment(node: Node): boolean {
   return /^(comment|line_comment|block_comment|multiline_comment)$/.test(node.type);
 }
 
-/** 尾逗号（后面只剩闭合符号）不改变语义，格式化工具换行时常增删，比较时忽略 */
+/**
+ * 尾逗号可忽略的容器：参数/实参列表、对象与数组字面量、成员列表等，这里的尾逗号只是格式。
+ * 不含元组、下标、括号表达式：Python 的 `a[1,]`、`(1,)` 与 Rust 的 `(1,)` 里尾逗号决定类型。
+ */
+const TRAILING_COMMA_CONTAINERS =
+  /parameter|argument|^(object|object_type|object_pattern|array|array_pattern|dictionary|list|set|literal_value|field_declaration_list|field_initializer_list|enum_variant_list|enum_body|array_initializer|named_imports|export_clause|import_specifier_list|use_list)$/;
+
+/** 格式性尾逗号（可忽略容器内、后面只剩闭合符号），格式化工具换行时常增删，比较时忽略 */
 function isTrailingComma(parent: Node, i: number): boolean {
-  if (parent.child(i)!.type !== ",") return false;
+  if (parent.child(i)!.type !== "," || !TRAILING_COMMA_CONTAINERS.test(parent.type)) return false;
   const next = parent.child(i + 1);
   return next == null || /^[)\]}>]$/.test(next.type);
 }

@@ -357,6 +357,20 @@ describe("变更性质与聚合", () => {
     }
   });
 
+  test.each([
+    ["def f():\n    return a[1]\n", "def f():\n    return a[1,]\n", "body"],
+    ["def f():\n    return (1)\n", "def f():\n    return (1,)\n", "body"],
+    ["def f(a, b):\n    return 1\n", "def f(\n    a,\n    b,\n):\n    return 1\n", null],
+    [
+      "def f():\n    return g(a, b)\n",
+      "def f():\n    return g(\n        a,\n        b,\n    )\n",
+      null,
+    ],
+  ] as const)("python 尾逗号：%s → %s", async (old, next, change) => {
+    const p = await analyzeFile(pythonProfile, old, next, lines(1, 2), lines(1, 2, 3, 4), "zh-CN");
+    expect(p.units.map((u) => u.change)).toEqual(change ? [change] : []);
+  });
+
   test("方法内注释变化不重复生成类入口", async () => {
     const old = "class A {\n f() { /* 旧 */ return 1; }\n}";
     const next = old.replace("旧", "新");

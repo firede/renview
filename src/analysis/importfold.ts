@@ -27,12 +27,21 @@ export function importFolder(
   const namesOf = profile.importNames;
   if (!kindOf || !namesOf) return null;
 
-  /** 行号 → 所属 import 节点（只看顶层节点，与查看器折叠范围一致） */
+  /**
+   * 行号 → 所属 import 节点（只看顶层节点，与查看器折叠范围一致）。
+   * 首尾行上 import 之外还有非空内容（与其他语句共行）的不索引：折叠会把那行的业务变更藏进摘要。
+   */
   const index = (side: ParsedSide | null): Map<number, Node> => {
     const m = new Map<number, Node>();
     if (!side) return m;
+    const lines = side.source.split("\n");
     for (const node of side.tree.rootNode.namedChildren) {
       if (kindOf(node) !== "import") continue;
+      const first = lines[node.startPosition.row] ?? "";
+      const last = lines[node.endPosition.row] ?? "";
+      const before = first.slice(0, node.startPosition.column);
+      const after = last.slice(node.endPosition.column).replace(/^\s*;/, "");
+      if (before.trim() !== "" || after.trim() !== "") continue;
       for (let ln = node.startPosition.row + 1; ln <= node.endPosition.row + 1; ln++)
         m.set(ln, node);
     }

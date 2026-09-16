@@ -76,14 +76,16 @@ export function FileList({
     () => groups.find(([, members]) => members.some((m) => m.index === selectedIndex))?.[0],
     [groups, selectedIndex],
   );
+  // 只在选中项换组时展开：依赖 collapsed 会让用户刚收起的选中组立刻被弹开
   useEffect(() => {
-    if (selectedGroup == null || !collapsed.has(selectedGroup)) return;
+    if (selectedGroup == null) return;
     setCollapsed((prev) => {
+      if (!prev.has(selectedGroup)) return prev;
       const next = new Set(prev);
       next.delete(selectedGroup);
       return next;
     });
-  }, [selectedGroup, collapsed]);
+  }, [selectedGroup]);
 
   const query = filter.trim().toLowerCase();
   const matches = useMemo(
