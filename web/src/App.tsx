@@ -47,6 +47,7 @@ import {
   scopeGroups,
 } from "./reviewContext";
 import { UnitList } from "./UnitList";
+import { defaultLandingIndex, isLowValuePath } from "./fileRank";
 import { useResource } from "./useResource";
 import { useViewerSource } from "./viewerSource";
 
@@ -286,12 +287,17 @@ export function App() {
   // 服务端 files 与前端 parseDiff 解析同一文本，顺序一致，按下标对应
   const entries = useMemo(() => payload?.files ?? [], [payload]);
 
-  // 根目录文件优先，其余按目录、文件名排序，让列表位置可预测。
+  // 根目录文件优先，其余按目录、文件名排序，让列表位置可预测；锁文件与生成产物沉底。
   const items = useMemo(
     () =>
       files
-        .map((file, i) => ({ file, entry: entries[i] ?? null }))
+        .map((file, i) => ({
+          file,
+          entry: entries[i] ?? null,
+          lowValue: isLowValuePath(displayPath(file)),
+        }))
         .sort((a, b) => {
+          if (a.lowValue !== b.lowValue) return a.lowValue ? 1 : -1;
           const left = splitPath(displayPath(a.file));
           const right = splitPath(displayPath(b.file));
           if (!left.dir && right.dir) return -1;
@@ -301,23 +307,36 @@ export function App() {
     [files, entries],
   );
 
-  // 按已排序的目录分组，保留文件的选择索引。
+  /** 低价值文件的分组键（不与任何真实目录冲突） */
+  const LOW_VALUE_GROUP = "\0low-value";
+
+  // 按已排序的目录分组，保留文件的选择索引；低价值文件独立成尾组。
   const fileGroups = useMemo(() => {
     const groups = new Map<string, { item: (typeof items)[number]; index: number }[]>();
     items.forEach((item, index) => {
-      const { dir } = splitPath(displayPath(item.file));
-      const group = groups.get(dir) ?? [];
+      const key = item.lowValue ? LOW_VALUE_GROUP : splitPath(displayPath(item.file)).dir;
+      const group = groups.get(key) ?? [];
       group.push({ item, index });
-      groups.set(dir, group);
+      groups.set(key, group);
     });
     return [...groups];
   }, [items]);
 
-  // 按路径身份保留选中项，刷新引起的排序变化不应把用户带到另一文件。
-  const safeSelected = Math.max(
-    0,
-    items.findIndex(({ file }) => fileKey(file) === selected),
+  // 未选择时先看契约：落到首个含签名变更的文件（其次有声明级变更、非低价值文件）。
+  const landing = useMemo(
+    () =>
+      defaultLandingIndex(
+        items.map(({ file, entry }) => ({
+          path: displayPath(file),
+          signatureChanges: entry?.projection?.summary.signature ?? 0,
+          unitCount: entry?.projection?.units.length ?? 0,
+        })),
+      ),
+    [items],
   );
+  // 按路径身份保留选中项，刷新引起的排序变化不应把用户带到另一文件。
+  const found = items.findIndex(({ file }) => fileKey(file) === selected);
+  const safeSelected = found >= 0 ? found : landing;
   const selectedFile = items[safeSelected]?.file ?? null;
   const listedEntry = items[safeSelected]?.entry ?? null;
   const contextResource = useResource<
@@ -355,6 +374,10 @@ export function App() {
   useLayoutEffect(() => {
     const content = reviewPane.current?.querySelector<HTMLElement>(".content");
     if (content) content.scrollTop = 0;
+    // 默认落地或键盘切换的文件可能不在侧栏可视区，就近滚入（点击选中时不移动）
+    reviewPane.current
+      ?.querySelector<HTMLElement>(".file-item.selected")
+      ?.scrollIntoView({ block: "nearest" });
   }, [selectedKey]);
   const expandedFile = useMemo(
     () =>
@@ -592,63 +615,72 @@ export function App() {
                 storageKey="review"
                 top={{
                   title: s.sectionFiles,
-                  body: fileGroups.map(([dir, group]) => (
-                    <section className="file-group" key={dir} aria-label={dir || "/"}>
-                      {dir && group.length > 1 && <div className="file-group-title">{dir}</div>}
-                      {group.map(({ item: { file: f, entry }, index: i }) => {
-                        const path = displayPath(f);
-                        const { base } = splitPath(path);
-                        const stat = fileStats(f);
-                        const sum = entry?.projection?.summary;
-                        return (
-                          <button
-                            key={`${f.oldPath}→${f.newPath}`}
-                            className={`file-item ${i === safeSelected ? "selected" : ""}`}
-                            onClick={() => {
-                              setSelected(fileKey(f));
-                              setRawOverride(null);
-                              setUnitJump(null);
-                            }}
-                          >
-                            <Tooltip content={path}>
-                              <span className="file-path">
-                                {group.length === 1 && dir && (
-                                  <span className="file-dir">{dir}</span>
-                                )}
-                                {base.split(/(?<=[-_])/).map((part, index) => (
-                                  <Fragment key={index}>
-                                    {part}
-                                    <wbr />
-                                  </Fragment>
-                                ))}
-                              </span>
-                            </Tooltip>
-                            <span className="file-meta">
-                              <Tooltip content={s.statusLabel[f.type as FileStatus] ?? f.type}>
-                                <span className={`status status-${f.type}`}>
-                                  <StatusIcon status={f.type as FileStatus} />
+                  body: fileGroups.map(([key, group]) => {
+                    const lowValue = key === LOW_VALUE_GROUP;
+                    const dir = lowValue ? "" : key;
+                    return (
+                      <section
+                        className={`file-group${lowValue ? " low-value" : ""}`}
+                        key={key}
+                        aria-label={lowValue ? s.sectionLowValue : dir || "/"}
+                      >
+                        {lowValue && <div className="file-group-title">{s.sectionLowValue}</div>}
+                        {dir && group.length > 1 && <div className="file-group-title">{dir}</div>}
+                        {group.map(({ item: { file: f, entry }, index: i }) => {
+                          const path = displayPath(f);
+                          const { dir, base } = splitPath(path);
+                          const stat = fileStats(f);
+                          const sum = entry?.projection?.summary;
+                          return (
+                            <button
+                              key={`${f.oldPath}→${f.newPath}`}
+                              className={`file-item ${i === safeSelected ? "selected" : ""}`}
+                              onClick={() => {
+                                setSelected(fileKey(f));
+                                setRawOverride(null);
+                                setUnitJump(null);
+                              }}
+                            >
+                              <Tooltip content={path}>
+                                <span className="file-path">
+                                  {(group.length === 1 || lowValue) && dir && (
+                                    <span className="file-dir">{dir}</span>
+                                  )}
+                                  {base.split(/(?<=[-_])/).map((part, index) => (
+                                    <Fragment key={index}>
+                                      {part}
+                                      <wbr />
+                                    </Fragment>
+                                  ))}
                                 </span>
                               </Tooltip>
-                              <em className="add">+{stat.adds}</em>
-                              <em className="del">−{stat.dels}</em>
-                              {sum && (
-                                <span className="chips">
-                                  {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(
-                                    ([k, cls]) => (
-                                      <span key={k} className={`chip ${cls}`}>
-                                        {s.summaryChips[k]}
-                                        {sum[k]}
-                                      </span>
-                                    ),
-                                  )}
-                                </span>
-                              )}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </section>
-                  )),
+                              <span className="file-meta">
+                                <Tooltip content={s.statusLabel[f.type as FileStatus] ?? f.type}>
+                                  <span className={`status status-${f.type}`}>
+                                    <StatusIcon status={f.type as FileStatus} />
+                                  </span>
+                                </Tooltip>
+                                <em className="add">+{stat.adds}</em>
+                                <em className="del">−{stat.dels}</em>
+                                {sum && (
+                                  <span className="chips">
+                                    {SUMMARY_CHIP_CLASS.filter(([k]) => sum[k] > 0).map(
+                                      ([k, cls]) => (
+                                        <span key={k} className={`chip ${cls}`}>
+                                          {s.summaryChips[k]}
+                                          {sum[k]}
+                                        </span>
+                                      ),
+                                    )}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </section>
+                    );
+                  }),
                 }}
                 bottom={{
                   title: s.sectionUnits,

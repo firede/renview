@@ -65,6 +65,8 @@ export interface Strings {
   toggleSidebar: string;
   /** 侧栏分栏标题：文件列表（变更与浏览模式共用） */
   sectionFiles: string;
+  /** 文件列表尾组：锁文件与生成产物 */
+  sectionLowValue: string;
   /** 侧栏分栏标题：当前文件的变更单元列表 */
   sectionUnits: string;
   /** 侧栏分栏标题：当前文件大纲 */

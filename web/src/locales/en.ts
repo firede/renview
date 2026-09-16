@@ -43,6 +43,7 @@ export const en: Strings = {
   shortcutB: "Shortcut: B",
   toggleSidebar: "Sidebar",
   sectionFiles: "Files",
+  sectionLowValue: "Lockfiles & generated",
   sectionUnits: "Changed symbols",
   sectionOutline: "Outline",
   noUnits: "No symbol changes",

@@ -44,6 +44,7 @@ export const zhCN: Strings = {
   shortcutB: "快捷键 B",
   toggleSidebar: "侧栏",
   sectionFiles: "文件",
+  sectionLowValue: "锁文件与生成产物",
   sectionUnits: "变更单元",
   sectionOutline: "大纲",
   noUnits: "无声明级变更",

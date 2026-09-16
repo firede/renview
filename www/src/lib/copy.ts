@@ -61,7 +61,7 @@ export const cn: Copy = {
     items: [
       {
         h: "先看契约，再看实现",
-        p: "签名变更的文件自动排最前，参数增减在行内词级高亮。接口判断对了，实现扫一遍就够。",
+        p: "打开即落在签名变更的文件上，参数增减在行内词级高亮。接口判断对了，实现扫一遍就够。",
       },
       {
         h: "擦除只碰语言机制",
@@ -121,7 +121,7 @@ export const en: Copy = {
     items: [
       {
         h: "Contracts before implementations",
-        p: "Files with signature changes sort to the top. Parameter deltas get word-level highlights. When the interface checks out, the body usually only needs a skim.",
+        p: "You land on the file whose signatures changed. Parameter deltas get word-level highlights. When the interface checks out, the body usually only needs a skim.",
       },
       {
         h: "Erasure only touches ceremony",
